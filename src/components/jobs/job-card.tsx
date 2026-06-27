@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Bookmark, Briefcase, Clock, Banknote } from "lucide-react";
 import { CompanyAvatar } from "@/components/brand/logo";
+import { SpotlightCard } from "@/components/brand/motion-primitives";
 import { formatSalary } from "@/lib/api";
 import { formatRelative } from "@/lib/api-client";
 import type { JobDTO } from "@/lib/types";
@@ -13,6 +14,7 @@ import { useApp } from "@/lib/store";
 import { api } from "@/lib/api-client";
 import { toast } from "sonner";
 import { useState } from "react";
+import { motion } from "framer-motion";
 
 export function JobCard({ job }: { job: JobDTO }) {
   const { t, locale, pick } = useT();
@@ -56,16 +58,21 @@ export function JobCard({ job }: { job: JobDTO }) {
   const title = pick(job.title, job.titleJa);
 
   return (
-    <article
+    <motion.article
       onClick={() => navigate("job-detail", { jobId: job.id })}
-      className="group relative cursor-pointer rounded-2xl border border-border bg-card p-5 transition-all hover:shadow-premium hover:-translate-y-0.5 hover:border-saffron/40"
+      whileHover={{ y: -4 }}
+      transition={{ type: "spring", stiffness: 300, damping: 22 }}
+      className="group relative cursor-pointer rounded-2xl"
     >
+      <SpotlightCard className="rounded-2xl border border-border bg-card p-5 transition-all hover:shadow-premium hover:border-saffron/40 h-full">
       <div className="flex items-start gap-4">
-        <CompanyAvatar
-          name={job.company.companyName}
-          color={job.company.logoUrl}
-          size={48}
-        />
+        <motion.div whileHover={{ rotate: [0, -6, 6, 0] }} transition={{ duration: 0.5 }}>
+          <CompanyAvatar
+            name={job.company.companyName}
+            color={job.company.logoUrl}
+            size={48}
+          />
+        </motion.div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
@@ -136,6 +143,7 @@ export function JobCard({ job }: { job: JobDTO }) {
           </div>
         </div>
       </div>
-    </article>
+      </SpotlightCard>
+    </motion.article>
   );
 }

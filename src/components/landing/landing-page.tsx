@@ -10,6 +10,16 @@ import { CompanyAvatar } from "@/components/brand/logo";
 import { JobCard } from "@/components/jobs/job-card";
 import { useCountUp } from "@/components/brand/use-count-up";
 import {
+  Reveal,
+  RevealGroup,
+  staggerItem,
+  fadeUp,
+  fadeUp as fadeUpVariant,
+  motion,
+  easeOutExpo,
+} from "@/lib/motion";
+import { MagneticButton, SpotlightCard } from "@/components/brand/motion-primitives";
+import {
   ArrowRight,
   Search,
   FileText,
@@ -46,7 +56,7 @@ function StatCard({
   label: string;
   delay: number;
 }) {
-  const count = useCountUp(value);
+  const count = useCountUp(value, 1800);
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
@@ -67,14 +77,12 @@ function StatCard({
   }, []);
 
   return (
-    <div
+    <motion.div
       ref={ref}
-      className="text-center transition-all duration-700"
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(16px)",
-        transitionDelay: `${delay}ms`,
-      }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={visible ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.6, ease: easeOutExpo, delay }}
+      className="text-center"
     >
       <div className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight">
         <span className="text-gradient-brand">
@@ -83,6 +91,54 @@ function StatCard({
         </span>
       </div>
       <p className="mt-1.5 text-sm font-medium text-muted-foreground">{label}</p>
+    </motion.div>
+  );
+}
+
+// Animated pipeline bar that fills when scrolled into view
+function PipelineBar({
+  stage,
+  count,
+  pct,
+  delay,
+}: {
+  stage: string;
+  count: string;
+  pct: number;
+  delay: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          setVisible(true);
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.4 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref}>
+      <div className="flex justify-between text-xs mb-1.5">
+        <span className="font-medium">{stage}</span>
+        <span className="text-muted-foreground">{count}</span>
+      </div>
+      <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+        <motion.div
+          className="h-full bg-brand-gradient rounded-full"
+          initial={{ width: 0 }}
+          animate={visible ? { width: `${pct}%` } : {}}
+          transition={{ duration: 1.1, ease: easeOutExpo, delay }}
+        />
+      </div>
     </div>
   );
 }
@@ -116,92 +172,94 @@ export function LandingPage() {
     <main>
       {/* HERO */}
       <section className="relative overflow-hidden bg-mesh">
+        {/* Animated aurora blobs */}
         <div className="absolute inset-0 -z-10">
-          <div className="absolute -top-20 -left-20 h-72 w-72 rounded-full bg-saffron/20 blur-3xl animate-float-slow" />
-          <div className="absolute top-40 -right-20 h-96 w-96 rounded-full bg-crimson/15 blur-3xl animate-float-slow" style={{ animationDelay: "1.5s" }} />
+          <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-saffron/25 blur-3xl animate-aurora" />
+          <div
+            className="absolute top-40 -right-24 h-[28rem] w-[28rem] rounded-full bg-crimson/18 blur-3xl animate-aurora"
+            style={{ animationDelay: "2.5s" }}
+          />
+          <div
+            className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-saffron/12 blur-3xl animate-aurora"
+            style={{ animationDelay: "5s" }}
+          />
         </div>
 
+        {/* Parallax mouse-follow handled via CSS only for perf */}
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-16 pb-20 sm:pt-24 sm:pb-28">
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/10 px-4 py-1.5 text-sm font-medium text-crimson">
+          <RevealGroup className="mx-auto max-w-3xl text-center" stagger={0.12} delayChildren={0.1}>
+            <motion.div variants={staggerItem} className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/10 px-4 py-1.5 text-sm font-medium text-crimson">
               <Sparkles className="h-3.5 w-3.5" />
               {t("hero.badge")}
-            </div>
-            <h1 className="mt-6 font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05]">
+            </motion.div>
+            <motion.h1
+              variants={staggerItem}
+              className="mt-6 font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05]"
+            >
               {t("hero.title")}
-            </h1>
-            <p className="mt-6 text-lg sm:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+            </motion.h1>
+            <motion.p
+              variants={staggerItem}
+              className="mt-6 text-lg sm:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto"
+            >
               {t("hero.subtitle")}
-            </p>
-            <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Button
-                size="lg"
+            </motion.p>
+            <motion.div
+              variants={staggerItem}
+              className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3"
+            >
+              <MagneticButton
                 onClick={() => navigate("jobs")}
-                className="bg-brand-gradient text-white hover:opacity-90 font-semibold text-base h-12 px-7 shadow-glow-brand group"
+                className="bg-brand-gradient text-white hover:opacity-90 font-semibold text-base h-12 px-7 rounded-xl shadow-glow-brand inline-flex items-center gap-2 cursor-pointer"
               >
-                <Search className="mr-2 h-4 w-4" />
+                <Search className="h-4 w-4" />
                 {t("hero.cta.find")}
-                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
+                <ArrowRight className="h-4 w-4" />
+              </MagneticButton>
+              <MagneticButton
                 onClick={() => navigate("register")}
-                className="font-semibold text-base h-12 px-7 border-2 hover:bg-accent"
+                className="bg-background border-2 border-border hover:border-saffron/50 font-semibold text-base h-12 px-7 rounded-xl inline-flex items-center gap-2 cursor-pointer"
               >
                 {t("hero.cta.hire")}
-              </Button>
-            </div>
-            <p className="mt-6 text-xs text-muted-foreground">
+              </MagneticButton>
+            </motion.div>
+            <motion.p variants={staggerItem} className="mt-6 text-xs text-muted-foreground">
               {t("hero.trusted")}
-            </p>
-          </div>
+            </motion.p>
+          </RevealGroup>
 
           {/* Hero company strip */}
-          <div className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 opacity-70">
-            {["TechNova", "SakuraSoft", "Mitsui Eng.", "Hikari", "Kintaro"].map(
-              (name, i) => (
-                <div key={name} className="flex items-center gap-2">
-                  <CompanyAvatar
-                    name={name}
-                    color={companyColors[i % companyColors.length]}
-                    size={28}
-                  />
-                  <span className="font-display font-bold text-sm">{name}</span>
-                </div>
-              ),
-            )}
-          </div>
+          <Reveal variants={fadeUp} delay={0.5} className="mt-14">
+            <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 opacity-70">
+              {["TechNova", "SakuraSoft", "Mitsui Eng.", "Hikari", "Kintaro"].map(
+                (name, i) => (
+                  <motion.div
+                    key={name}
+                    whileHover={{ scale: 1.08, y: -2 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                    className="flex items-center gap-2 cursor-default"
+                  >
+                    <CompanyAvatar
+                      name={name}
+                      color={companyColors[i % companyColors.length]}
+                      size={28}
+                    />
+                    <span className="font-display font-bold text-sm">{name}</span>
+                  </motion.div>
+                ),
+              )}
+            </div>
+          </Reveal>
         </div>
 
         {/* Stats bar */}
         <div className="border-y border-border bg-card/60 glass">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              <StatCard
-                value={stats?.jobCount ?? 12}
-                suffix="+"
-                label={t("stats.jobs")}
-                delay={0}
-              />
-              <StatCard
-                value={stats?.candidateCount ?? 1900}
-                suffix="+"
-                label={t("stats.candidates")}
-                delay={120}
-              />
-              <StatCard
-                value={stats?.companyCount ?? 5}
-                suffix="+"
-                label={t("stats.companies")}
-                delay={240}
-              />
-              <StatCard
-                value={stats?.placementCount ?? 312}
-                suffix="+"
-                label={t("stats.placements")}
-                delay={360}
-              />
+              <StatCard value={stats?.jobCount ?? 12} suffix="+" label={t("stats.jobs")} delay={0} />
+              <StatCard value={stats?.candidateCount ?? 1900} suffix="+" label={t("stats.candidates")} delay={120} />
+              <StatCard value={stats?.companyCount ?? 5} suffix="+" label={t("stats.companies")} delay={240} />
+              <StatCard value={stats?.placementCount ?? 312} suffix="+" label={t("stats.placements")} delay={360} />
             </div>
           </div>
         </div>
@@ -211,31 +269,35 @@ export function LandingPage() {
       {featured.length > 0 && (
         <section className="py-20 sm:py-24">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex items-end justify-between flex-wrap gap-4 mb-10">
-              <div>
-                <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
-                  <Briefcase className="mr-1 h-3 w-3" />
-                  {t("jobs.title")}
-                </Badge>
-                <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
-                  Latest opportunities
-                </h2>
-                <p className="mt-2 text-muted-foreground">{t("jobs.subtitle")}</p>
+            <Reveal variants={fadeUp}>
+              <div className="flex items-end justify-between flex-wrap gap-4 mb-10">
+                <div>
+                  <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
+                    <Briefcase className="mr-1 h-3 w-3" />
+                    {t("jobs.title")}
+                  </Badge>
+                  <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+                    Latest opportunities
+                  </h2>
+                  <p className="mt-2 text-muted-foreground">{t("jobs.subtitle")}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate("jobs")}
+                  className="font-semibold group"
+                >
+                  {t("jobs.viewall")}
+                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                onClick={() => navigate("jobs")}
-                className="font-semibold"
-              >
-                {t("jobs.viewall")}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            </Reveal>
+            <RevealGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" stagger={0.1}>
               {featured.map((job) => (
-                <JobCard key={job.id} job={job} />
+                <motion.div key={job.id} variants={staggerItem}>
+                  <JobCard job={job} />
+                </motion.div>
               ))}
-            </div>
+            </RevealGroup>
           </div>
         </section>
       )}
@@ -243,7 +305,7 @@ export function LandingPage() {
       {/* HOW IT WORKS */}
       <section className="py-20 sm:py-24 bg-card/40 border-y border-border">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto">
+          <Reveal variants={fadeUp} className="text-center max-w-2xl mx-auto">
             <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
               <Sparkles className="mr-1 h-3 w-3" />
               Process
@@ -252,46 +314,32 @@ export function LandingPage() {
               {t("how.title")}
             </h2>
             <p className="mt-2 text-muted-foreground">{t("how.subtitle")}</p>
-          </div>
+          </Reveal>
 
-          <div className="mt-14 grid gap-6 md:grid-cols-3">
+          <RevealGroup className="mt-14 grid gap-6 md:grid-cols-3" stagger={0.14}>
             {[
-              {
-                icon: FileText,
-                title: t("how.1.title"),
-                desc: t("how.1.desc"),
-                step: "01",
-              },
-              {
-                icon: Search,
-                title: t("how.2.title"),
-                desc: t("how.2.desc"),
-                step: "02",
-              },
-              {
-                icon: Plane,
-                title: t("how.3.title"),
-                desc: t("how.3.desc"),
-                step: "03",
-              },
+              { icon: FileText, title: t("how.1.title"), desc: t("how.1.desc"), step: "01" },
+              { icon: Search, title: t("how.2.title"), desc: t("how.2.desc"), step: "02" },
+              { icon: Plane, title: t("how.3.title"), desc: t("how.3.desc"), step: "03" },
             ].map((s, i) => (
-              <div
-                key={i}
-                className="relative rounded-2xl border border-border bg-background p-7 hover:shadow-premium hover:-translate-y-1 transition-all"
-              >
-                <span className="absolute top-5 right-6 font-display text-5xl font-extrabold text-saffron/15">
-                  {s.step}
-                </span>
-                <div className="grid place-items-center h-12 w-12 rounded-xl bg-brand-gradient text-white shadow-glow-brand">
-                  <s.icon className="h-5 w-5" />
-                </div>
-                <h3 className="mt-5 font-display text-xl font-bold">{s.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                  {s.desc}
-                </p>
-              </div>
+              <motion.div key={i} variants={staggerItem} whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
+                <SpotlightCard className="h-full rounded-2xl border border-border bg-background p-7 hover:shadow-premium transition-shadow">
+                  <span className="absolute top-5 right-6 font-display text-5xl font-extrabold text-saffron/15">
+                    {s.step}
+                  </span>
+                  <motion.div
+                    whileHover={{ rotate: [0, -8, 8, 0], scale: 1.05 }}
+                    transition={{ duration: 0.5 }}
+                    className="grid place-items-center h-12 w-12 rounded-xl bg-brand-gradient text-white shadow-glow-brand"
+                  >
+                    <s.icon className="h-5 w-5" />
+                  </motion.div>
+                  <h3 className="mt-5 font-display text-xl font-bold">{s.title}</h3>
+                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
+                </SpotlightCard>
+              </motion.div>
             ))}
-          </div>
+          </RevealGroup>
         </div>
       </section>
 
@@ -299,7 +347,7 @@ export function LandingPage() {
       <section className="py-20 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
+            <Reveal variants={fadeUp}>
               <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
                 <ShieldCheck className="mr-1 h-3 w-3" />
                 Why IndiGate
@@ -313,78 +361,62 @@ export function LandingPage() {
               </p>
               <ul className="mt-6 space-y-4">
                 {[
-                  {
-                    icon: ShieldCheck,
-                    title: "Visa & relocation support",
-                    desc: "Every listed job comes with visa sponsorship. Our partners handle paperwork, housing, and onboarding.",
-                  },
-                  {
-                    icon: Globe2,
-                    title: "Bilingual by design",
-                    desc: "Browse jobs in English or Japanese. Companies can post in both languages.",
-                  },
-                  {
-                    icon: Heart,
-                    title: "Human-reviewed employers",
-                    desc: "Every company is vetted by the Indobox team before they can post a single role.",
-                  },
-                  {
-                    icon: Star,
-                    title: "Real placement outcomes",
-                    desc: "300+ professionals placed across IT, engineering, design, and finance in Japan.",
-                  },
+                  { icon: ShieldCheck, title: "Visa & relocation support", desc: "Every listed job comes with visa sponsorship. Our partners handle paperwork, housing, and onboarding." },
+                  { icon: Globe2, title: "Bilingual by design", desc: "Browse jobs in English or Japanese. Companies can post in both languages." },
+                  { icon: Heart, title: "Human-reviewed employers", desc: "Every company is vetted by the Indobox team before they can post a single role." },
+                  { icon: Star, title: "Real placement outcomes", desc: "300+ professionals placed across IT, engineering, design, and finance in Japan." },
                 ].map((item, i) => (
-                  <li key={i} className="flex gap-4">
+                  <motion.li
+                    key={i}
+                    initial={{ opacity: 0, x: -16 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, ease: easeOutExpo, delay: i * 0.08 }}
+                    className="flex gap-4"
+                  >
                     <div className="shrink-0 grid place-items-center h-10 w-10 rounded-lg bg-saffron/10 text-saffron">
                       <item.icon className="h-5 w-5" />
                     </div>
                     <div>
                       <p className="font-semibold">{item.title}</p>
-                      <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">
-                        {item.desc}
-                      </p>
+                      <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{item.desc}</p>
                     </div>
-                  </li>
+                  </motion.li>
                 ))}
               </ul>
-            </div>
+            </Reveal>
 
-            <div className="relative">
-              <div className="absolute inset-0 -z-10 bg-mesh rounded-3xl" />
-              <div className="rounded-3xl border border-border bg-card p-6 shadow-premium">
-                <div className="flex items-center gap-3 pb-4 border-b">
-                  <div className="grid place-items-center h-10 w-10 rounded-lg bg-brand-gradient text-white">
-                    <Globe2 className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm">India → Japan pipeline</p>
-                    <p className="text-xs text-muted-foreground">Live placement flow</p>
-                  </div>
-                </div>
-                <div className="mt-5 space-y-3">
-                  {[
-                    { stage: "Profile created", count: "1,947", pct: 100 },
-                    { stage: "Shortlisted by companies", count: "612", pct: 62 },
-                    { stage: "Interviews scheduled", count: "428", pct: 44 },
-                    { stage: "Offers extended", count: "312", pct: 31 },
-                    { stage: "Relocated to Japan", count: "287", pct: 28 },
-                  ].map((row) => (
-                    <div key={row.stage}>
-                      <div className="flex justify-between text-xs mb-1.5">
-                        <span className="font-medium">{row.stage}</span>
-                        <span className="text-muted-foreground">{row.count}</span>
-                      </div>
-                      <div className="h-2 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full bg-brand-gradient rounded-full"
-                          style={{ width: `${row.pct}%` }}
-                        />
-                      </div>
+            <Reveal variants={fadeUp}>
+              <div className="relative">
+                <div className="absolute inset-0 -z-10 bg-mesh rounded-3xl" />
+                <div className="rounded-3xl border border-border bg-card p-6 shadow-premium">
+                  <div className="flex items-center gap-3 pb-4 border-b">
+                    <motion.div
+                      animate={{ scale: [1, 1.06, 1] }}
+                      transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                      className="grid place-items-center h-10 w-10 rounded-lg bg-brand-gradient text-white"
+                    >
+                      <Globe2 className="h-5 w-5" />
+                    </motion.div>
+                    <div>
+                      <p className="font-semibold text-sm">India → Japan pipeline</p>
+                      <p className="text-xs text-muted-foreground">Live placement flow</p>
                     </div>
-                  ))}
+                  </div>
+                  <div className="mt-5 space-y-3">
+                    {[
+                      { stage: "Profile created", count: "1,947", pct: 100 },
+                      { stage: "Shortlisted by companies", count: "612", pct: 62 },
+                      { stage: "Interviews scheduled", count: "428", pct: 44 },
+                      { stage: "Offers extended", count: "312", pct: 31 },
+                      { stage: "Relocated to Japan", count: "287", pct: 28 },
+                    ].map((row, i) => (
+                      <PipelineBar key={row.stage} {...row} delay={i * 0.12} />
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            </Reveal>
           </div>
         </div>
       </section>
@@ -393,7 +425,7 @@ export function LandingPage() {
       {testimonials.length > 0 && (
         <section className="py-20 sm:py-24 bg-card/40 border-y border-border overflow-hidden">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-2xl mx-auto">
+            <Reveal variants={fadeUp} className="text-center max-w-2xl mx-auto">
               <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
                 <Quote className="mr-1 h-3 w-3" />
                 Testimonials
@@ -401,10 +433,8 @@ export function LandingPage() {
               <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
                 {t("testimonials.title")}
               </h2>
-              <p className="mt-2 text-muted-foreground">
-                {t("testimonials.subtitle")}
-              </p>
-            </div>
+              <p className="mt-2 text-muted-foreground">{t("testimonials.subtitle")}</p>
+            </Reveal>
           </div>
 
           <div className="mt-14 relative">
@@ -412,7 +442,7 @@ export function LandingPage() {
               {[...testimonials, ...testimonials].map((te, i) => (
                 <figure
                   key={i}
-                  className="w-[340px] sm:w-[400px] shrink-0 rounded-2xl border border-border bg-background p-6 shadow-premium"
+                  className="w-[340px] sm:w-[400px] shrink-0 rounded-2xl border border-border bg-background p-6 shadow-premium transition-transform hover:scale-[1.02]"
                 >
                   <Quote className="h-7 w-7 text-saffron/40" />
                   <blockquote className="mt-3 text-sm leading-relaxed text-foreground/90">
@@ -438,28 +468,30 @@ export function LandingPage() {
       {/* CTA */}
       <section className="py-20 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-3xl bg-brand-gradient px-8 py-16 sm:px-16 sm:py-20 text-center shadow-glow-brand">
-            <div className="absolute inset-0 opacity-20 mix-blend-overlay">
-              <div className="absolute top-0 left-1/4 h-40 w-40 rounded-full bg-white blur-3xl" />
-              <div className="absolute bottom-0 right-1/4 h-56 w-56 rounded-full bg-white blur-3xl" />
+          <Reveal variants={fadeUp}>
+            <div className="relative overflow-hidden rounded-3xl bg-brand-gradient px-8 py-16 sm:px-16 sm:py-20 text-center shadow-glow-brand">
+              {/* Shimmer sweep overlay */}
+              <div className="pointer-events-none absolute inset-0 opacity-25 mix-blend-overlay">
+                <div className="absolute top-0 left-1/4 h-40 w-40 rounded-full bg-white blur-3xl animate-aurora" />
+                <div className="absolute bottom-0 right-1/4 h-56 w-56 rounded-full bg-white blur-3xl animate-aurora" style={{ animationDelay: "3s" }} />
+              </div>
+              <div className="relative">
+                <h2 className="font-display text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
+                  {t("cta.title")}
+                </h2>
+                <p className="mt-4 text-white/90 text-lg max-w-2xl mx-auto">
+                  {t("cta.subtitle")}
+                </p>
+                <MagneticButton
+                  onClick={() => navigate("register")}
+                  className="mt-8 bg-white text-crimson hover:bg-white/90 font-bold text-base h-12 px-8 rounded-xl inline-flex items-center gap-2 cursor-pointer shadow-lg"
+                >
+                  {t("cta.button")}
+                  <ArrowRight className="h-4 w-4" />
+                </MagneticButton>
+              </div>
             </div>
-            <div className="relative">
-              <h2 className="font-display text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
-                {t("cta.title")}
-              </h2>
-              <p className="mt-4 text-white/90 text-lg max-w-2xl mx-auto">
-                {t("cta.subtitle")}
-              </p>
-              <Button
-                size="lg"
-                onClick={() => navigate("register")}
-                className="mt-8 bg-white text-crimson hover:bg-white/90 font-bold text-base h-12 px-8"
-              >
-                {t("cta.button")}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+          </Reveal>
         </div>
       </section>
 
@@ -496,7 +528,7 @@ function ContactSection() {
   return (
     <section id="contact" className="py-20 sm:py-24 bg-card/40 border-t border-border">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center">
+        <Reveal variants={fadeUp} className="text-center">
           <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
             <Mail className="mr-1 h-3 w-3" />
             Contact
@@ -505,66 +537,82 @@ function ContactSection() {
             {t("contact.title")}
           </h2>
           <p className="mt-2 text-muted-foreground">{t("contact.subtitle")}</p>
-        </div>
+        </Reveal>
 
-        {sent ? (
-          <div className="mt-10 rounded-2xl border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40 p-8 text-center">
-            <CheckCircle2 className="h-10 w-10 text-emerald-600 mx-auto" />
-            <p className="mt-3 font-semibold text-emerald-800 dark:text-emerald-300">
-              {t("contact.success")}
-            </p>
-          </div>
-        ) : (
-          <form onSubmit={submit} className="mt-10 space-y-4">
-            <div className="grid sm:grid-cols-2 gap-4">
-              <Field label={t("contact.name")}>
-                <input
-                  required
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40"
-                  placeholder="Arjun Sharma"
-                />
-              </Field>
-              <Field label={t("contact.email")}>
-                <input
-                  required
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40"
-                  placeholder="you@example.com"
-                />
-              </Field>
-            </div>
-            <Field label={t("contact.subject")}>
-              <input
-                value={form.subject}
-                onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40"
-                placeholder="How can we help?"
-              />
-            </Field>
-            <Field label={t("contact.message")}>
-              <textarea
-                required
-                minLength={20}
-                value={form.message}
-                onChange={(e) => setForm({ ...form, message: e.target.value })}
-                rows={5}
-                className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40 resize-none"
-                placeholder="Tell us a bit about what you need..."
-              />
-            </Field>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-brand-gradient text-white hover:opacity-90 font-semibold h-12"
+        <Reveal variants={fadeUp} delay={0.15}>
+          {sent ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 300, damping: 22 }}
+              className="mt-10 rounded-2xl border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40 p-8 text-center"
             >
-              {loading ? t("common.loading") : t("contact.submit")}
-            </Button>
-          </form>
-        )}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 260, damping: 14, delay: 0.1 }}
+                className="mx-auto mb-3"
+              >
+                <CheckCircle2 className="h-12 w-12 text-emerald-600 mx-auto" />
+              </motion.div>
+              <p className="font-semibold text-emerald-800 dark:text-emerald-300">
+                {t("contact.success")}
+              </p>
+            </motion.div>
+          ) : (
+            <form onSubmit={submit} className="mt-10 space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <Field label={t("contact.name")}>
+                  <input
+                    required
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40 transition-shadow"
+                    placeholder="Arjun Sharma"
+                  />
+                </Field>
+                <Field label={t("contact.email")}>
+                  <input
+                    required
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40 transition-shadow"
+                    placeholder="you@example.com"
+                  />
+                </Field>
+              </div>
+              <Field label={t("contact.subject")}>
+                <input
+                  value={form.subject}
+                  onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                  className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40 transition-shadow"
+                  placeholder="How can we help?"
+                />
+              </Field>
+              <Field label={t("contact.message")}>
+                <textarea
+                  required
+                  minLength={20}
+                  value={form.message}
+                  onChange={(e) => setForm({ ...form, message: e.target.value })}
+                  rows={5}
+                  className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40 resize-none transition-shadow"
+                  placeholder="Tell us a bit about what you need..."
+                />
+              </Field>
+              <motion.div whileHover={{ scale: 1.005 }} whileTap={{ scale: 0.99 }}>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-brand-gradient text-white hover:opacity-90 font-semibold h-12"
+                >
+                  {loading ? t("common.loading") : t("contact.submit")}
+                </Button>
+              </motion.div>
+            </form>
+          )}
+        </Reveal>
       </div>
     </section>
   );

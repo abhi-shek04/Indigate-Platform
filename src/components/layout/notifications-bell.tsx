@@ -68,6 +68,7 @@ export function NotificationsBell() {
           {unread > 0 && (
             <span className="absolute -top-0.5 -right-0.5 grid place-items-center min-w-[16px] h-4 px-1 rounded-full bg-crimson text-white text-[10px] font-bold">
               {unread > 9 ? "9+" : unread}
+              <span className="absolute inset-0 rounded-full bg-crimson animate-ping-soft" />
             </span>
           )}
         </button>

@@ -101,3 +101,34 @@ Stage Summary:
 - All 10 milestones' features are implemented and browser-verified.
 - Lint passes clean. Dev server runs without errors.
 - Demo accounts: candidate `arjun@example.com`/`candidate123`, company `hr@technova.jp`/`company123`, admin `admin@indigate.work`/`admin123`.
+
+---
+Task ID: ANIM-UPGRADE
+Agent: main (Z.ai Code)
+Task: Premium animation + UI/UX upgrade across the entire IndiGate platform.
+
+Work Log:
+- Created `src/lib/motion.tsx`: reusable Framer Motion variants (fadeUp, fadeIn, scaleIn, slideIn, staggerContainer, staggerItem), easing curves (easeOutExpo, springSoft), Reveal + RevealGroup scroll-reveal wrappers.
+- Created `src/components/brand/motion-primitives.tsx`: MagneticButton (cursor-follow spring), SpotlightCard (radial cursor spotlight), TiltCard (3D perspective tilt), ScrollProgress (top gradient progress bar), ShimmerText.
+- Upgraded `src/app/globals.css`: added keyframes (aurora drift, ping-soft, glow-pulse, shimmer-sweep, border-draw, bob, rise-in, shimmer-text), gradient-border utility, premium ::selection, :focus-visible ring, smooth scroll, prefers-reduced-motion guard.
+- Upgraded `src/app/page.tsx`: AnimatePresence view transitions (fade+slide between every view), branded full-screen loader with pulsing logo + bouncing dots.
+- Rebuilt `src/components/landing/landing-page.tsx`: staggered hero entrance (badge→title→subtitle→CTAs), aurora parallax blobs, RevealGroup for featured jobs + how-it-works cards, scroll-triggered PipelineBar fills, spring company-logo hover, SpotlightCard on step cards, MagneticButton on CTAs, spring success checkmark on contact form.
+- Upgraded `src/components/jobs/job-card.tsx`: motion.article with spring hover lift, SpotlightCard cursor glow, wobble on company avatar hover.
+- Upgraded `src/components/jobs/jobs-view.tsx`: RevealGroup staggered job card entrance, animate-bob on empty-state icon.
+- Upgraded `src/components/auth/auth-view.tsx`: AnimatePresence on mode switch (login→register→verify), staggered form fields, motion title/subtitle transitions.
+- Upgraded `src/components/layout/navbar.tsx`: layoutId animated active underline that springs between nav items.
+- Upgraded `src/components/layout/notifications-bell.tsx`: soft ping ring on unread badge.
+- Upgraded `src/components/dashboard/dashboard-shell.tsx`: layoutId sidebar active indicator (springs between tabs), AnimatePresence content transition on tab change (fade+slide), MetricCard spring-in + hover lift + icon wobble, EmptyState bob animation.
+
+Verification (Agent Browser):
+- Home: staggered hero, aurora blobs, scroll reveals all render. HTTP 200.
+- View transition home→jobs→login: smooth fade+slide, no errors.
+- Candidate login → dashboard: metrics spring in, sidebar indicator slides between Overview/Profile/Saved Jobs tabs.
+- Admin login → panel: recharts render, JA toggle works (管理パネル), mobile (iPhone 14) responsive.
+- Zero console/runtime errors across all flows.
+- `bun run lint` clean. Dev server compiles without warnings.
+
+Stage Summary:
+- Platform now has a cohesive premium animation system: page transitions, scroll reveals, staggered lists, magnetic/spotlight/tilt micro-interactions, animated nav indicator, spring physics throughout.
+- All animations respect prefers-reduced-motion for accessibility.
+- No pending items — the entire 10-milestone plan is complete AND visually polished.

@@ -201,20 +201,138 @@
   to { transform: translateX(-50%); }
 }
 .animate-marquee {
-  animation: marquee 40s linear infinite;
+  animation: marquee 45s linear infinite;
+  will-change: transform;
 }
 .animate-marquee:hover {
   animation-play-state: paused;
 }
 
 @keyframes float-slow {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  0%, 100% { transform: translateY(0) translateX(0); }
+  33% { transform: translateY(-14px) translateX(8px); }
+  66% { transform: translateY(8px) translateX(-6px); }
 }
 .animate-float-slow {
-  animation: float-slow 6s ease-in-out infinite;
+  animation: float-slow 7s ease-in-out infinite;
+  will-change: transform;
 }
 
 @keyframes shimmer {
   100% { transform: translateX(100%); }
+}
+
+/* Animated gradient text sweep */
+@keyframes shimmer-text {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Aurora gradient drift — used for hero background */
+@keyframes aurora {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(3%, -4%) scale(1.08); }
+  66% { transform: translate(-3%, 3%) scale(0.96); }
+}
+.animate-aurora {
+  animation: aurora 18s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Soft ping for notification badges */
+@keyframes ping-soft {
+  0% { transform: scale(1); opacity: 0.7; }
+  75%, 100% { transform: scale(2.4); opacity: 0; }
+}
+.animate-ping-soft {
+  animation: ping-soft 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Glow pulse for brand elements */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--crimson) 35%, transparent); }
+  50% { box-shadow: 0 0 0 12px color-mix(in oklch, var(--crimson) 0%, transparent); }
+}
+.animate-glow-pulse {
+  animation: glow-pulse 2.4s ease-in-out infinite;
+}
+
+/* Skeleton shimmer sweep */
+@keyframes shimmer-sweep {
+  100% { transform: translateX(100%); }
+}
+.shimmer-sweep {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer-sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklch, var(--foreground) 6%, transparent),
+    transparent
+  );
+  animation: shimmer-sweep 1.6s infinite;
+}
+
+/* Gradient border draw for premium cards */
+@keyframes border-draw {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.gradient-border {
+  position: relative;
+  background:
+    linear-gradient(var(--card), var(--card)) padding-box,
+    linear-gradient(110deg, var(--saffron), var(--crimson), var(--saffron)) border-box;
+  background-size: 200% 100%, 200% 100%;
+  border: 1px solid transparent;
+  background-clip: padding-box, border-box;
+}
+
+/* Rise-in for list items */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Subtle bob for empty-state icons */
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.animate-bob {
+  animation: bob 3s ease-in-out infinite;
+}
+
+/* Premium selection */
+::selection {
+  background: color-mix(in oklch, var(--saffron) 30%, transparent);
+  color: var(--foreground);
+}
+
+/* Premium focus ring */
+:focus-visible {
+  outline: 2px solid color-mix(in oklch, var(--saffron) 70%, transparent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Smooth scroll for the whole page */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Reduce motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -6,6 +6,7 @@ import { useT } from "@/lib/use-t";
 import { api } from "@/lib/api-client";
 import { JobCard } from "@/components/jobs/job-card";
 import { Button } from "@/components/ui/button";
+import { Reveal, RevealGroup, staggerItem, motion } from "@/lib/motion";
 import {
   Select,
   SelectContent,
@@ -186,14 +187,16 @@ export function JobsView() {
           ))}
         </div>
       ) : data && data.jobs.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <RevealGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" stagger={0.06}>
           {data.jobs.map((job) => (
-            <JobCard key={job.id} job={job} />
+            <motion.div key={job.id} variants={staggerItem}>
+              <JobCard job={job} />
+            </motion.div>
           ))}
-        </div>
+        </RevealGroup>
       ) : (
         <div className="rounded-2xl border border-dashed border-border py-20 text-center">
-          <Briefcase className="h-10 w-10 text-muted-foreground/40 mx-auto" />
+          <Briefcase className="h-10 w-10 text-muted-foreground/40 mx-auto animate-bob" />
           <p className="mt-3 text-muted-foreground">{t("jobs.empty")}</p>
           {hasFilters && (
             <Button variant="outline" size="sm" onClick={clearFilters} className="mt-4">

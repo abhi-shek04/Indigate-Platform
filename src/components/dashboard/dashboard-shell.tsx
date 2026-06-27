@@ -15,6 +15,8 @@ import { NotificationsBell } from "@/components/layout/notifications-bell";
 import { LocaleToggle } from "@/components/layout/locale-toggle";
 import { cn } from "@/lib/utils";
 import { LogOut, Menu, ArrowLeft, type LucideIcon } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { easeOutExpo } from "@/lib/motion";
 
 export interface NavItem {
   key: string;
@@ -142,7 +144,17 @@ export function DashboardShell({
 
         {/* Content */}
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-          {children}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={active}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.28, ease: easeOutExpo }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>
@@ -190,9 +202,11 @@ function NavList({
             )}
           >
             {isActive && (
-              <span
+              <motion.span
+                layoutId="sidebar-active"
                 aria-hidden
                 className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full bg-saffron"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
               />
             )}
             <Icon
@@ -276,7 +290,13 @@ export function MetricCard({
     amber: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
   };
   return (
-    <div className="group rounded-2xl border border-border bg-card shadow-premium p-5 sm:p-6 transition-all hover:-translate-y-0.5 hover:shadow-glow-brand">
+    <motion.div
+      initial={{ opacity: 0, y: 16, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.5, ease: easeOutExpo }}
+      whileHover={{ y: -4 }}
+      className="group rounded-2xl border border-border bg-card shadow-premium p-5 sm:p-6 transition-shadow hover:shadow-glow-brand"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -289,16 +309,18 @@ export function MetricCard({
             <p className="mt-1.5 text-xs text-muted-foreground">{hint}</p>
           )}
         </div>
-        <div
+        <motion.div
+          whileHover={{ rotate: [0, -8, 8, 0], scale: 1.08 }}
+          transition={{ duration: 0.5 }}
           className={cn(
             "grid place-items-center h-11 w-11 rounded-xl shrink-0",
             accentMap[accent],
           )}
         >
           <Icon className="h-5 w-5" />
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -314,9 +336,14 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: easeOutExpo }}
+      className="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center"
+    >
       <div className="mx-auto mb-4 grid place-items-center h-14 w-14 rounded-2xl bg-muted text-muted-foreground">
-        <Icon className="h-6 w-6" />
+        <Icon className="h-6 w-6 animate-bob" />
       </div>
       <p className="font-display font-bold text-lg">{title}</p>
       {description && (
@@ -325,7 +352,7 @@ export function EmptyState({
         </p>
       )}
       {action && <div className="mt-5 flex justify-center">{action}</div>}
-    </div>
+    </motion.div>
   );
 }
 

@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, User, Building2, ArrowLeft, Mail, KeyRound, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
+import { staggerContainer, staggerItem, easeOutExpo } from "@/lib/motion";
 
 type Mode = "login" | "register" | "verify" | "forgot" | "reset";
 
@@ -168,13 +170,36 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
           </button>
 
           <div className="mb-7">
-            <h1 className="font-display text-3xl font-extrabold tracking-tight">
+            <motion.h1
+              key={`title-${mode}`}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: easeOutExpo }}
+              className="font-display text-3xl font-extrabold tracking-tight"
+            >
               {titles[mode].title}
-            </h1>
-            <p className="mt-2 text-muted-foreground">{titles[mode].subtitle}</p>
+            </motion.h1>
+            <motion.p
+              key={`sub-${mode}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, ease: easeOutExpo, delay: 0.08 }}
+              className="mt-2 text-muted-foreground"
+            >
+              {titles[mode].subtitle}
+            </motion.p>
           </div>
 
-          <form onSubmit={submit} className="space-y-4">
+          <AnimatePresence mode="wait">
+          <motion.form
+            key={mode}
+            onSubmit={submit}
+            className="space-y-4"
+            variants={staggerContainer(0.07, 0.05)}
+            initial="hidden"
+            animate="visible"
+            exit={{ opacity: 0, transition: { duration: 0.15 } }}
+          >
             {mode === "register" && (
               <div>
                 <Label className="mb-2 block">{t("auth.role")}</Label>
@@ -290,6 +315,7 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
               </Field>
             )}
 
+            <motion.div variants={staggerItem}>
             <Button
               type="submit"
               disabled={loading}
@@ -307,7 +333,9 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
                         ? "Send reset code"
                         : "Reset password"}
             </Button>
-          </form>
+            </motion.div>
+          </motion.form>
+          </AnimatePresence>
 
           {/* Demo codes / helpers */}
           {returnedCode && (mode === "verify" || mode === "reset") && (

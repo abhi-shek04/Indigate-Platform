@@ -35,7 +35,7 @@ export interface AppState {
   view: View;
   selectedJobId: string | null;
   // candidate dashboard tab
-  candidateTab: "overview" | "applications" | "profile" | "resume" | "saved";
+  candidateTab: "overview" | "applications" | "profile" | "resume" | "saved" | "builder";
   // company dashboard tab
   companyTab:
     | "overview"

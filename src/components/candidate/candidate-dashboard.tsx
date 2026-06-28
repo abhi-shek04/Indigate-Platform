@@ -50,6 +50,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { JobCard } from "@/components/jobs/job-card";
 import { CandidateAvatar } from "@/components/brand/logo";
+import { ResumeBuilder } from "@/components/candidate/resume-builder";
 import { toast } from "sonner";
 import {
   LayoutDashboard,
@@ -68,6 +69,7 @@ import {
   FileCheck2,
   AlertCircle,
   ArrowRight,
+  FileEdit,
 } from "lucide-react";
 import type {
   ApplicationDTO,
@@ -87,7 +89,8 @@ const NAV: NavItem[] = [
   { key: "overview", label: "Overview", icon: LayoutDashboard },
   { key: "applications", label: "My Applications", icon: FileText },
   { key: "profile", label: "Profile", icon: User },
-  { key: "resume", label: "Resume", icon: Upload },
+  { key: "builder", label: "Resume Builder", icon: FileEdit },
+  { key: "resume", label: "Upload Resume", icon: Upload },
   { key: "saved", label: "Saved Jobs", icon: Bookmark },
 ];
 
@@ -155,6 +158,7 @@ export function CandidateDashboard() {
       {tab === "overview" && <Overview />}
       {tab === "applications" && <Applications />}
       {tab === "profile" && <Profile />}
+      {tab === "builder" && <ResumeBuilder />}
       {tab === "resume" && <Resume />}
       {tab === "saved" && <Saved />}
     </DashboardShell>

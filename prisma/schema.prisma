@@ -47,6 +47,7 @@ model CandidateProfile {
   experienceYears Int      @default(0)
   education       String?  // JSON string
   savedJobIds     String   @default("[]") // JSON string array
+  resumeData      String?  // JSON: full resume builder data (EN+JP)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

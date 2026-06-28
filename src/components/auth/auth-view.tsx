@@ -60,37 +60,24 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
         else {
           payload.companyName = form.companyName || form.name;
         }
-        const res = await api<{ verifyToken: string }>("/api/auth/register", {
+        await api("/api/auth/register", {
           method: "POST",
           body: JSON.stringify(payload),
         });
         await refreshAuth();
-        setReturnedCode(res.verifyToken);
-        setMode("verify");
-        toast.success("Account created! Check your email for a code.");
-      } else if (mode === "verify") {
-        await api("/api/auth/verify", {
-          method: "POST",
-          body: JSON.stringify({ code: form.code }),
-        });
-        await refreshAuth();
-        toast.success("Email verified! Welcome to IndiGate.");
+        toast.success("Account created! Welcome to IndiGate 🎉");
         const u = useApp.getState().user;
         if (u?.role === "CANDIDATE") navigate("candidate");
         else if (u?.role === "COMPANY") navigate("company");
         else navigate("home");
       } else if (mode === "forgot") {
-        const res = await api<{ sent: boolean; token?: string }>(
-          "/api/auth/reset-request",
-          {
-            method: "POST",
-            body: JSON.stringify({ email: form.email }),
-          },
-        );
+        await api("/api/auth/reset-request", {
+          method: "POST",
+          body: JSON.stringify({ email: form.email }),
+        });
         setResetEmail(form.email);
-        if (res.token) setReturnedCode(res.token);
         setMode("reset");
-        toast.success("Reset code sent to your email.");
+        toast.success("If an account exists, a reset code was sent to your email.");
       } else if (mode === "reset") {
         await api("/api/auth/reset-confirm", {
           method: "POST",
@@ -337,18 +324,6 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
           </motion.form>
           </AnimatePresence>
 
-          {/* Demo codes / helpers */}
-          {returnedCode && (mode === "verify" || mode === "reset") && (
-            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 px-4 py-3 text-sm">
-              <p className="font-semibold text-amber-800 dark:text-amber-300">
-                Demo code
-              </p>
-              <p className="text-amber-700 dark:text-amber-400 mt-0.5">
-                Use <span className="font-mono font-bold">{returnedCode}</span> to verify.
-              </p>
-            </div>
-          )}
-
           {/* Switch modes */}
           <div className="mt-6 space-y-3 text-sm text-center">
             {mode === "login" && (
@@ -380,20 +355,6 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
                   {t("nav.login")}
                 </button>
               </p>
-            )}
-            {mode === "verify" && (
-              <button
-                onClick={async () => {
-                  const res = await api<{ code: string }>("/api/auth/verify", {
-                    method: "PUT",
-                  });
-                  setReturnedCode(res.code);
-                  toast.success("New code sent.");
-                }}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                {t("auth.verify.resend")}
-              </button>
             )}
             {mode === "forgot" && (
               <button

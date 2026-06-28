@@ -336,3 +336,37 @@ html {
     scroll-behavior: auto !important;
   }
 }
+
+/* ===== Resume Builder print + layout styles ===== */
+@media print {
+  body * { visibility: hidden; }
+  .resume-page, .resume-page * { visibility: visible; }
+  .resume-page {
+    position: absolute; left: 0; top: 0; width: 100%;
+    box-shadow: none !important; margin: 0 !important; padding: 28px !important;
+  }
+  @page { size: A4; margin: 12mm; }
+}
+.resume-page {
+  max-width: 800px; padding: 40px;
+  font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", var(--font-sans), sans-serif;
+  font-size: 13px; line-height: 1.6; border-radius: 8px;
+}
+.resume-title { font-size: 28px; font-weight: 800; text-align: center; margin-bottom: 24px; letter-spacing: 0.3em; }
+.resume-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+.resume-table th, .resume-table td { border: 1px solid #d4d4d4; padding: 8px 10px; text-align: left; vertical-align: top; }
+.resume-table th { background: #f5f5f5; font-weight: 600; white-space: nowrap; }
+.resume-section { margin-top: 20px; }
+.resume-section-title { font-size: 15px; font-weight: 700; border-bottom: 2px solid #1a1a1a; padding-bottom: 4px; margin-bottom: 10px; }
+.resume-text { font-size: 13px; line-height: 1.7; }
+.resume-declaration { margin-top: 32px; padding-top: 16px; border-top: 1px solid #d4d4d4; font-size: 12px; }
+.resume-en { font-family: var(--font-sans), "Helvetica Neue", Arial, sans-serif; }
+.resume-header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #1a1a1a; }
+.resume-name { font-size: 28px; font-weight: 800; letter-spacing: 0.02em; }
+.resume-contact { font-size: 13px; color: #555; margin-top: 4px; }
+.resume-meta { font-size: 12px; color: #777; margin-top: 2px; }
+.resume-section-en { margin-top: 20px; }
+.resume-section-title-en { font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #d4d4d4; padding-bottom: 4px; margin-bottom: 10px; }
+.resume-entry { margin-bottom: 8px; }
+.resume-entry-header { display: flex; justify-content: space-between; align-items: baseline; }
+.resume-declaration-en { margin-top: 32px; padding-top: 16px; border-top: 1px solid #d4d4d4; }

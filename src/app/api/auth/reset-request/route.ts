@@ -24,7 +24,9 @@ export async function POST(req: NextRequest) {
       where: { id: user.id },
       data: { resetToken: token, resetTokenExp: exp },
     });
-    return ok({ sent: true, token }); // token returned for demo
+    // In production, email the token here via Resend/SendGrid.
+    console.log(`[Password reset] Code for ${user.email}: ${token}`);
+    return ok({ sent: true });
   } catch (e) {
     return handleError(e);
   }

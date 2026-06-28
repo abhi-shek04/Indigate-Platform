@@ -80,6 +80,12 @@ export function JobDetailView() {
     }
   }, [selectedJobId]);
 
+  // Track anonymous job view (fire-and-forget, never blocks)
+  useEffect(() => {
+    if (!selectedJobId) return;
+    fetch(`/api/jobs/${selectedJobId}/view`, { method: "POST" }).catch(() => {});
+  }, [selectedJobId]);
+
   const isSaved = candidate?.savedJobIds.includes(selectedJobId ?? "") ?? false;
 
   async function toggleSave() {

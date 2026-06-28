@@ -47,6 +47,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -61,6 +69,7 @@ import {
   Briefcase,
   Plus,
   Users,
+  Users2,
   Building2,
   Send,
   Star,
@@ -73,6 +82,9 @@ import {
   Clock,
   XCircle,
   CalendarClock,
+  BarChart2,
+  Search,
+  ExternalLink,
 } from "lucide-react";
 import type {
   ApplicationDTO,
@@ -82,6 +94,7 @@ import type {
   JLPTLevel,
   SalaryType,
   EducationEntry,
+  CandidateTalentDTO,
 } from "@/lib/types";
 import {
   JLPT_LEVELS,
@@ -98,6 +111,8 @@ const NAV: NavItem[] = [
   { key: "jobs", label: "My Jobs", icon: Briefcase },
   { key: "new", label: "Post New Job", icon: Plus },
   { key: "applicants", label: "Applicants", icon: Users },
+  { key: "talent", label: "Find Talent", icon: Users2 },
+  { key: "analytics", label: "Analytics", icon: BarChart2 },
   { key: "profile", label: "Company Profile", icon: Building2 },
 ];
 
@@ -178,6 +193,8 @@ export function CompanyDashboard() {
           {tab === "jobs" && <Jobs />}
           {tab === "new" && <NewJob />}
           {tab === "applicants" && <Applicants />}
+          {tab === "talent" && <TalentSearch />}
+          {tab === "analytics" && <Analytics />}
           {tab === "profile" && <Profile />}
         </>
       )}
@@ -963,12 +980,21 @@ function Applicants() {
 
   const selectedApp = filtered.find((a) => a.id === selectedId) ?? null;
 
-  async function changeStatus(app: ApplicationDTO, status: ApplicationStatus) {
+  async function changeStatus(
+    app: ApplicationDTO,
+    status: ApplicationStatus,
+    interview?: { date: string; notes: string },
+  ) {
     setBusyId(app.id);
     try {
+      const body: Record<string, unknown> = { status };
+      if (interview) {
+        body.interviewDate = interview.date;
+        body.interviewNotes = interview.notes;
+      }
       await api(`/api/applications/${app.id}/status`, {
         method: "PATCH",
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(body),
       });
       toast.success(`Marked as ${t(`status.${status}`)}.`);
       await reload();
@@ -1195,7 +1221,7 @@ function Applicants() {
               <ApplicantDetail
                 app={selectedApp}
                 busy={busyId === selectedApp.id}
-                onAction={(s) => changeStatus(selectedApp, s)}
+                onAction={(s, iv) => changeStatus(selectedApp, s, iv)}
               />
             </>
           )}
@@ -1212,10 +1238,17 @@ function ApplicantDetail({
 }: {
   app: ApplicationDTO;
   busy: boolean;
-  onAction: (s: ApplicationStatus) => void;
+  onAction: (
+    s: ApplicationStatus,
+    interview?: { date: string; notes: string },
+  ) => void;
 }) {
   const { t, locale } = useT();
   const c = app.candidate;
+  // Interview scheduling dialog state
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [intDate, setIntDate] = useState("");
+  const [intNotes, setIntNotes] = useState("");
   if (!c) {
     return (
       <div className="p-5">
@@ -1381,7 +1414,13 @@ function ApplicantDetail({
                 variant="outline"
                 disabled={busy}
                 className={cn("justify-start h-auto py-2.5", a.accent)}
-                onClick={() => onAction(a.status)}
+                onClick={() => {
+                  if (a.status === "INTERVIEWED") {
+                    setShowSchedule(true);
+                  } else {
+                    onAction(a.status);
+                  }
+                }}
               >
                 <Icon className="h-4 w-4" />
                 <span className="text-xs">{a.label}</span>
@@ -1390,6 +1429,63 @@ function ApplicantDetail({
           })}
         </div>
       </div>
+
+      {/* Interview scheduling dialog */}
+      <Dialog open={showSchedule} onOpenChange={setShowSchedule}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Schedule Interview</DialogTitle>
+            <DialogDescription>
+              Set the interview date/time and notes for {c.fullName}. These
+              will be visible to the candidate.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">
+                Interview date &amp; time (JST)
+              </label>
+              <Input
+                type="datetime-local"
+                value={intDate}
+                onChange={(e) => setIntDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">
+                Notes for candidate
+              </label>
+              <Textarea
+                rows={3}
+                value={intNotes}
+                onChange={(e) => setIntNotes(e.target.value)}
+                placeholder="Include meeting link, format (video/in-person), duration..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowSchedule(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={!intDate || busy}
+              onClick={() => {
+                onAction("INTERVIEWED", { date: intDate, notes: intNotes });
+                setShowSchedule(false);
+                setIntDate("");
+                setIntNotes("");
+              }}
+              className="bg-brand-gradient text-white hover:opacity-90 font-semibold"
+            >
+              <CalendarClock className="mr-2 h-4 w-4" />
+              Schedule Interview
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1605,5 +1701,313 @@ function Profile() {
         </Button>
       </div>
     </form>
+  );
+}
+
+/* ============== Talent Search (Milestone D) ============== */
+
+function TalentSearch() {
+  const { t } = useT();
+  const [search, setSearch] = useState("");
+  const [jlpt, setJlpt] = useState("");
+  const [minExp, setMinExp] = useState("");
+  const [skillsInput, setSkillsInput] = useState("");
+  const [results, setResults] = useState<CandidateTalentDTO[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<CandidateTalentDTO | null>(null);
+
+  async function fetchCandidates() {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      if (jlpt) params.set("jlptLevel", jlpt);
+      if (minExp) params.set("minExp", minExp);
+      if (skillsInput) params.set("skills", skillsInput);
+      const res = await api<{ candidates: CandidateTalentDTO[]; total: number }>(
+        `/api/candidates/search?${params.toString()}`,
+      );
+      setResults(res.candidates);
+      setTotal(res.total);
+    } catch {
+      toast.error("Failed to load candidates.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // initial load + refetch on filter change (debounced for text)
+  useEffect(() => {
+    const tm = setTimeout(fetchCandidates, 400);
+    return () => clearTimeout(tm);
+  }, [search, skillsInput, jlpt, minExp]);
+
+  return (
+    <div className="space-y-5">
+      <SectionCard title="Find Talent" action={null}>
+        <div className="flex flex-wrap gap-3">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder={t("dash.company.talent.search")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={jlpt || "all"} onValueChange={(v) => setJlpt(v === "all" ? "" : v)}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder={t("dash.company.talent.jlpt")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Any JLPT</SelectItem>
+              {JLPT_LEVELS.filter((l) => l !== "NONE").map((l) => (
+                <SelectItem key={l} value={l}>{l}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={minExp || "all"} onValueChange={(v) => setMinExp(v === "all" ? "" : v)}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder={t("dash.company.talent.exp")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Any experience</SelectItem>
+              {[1, 2, 3, 5, 8].map((y) => (
+                <SelectItem key={y} value={String(y)}>{y}+ years</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            placeholder="Skills (React, Go...)"
+            value={skillsInput}
+            onChange={(e) => setSkillsInput(e.target.value)}
+            className="w-[180px]"
+          />
+        </div>
+      </SectionCard>
+
+      <p className="text-sm text-muted-foreground">
+        {loading ? "Searching…" : t("dash.company.talent.found", { count: String(total) })}
+      </p>
+
+      {loading ? (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-52 rounded-xl" />)}
+        </div>
+      ) : results.length === 0 ? (
+        <EmptyState icon={Users2} title={t("dash.company.talent.empty")} />
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {results.map((c) => (
+            <CandidateTalentCard key={c.id} candidate={c} onView={() => setSelected(c)} />
+          ))}
+        </div>
+      )}
+
+      <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+        <SheetContent className="w-[480px] sm:max-w-[480px] overflow-y-auto scroll-area">
+          {selected && <CandidateDetailPanel candidate={selected} />}
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+function CandidateTalentCard({
+  candidate,
+  onView,
+}: {
+  candidate: CandidateTalentDTO;
+  onView: () => void;
+}) {
+  const { t } = useT();
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 shadow-premium hover:-translate-y-0.5 transition-transform">
+      <div className="flex items-start gap-3">
+        <CandidateAvatar name={candidate.fullName} photoUrl={candidate.photoUrl} size={48} />
+        <div className="min-w-0 flex-1">
+          <h3 className="font-bold truncate">{candidate.fullName}</h3>
+          <p className="text-xs text-muted-foreground truncate">
+            {candidate.location || "—"}
+          </p>
+        </div>
+        <Badge variant="outline" className={cn("font-semibold shrink-0", JLPT_BADGE[candidate.jlptLevel])}>
+          {candidate.jlptLevel}
+        </Badge>
+      </div>
+      <p className="mt-3 text-sm text-muted-foreground line-clamp-2">
+        {candidate.bio || "No bio provided."}
+      </p>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {candidate.skills.slice(0, 4).map((s) => (
+          <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
+        ))}
+        {candidate.skills.length > 4 && (
+          <span className="text-xs text-muted-foreground">+{candidate.skills.length - 4}</span>
+        )}
+      </div>
+      <div className="mt-4 flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">
+          {candidate.experienceYears} {t("dash.company.talent.years")}
+        </span>
+        <Button size="sm" variant="outline" onClick={onView}>
+          <Eye className="mr-1.5 h-3.5 w-3.5" />
+          {t("dash.company.talent.resume")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function CandidateDetailPanel({ candidate }: { candidate: CandidateTalentDTO }) {
+  const { t } = useT();
+  return (
+    <div className="space-y-4 p-6">
+      <div className="flex items-center gap-3">
+        <CandidateAvatar name={candidate.fullName} photoUrl={candidate.photoUrl} size={56} />
+        <div>
+          <h2 className="font-display text-xl font-bold">{candidate.fullName}</h2>
+          <p className="text-sm text-muted-foreground">{candidate.location || "—"}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Badge variant="outline" className={cn("font-semibold", JLPT_BADGE[candidate.jlptLevel])}>
+          JLPT {candidate.jlptLevel}
+        </Badge>
+        <Badge variant="secondary">{candidate.experienceYears} {t("dash.company.talent.years")}</Badge>
+      </div>
+      {candidate.bio && (
+        <div>
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-1">About</h3>
+          <p className="text-sm leading-relaxed">{candidate.bio}</p>
+        </div>
+      )}
+      <div>
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Skills</h3>
+        <div className="flex flex-wrap gap-1.5">
+          {candidate.skills.map((s) => (
+            <Badge key={s} variant="secondary">{s}</Badge>
+          ))}
+        </div>
+      </div>
+      {candidate.education && candidate.education.length > 0 && (
+        <div>
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Education</h3>
+          <div className="space-y-2">
+            {candidate.education.map((e, i) => (
+              <div key={i} className="text-sm">
+                <p className="font-medium">{e.degree} — {e.field}</p>
+                <p className="text-muted-foreground text-xs">{e.institution} · {e.year}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {candidate.resumeUrl && (
+        <a href={candidate.resumeUrl} target="_blank" rel="noreferrer">
+          <Button className="w-full bg-brand-gradient text-white hover:opacity-90 font-semibold">
+            <ExternalLink className="mr-2 h-4 w-4" />
+            {t("dash.company.talent.resume")}
+          </Button>
+        </a>
+      )}
+    </div>
+  );
+}
+
+/* ============== Analytics (Milestone F) ============== */
+
+function Analytics() {
+  const { t } = useT();
+  const [data, setData] = useState<{
+    totalViews: number;
+    totalApplications: number;
+    averageConversion: string;
+    jobs: Array<{
+      id: string;
+      title: string;
+      isActive: boolean;
+      viewCount: number;
+      viewsThisWeek: number;
+      applicationCount: number;
+      conversionRate: string;
+    }>;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api<{
+      totalViews: number;
+      totalApplications: number;
+      averageConversion: string;
+      jobs: Array<{
+        id: string;
+        title: string;
+        isActive: boolean;
+        viewCount: number;
+        viewsThisWeek: number;
+        applicationCount: number;
+        conversionRate: string;
+      }>;
+    }>("/api/companies/me/analytics")
+      .then(setData)
+      .catch(() => toast.error("Failed to load analytics."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="grid sm:grid-cols-3 gap-4">
+        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+      </div>
+    );
+  }
+
+  if (!data || data.jobs.length === 0) {
+    return <EmptyState icon={BarChart2} title={t("dash.company.analytics.empty")} />;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="grid sm:grid-cols-3 gap-4">
+        <MetricCard label={t("dash.company.analytics.views")} value={data.totalViews} icon={Eye} accent="saffron" />
+        <MetricCard label="Total applications" value={data.totalApplications} icon={Send} accent="crimson" />
+        <MetricCard label={t("dash.company.analytics.conversion")} value={data.averageConversion} icon={BarChart2} accent="emerald" />
+      </div>
+
+      <SectionCard title="Per-job breakdown">
+        <div className="overflow-x-auto scroll-area">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-xs text-muted-foreground uppercase">
+                <th className="py-2 pr-4">Job Title</th>
+                <th className="py-2 px-4">Views</th>
+                <th className="py-2 px-4">{t("dash.company.analytics.thisweek")}</th>
+                <th className="py-2 px-4">Applications</th>
+                <th className="py-2 px-4">Conversion</th>
+                <th className="py-2 pl-4">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.jobs.map((j) => (
+                <tr key={j.id} className="border-b last:border-0">
+                  <td className="py-3 pr-4 font-medium">{j.title}</td>
+                  <td className="py-3 px-4">{j.viewCount}</td>
+                  <td className="py-3 px-4">{j.viewsThisWeek}</td>
+                  <td className="py-3 px-4">{j.applicationCount}</td>
+                  <td className="py-3 px-4 font-semibold">{j.conversionRate}</td>
+                  <td className="py-3 pl-4">
+                    <Badge variant={j.isActive ? "default" : "secondary"}>
+                      {j.isActive ? "Active" : "Paused"}
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </SectionCard>
+    </div>
   );
 }

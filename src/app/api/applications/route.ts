@@ -8,6 +8,7 @@ import {
   toApplicationDTO,
   notify,
 } from "@/lib/api";
+import { sendEmail, emails } from "@/lib/email";
 import { z } from "zod";
 
 export async function GET(req: NextRequest) {
@@ -115,6 +116,37 @@ export async function POST(req: NextRequest) {
       "New application received",
       `${candidate.fullName} applied to ${job.title}.`,
     );
+
+    // Fire-and-forget emails: notify candidate + company
+    const companyUser = await db.user.findUnique({
+      where: { id: job.company.userId },
+      select: { email: true },
+    });
+    if (companyUser) {
+      void sendEmail({
+        to: companyUser.email,
+        ...emails.newApplication(
+          job.company.companyName,
+          candidate.fullName,
+          job.title,
+          candidate.jlptLevel,
+        ),
+      });
+    }
+    const candidateUser = await db.user.findUnique({
+      where: { id: session.id },
+      select: { email: true },
+    });
+    if (candidateUser) {
+      void sendEmail({
+        to: candidateUser.email,
+        ...emails.applicationSubmitted(
+          candidate.fullName,
+          job.title,
+          job.company.companyName,
+        ),
+      });
+    }
 
     return ok(toApplicationDTO(app), 201);
   } catch (e) {

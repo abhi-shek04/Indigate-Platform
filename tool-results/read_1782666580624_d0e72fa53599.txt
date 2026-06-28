@@ -1,0 +1,1292 @@
+     1→# IndiGate — Production Upgrade Prompts
+     2→### Based on actual codebase audit · indigate.work
+     3→> For Abhishek, Indobox Inc — June 2026
+     4→
+     5→---
+     6→
+     7→## WHAT YOU'VE ALREADY BUILT (DO NOT REGENERATE)
+     8→
+     9→Your codebase is solid. Before every prompt, the AI must understand this:
+    10→
+    11→```
+    12→EXISTING ARCHITECTURE — READ THIS BEFORE WRITING ANY CODE:
+    13→
+    14→Stack: Next.js 16, Bun, TypeScript, SQLite via Prisma, shadcn/ui, Framer Motion, Zustand, Zod, Sonner
+    15→
+    16→CRITICAL PATTERN — This is a single-page app. ALL views render at "/".
+    17→Navigation is done via Zustand store (src/lib/store.ts), NOT Next.js routing.
+    18→The store has a "view" field that controls what renders. Adding new Next.js
+    19→pages/routes is only done for SEO/sharing — the main app stays SPA.
+    20→
+    21→Auth: Custom HMAC-signed cookie sessions (src/lib/auth.ts).
+    22→NOT NextAuth. Uses getSession(), requireSession(), requireRole() server-side.
+    23→Client reads auth via /api/auth/me which refreshAuth() calls on store.
+    24→
+    25→Database: SQLite. Arrays stored as JSON strings. Enums stored as plain strings.
+    26→Parse with JSON.parse(), validate in app layer.
+    27→
+    28→Design tokens (CSS vars in globals.css):
+    29→--saffron: saffron/gold brand color (primary)
+    30→--crimson: red accent
+    31→--ink: dark text
+    32→Utility classes: bg-brand-gradient, text-gradient-brand, bg-mesh, glass,
+    33→shadow-premium, shadow-glow-brand, scroll-area, bg-sidebar
+    34→
+    35→i18n: Custom (src/lib/i18n.ts). Use useT() hook. t("key") returns string.
+    36→pick(en, ja) returns locale-appropriate value.
+    37→All i18n keys are already in i18n.ts — extend it, don't replace it.
+    38→
+    39→Store: useApp() from src/lib/store.ts — for auth, navigation, tabs, locale.
+    40→Add new state here when needed (don't create separate stores).
+    41→
+    42→API calls: Use api() from src/lib/api-client.ts for JSON.
+    43→Use raw fetch() for FormData uploads.
+    44→API returns { data, error } pattern. ok() and err() helpers in src/lib/api.ts.
+    45→
+    46→Components: All shadcn/ui in src/components/ui/. 
+    47→DashboardShell, MetricCard, EmptyState, SectionCard in dashboard/dashboard-shell.tsx.
+    48→FileDropZone, SkillsInput in dashboard/widgets.tsx.
+    49→
+    50→EXISTING FILES — DO NOT RECREATE:
+    51→src/lib/{auth,types,i18n,api,api-client,store,use-t,utils,motion,resume-types}.ts
+    52→src/app/api/auth/{login,logout,me,register,verify,reset-request,reset-confirm}
+    53→src/app/api/{jobs,applications,candidates,companies,admin,notifications,contact,testimonials}
+    54→src/components/ui/* (all shadcn components)
+    55→src/components/{landing,jobs,auth,candidate,company,admin,dashboard,layout,brand}/*
+    56→
+    57→Demo credentials (seeded):
+    58→- Candidate: arjun@example.com / candidate123
+    59→- Company: hr@technova.jp / company123
+    60→- Admin: admin@indigate.work / admin123
+    61→```
+    62→
+    63→---
+    64→
+    65→## MILESTONE A — File Upload System (CRITICAL — BLOCKING BUG)
+    66→**Problem:** `/api/upload` is called by the resume upload in candidate-dashboard.tsx and company logo upload, but THIS FILE DOES NOT EXIST. Upload fails silently for all users.
+    67→**Goal:** Create the upload API using Supabase Storage (free tier works fine).
+    68→**Time:** 2–3 hours
+    69→
+    70→```
+    71→[PASTE THE EXISTING ARCHITECTURE BLOCK ABOVE]
+    72→
+    73→MILESTONE A: Build the missing /api/upload route + Supabase Storage integration.
+    74→
+    75→CONTEXT:
+    76→- src/components/candidate/candidate-dashboard.tsx already calls:
+    77→  fetch("/api/upload", { method: "POST", body: formData })
+    78→  with fd.append("file", file) and fd.append("kind", "resume")
+    79→- src/components/company/company-dashboard.tsx calls the same endpoint
+    80→  with fd.append("kind", "logo")
+    81→- The route src/app/api/upload/route.ts DOES NOT EXIST — create it.
+    82→- candidate-dashboard.tsx also calls /api/candidates/me with { resumeUrl: null }
+    83→  to remove a resume — this already works, don't change it.
+    84→
+    85→STEP 1 — Add Supabase client:
+    86→npm install @supabase/supabase-js
+    87→
+    88→Add to .env:
+    89→NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+    90→SUPABASE_SERVICE_KEY=your_supabase_service_role_key (NOT anon key)
+    91→SUPABASE_STORAGE_BUCKET=indigate-uploads
+    92→
+    93→Create src/lib/supabase.ts:
+    94→import { createClient } from '@supabase/supabase-js'
+    95→// Server-side only client (uses service key — full access)
+    96→export const supabaseAdmin = createClient(
+    97→  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    98→  process.env.SUPABASE_SERVICE_KEY!
+    99→)
+   100→
+   101→STEP 2 — Create src/app/api/upload/route.ts (POST):
+   102→
+   103→Logic:
+   104→- Parse FormData: file (File), kind ("resume" | "logo" | "photo")
+   105→- Auth: requireSession() — must be logged in
+   106→  - If kind="resume": session.role must be CANDIDATE
+   107→  - If kind="logo": session.role must be COMPANY
+   108→  - If kind="photo": any role
+   109→- Validations:
+   110→  - kind="resume": file.type must be "application/pdf", max 5MB
+   111→  - kind="logo": file.type must start with "image/", max 2MB
+   112→  - kind="photo": file.type must start with "image/", max 2MB
+   113→- Build storage path:
+   114→  - resume: `resumes/${session.id}/${Date.now()}.pdf`
+   115→  - logo: `logos/${session.id}/${Date.now()}.${ext}`
+   116→  - photo: `photos/${session.id}/${Date.now()}.${ext}`
+   117→- Upload to Supabase Storage using supabaseAdmin:
+   118→  const { error } = await supabaseAdmin.storage
+   119→    .from(process.env.SUPABASE_STORAGE_BUCKET!)
+   120→    .upload(path, buffer, { contentType: file.type, upsert: true })
+   121→- Get public URL:
+   122→  const { data } = supabaseAdmin.storage
+   123→    .from(process.env.SUPABASE_STORAGE_BUCKET!)
+   124→    .getPublicUrl(path)
+   125→  const publicUrl = data.publicUrl
+   126→- Save URL to DB based on kind:
+   127→  - resume → db.candidateProfile.update({ where: { userId: session.id }, data: { resumeUrl: publicUrl, resumeName: file.name } })
+   128→  - logo → db.companyProfile.update({ where: { userId: session.id }, data: { logoUrl: publicUrl } })
+   129→  - photo → db.candidateProfile.update({ where: { userId: session.id }, data: { photoUrl: publicUrl } })
+   130→- Return ok({ url: publicUrl })
+   131→
+   132→STEP 3 — In Supabase dashboard:
+   133→Create a bucket called "indigate-uploads" with public access ON.
+   134→Set the following bucket policy (so uploaded files are readable by anyone):
+   135→  Allow SELECT (read) for all
+   136→  Allow INSERT (upload) for authenticated users only
+   137→(We handle auth in the API route, so bucket can be fully public for reads)
+   138→
+   139→STEP 4 — Update next.config.ts to allow Supabase image domain:
+   140→import type { NextConfig } from 'next'
+   141→const nextConfig: NextConfig = {
+   142→  output: 'standalone',
+   143→  typescript: { ignoreBuildErrors: false },  // Fix this too — don't hide TS errors
+   144→  reactStrictMode: true,
+   145→  images: {
+   146→    remotePatterns: [
+   147→      {
+   148→        protocol: 'https',
+   149→        hostname: '*.supabase.co',
+   150→        pathname: '/storage/v1/object/public/**',
+   151→      },
+   152→    ],
+   153→  },
+   154→}
+   155→export default nextConfig
+   156→
+   157→STEP 5 — In company-dashboard.tsx, find the logo upload section.
+   158→It should already use FileDropZone with kind="logo". 
+   159→Confirm it calls /api/upload with fd.append("kind", "logo").
+   160→If not, update it to match the same pattern as the resume upload.
+   161→
+   162→STEP 6 — Verify Supabase setup works with a local test:
+   163→Create a test file at scripts/test-upload.ts that:
+   164→- Reads a sample PDF from the project
+   165→- Uploads it to Supabase Storage using supabaseAdmin
+   166→- Logs the public URL
+   167→Run with: bunx tsx scripts/test-upload.ts
+   168→
+   169→Expected result: Resume upload works. Company logo upload works.
+   170→Files appear in Supabase Storage dashboard.
+   171→resumeUrl in CandidateProfile DB is a real Supabase URL, not null.
+   172→```
+   173→
+   174→---
+   175→
+   176→## MILESTONE B — Email System (Resend)
+   177→**Problem:** No emails sent anywhere. Registration is auto-verified. Password reset tokens exist in DB but never emailed. Companies never notified of applications.
+   178→**Goal:** Real transactional emails for every important event.
+   179→**Time:** 2–3 hours
+   180→
+   181→```
+   182→[PASTE THE EXISTING ARCHITECTURE BLOCK ABOVE]
+   183→
+   184→MILESTONE B: Email system using Resend.
+   185→
+   186→IMPORTANT: The reset-request and reset-confirm API routes already exist.
+   187→The verify route already exists. We are WIRING UP emails to existing logic,
+   188→not rebuilding any auth flows.
+   189→
+   190→STEP 1 — Install Resend:
+   191→npm install resend
+   192→
+   193→Add to .env:
+   194→RESEND_API_KEY=re_xxxx
+   195→EMAIL_FROM=IndiGate <noreply@indigate.work>
+   196→ADMIN_EMAIL=admin@indigate.work
+   197→
+   198→STEP 2 — Create src/lib/email.ts:
+   199→
+   200→import { Resend } from 'resend'
+   201→const resend = new Resend(process.env.RESEND_API_KEY)
+   202→
+   203→export interface EmailOptions {
+   204→  to: string
+   205→  subject: string
+   206→  html: string
+   207→}
+   208→
+   209→export async function sendEmail({ to, subject, html }: EmailOptions) {
+   210→  if (!process.env.RESEND_API_KEY) {
+   211→    console.log('[EMAIL SKIPPED — no RESEND_API_KEY]', { to, subject })
+   212→    return
+   213→  }
+   214→  const { error } = await resend.emails.send({
+   215→    from: process.env.EMAIL_FROM ?? 'IndiGate <noreply@indigate.work>',
+   216→    to,
+   217→    subject,
+   218→    html,
+   219→  })
+   220→  if (error) console.error('[EMAIL ERROR]', error)
+   221→}
+   222→
+   223→// Email template builder — returns HTML string
+   224→// Uses inline styles so email clients render correctly
+   225→export function buildEmail(options: {
+   226→  title: string
+   227→  heading: string
+   228→  body: string   // can contain HTML paragraphs
+   229→  cta?: { label: string; url: string }
+   230→  locale?: 'en' | 'ja'
+   231→}): string {
+   232→  const { title, heading, body, cta } = options
+   233→  return `<!DOCTYPE html>
+   234→<html>
+   235→<head><meta charset="utf-8"><title>${title}</title></head>
+   236→<body style="margin:0;padding:0;background:#f9f9f9;font-family:sans-serif;">
+   237→  <table width="100%" cellpadding="0" cellspacing="0">
+   238→    <tr><td align="center" style="padding:40px 20px;">
+   239→      <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+   240→        <tr style="background:linear-gradient(135deg,#f59e0b,#dc2626);">
+   241→          <td style="padding:28px 36px;">
+   242→            <span style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px;">IndiGate</span>
+   243→            <span style="font-size:13px;color:rgba(255,255,255,.75);margin-left:8px;">India × Japan</span>
+   244→          </td>
+   245→        </tr>
+   246→        <tr><td style="padding:36px;">
+   247→          <h1 style="margin:0 0 16px;font-size:22px;color:#1a1a1a;">${heading}</h1>
+   248→          <div style="color:#444;line-height:1.7;font-size:15px;">${body}</div>
+   249→          ${cta ? `<div style="margin-top:28px;"><a href="${cta.url}" style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,#f59e0b,#dc2626);color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${cta.label}</a></div>` : ''}
+   250→        </td></tr>
+   251→        <tr><td style="padding:20px 36px;background:#f9f9f9;border-top:1px solid #eee;">
+   252→          <p style="margin:0;font-size:12px;color:#999;">© 2025 IndiGate by Indobox Inc · <a href="https://indigate.work" style="color:#f59e0b;">indigate.work</a></p>
+   253→        </td></tr>
+   254→      </table>
+   255→    </td></tr>
+   256→  </table>
+   257→</body>
+   258→</html>`
+   259→}
+   260→
+   261→// Pre-built email templates (call these throughout the app)
+   262→export const emails = {
+   263→
+   264→  welcomeCandidate: (name: string, lang: 'en' | 'ja' = 'en') => ({
+   265→    subject: lang === 'ja' ? 'IndiGateへようこそ！' : 'Welcome to IndiGate!',
+   266→    html: buildEmail({
+   267→      title: 'Welcome to IndiGate',
+   268→      heading: lang === 'ja' ? `ようこそ、${name}さん！` : `Welcome, ${name}!`,
+   269→      body: lang === 'ja'
+   270→        ? '<p>IndiGateへの登録ありがとうございます。プロフィールを完成させて、日本の求人に応募しましょう。</p>'
+   271→        : '<p>Thank you for joining IndiGate. Complete your profile, upload your resume, and start applying to top jobs in Japan.</p>',
+   272→      cta: { label: lang === 'ja' ? '求人を探す' : 'Browse Jobs', url: 'https://indigate.work' },
+   273→    }),
+   274→  }),
+   275→
+   276→  welcomeCompany: (companyName: string) => ({
+   277→    subject: 'IndiGate — Company account under review',
+   278→    html: buildEmail({
+   279→      title: 'Account Under Review',
+   280→      heading: `Welcome, ${companyName}!`,
+   281→      body: `<p>Your company account has been submitted and is being reviewed by our team. You'll be able to post jobs once approved — typically within 1-2 business days.</p><p>Questions? Email us at <a href="mailto:contact@indigate.work">contact@indigate.work</a></p>`,
+   282→    }),
+   283→  }),
+   284→
+   285→  companyApproved: (companyName: string) => ({
+   286→    subject: 'Your IndiGate company account is approved!',
+   287→    html: buildEmail({
+   288→      title: 'Account Approved',
+   289→      heading: `${companyName} — You're approved!`,
+   290→      body: '<p>Your company account has been approved. You can now post jobs and start connecting with top Indian talent for your Japan operations.</p>',
+   291→      cta: { label: 'Post Your First Job', url: 'https://indigate.work' },
+   292→    }),
+   293→  }),
+   294→
+   295→  applicationSubmitted: (candidateName: string, jobTitle: string, companyName: string) => ({
+   296→    subject: `Application submitted — ${jobTitle} at ${companyName}`,
+   297→    html: buildEmail({
+   298→      title: 'Application Submitted',
+   299→      heading: 'Your application was sent!',
+   300→      body: `<p>Hi ${candidateName},</p><p>Your application for <strong>${jobTitle}</strong> at <strong>${companyName}</strong> has been submitted successfully.</p><p>The company will review your profile and reach out if you're a good fit. You can track your application status on your dashboard.</p>`,
+   301→      cta: { label: 'View My Applications', url: 'https://indigate.work' },
+   302→    }),
+   303→  }),
+   304→
+   305→  statusUpdate: (candidateName: string, jobTitle: string, companyName: string, status: string) => {
+   306→    const statusMessages: Record<string, { subject: string; heading: string; body: string }> = {
+   307→      SHORTLISTED: {
+   308→        subject: `You've been shortlisted! — ${jobTitle} at ${companyName}`,
+   309→        heading: '🎉 You\'ve been shortlisted!',
+   310→        body: `<p>Hi ${candidateName},</p><p>Great news! <strong>${companyName}</strong> has shortlisted your application for <strong>${jobTitle}</strong>. They'll be in touch soon about next steps.</p>`,
+   311→      },
+   312→      INTERVIEWED: {
+   313→        subject: `Interview invitation — ${jobTitle} at ${companyName}`,
+   314→        heading: 'Interview invitation',
+   315→        body: `<p>Hi ${candidateName},</p><p><strong>${companyName}</strong> would like to schedule an interview for <strong>${jobTitle}</strong>. Please check your dashboard for details and respond promptly.</p>`,
+   316→      },
+   317→      OFFERED: {
+   318→        subject: `Job offer received! — ${jobTitle} at ${companyName}`,
+   319→        heading: '🎊 You received a job offer!',
+   320→        body: `<p>Hi ${candidateName},</p><p>Congratulations! <strong>${companyName}</strong> has extended a job offer for <strong>${jobTitle}</strong>. Please log in to review and respond to your offer.</p>`,
+   321→      },
+   322→      REJECTED: {
+   323→        subject: `Update on your application — ${jobTitle}`,
+   324→        heading: 'Application update',
+   325→        body: `<p>Hi ${candidateName},</p><p>Thank you for your interest in <strong>${jobTitle}</strong> at <strong>${companyName}</strong>. After careful review, they have decided to move forward with other candidates at this time.</p><p>Don't be discouraged — keep applying! There are many more opportunities on IndiGate.</p>`,
+   326→      },
+   327→    }
+   328→    const msg = statusMessages[status] ?? {
+   329→      subject: `Application update — ${jobTitle}`,
+   330→      heading: 'Application status update',
+   331→      body: `<p>Hi ${candidateName}, your application for ${jobTitle} at ${companyName} has been updated. Check your dashboard for details.</p>`,
+   332→    }
+   333→    return {
+   334→      subject: msg.subject,
+   335→      html: buildEmail({
+   336→        title: msg.subject,
+   337→        heading: msg.heading,
+   338→        body: msg.body,
+   339→        cta: { label: 'View Dashboard', url: 'https://indigate.work' },
+   340→      }),
+   341→    }
+   342→  },
+   343→
+   344→  newApplication: (companyName: string, candidateName: string, jobTitle: string, jlptLevel: string) => ({
+   345→    subject: `New application for ${jobTitle}`,
+   346→    html: buildEmail({
+   347→      title: 'New Applicant',
+   348→      heading: 'You have a new applicant!',
+   349→      body: `<p><strong>${candidateName}</strong> (JLPT ${jlptLevel}) has applied to <strong>${jobTitle}</strong>. Review their profile and resume on your dashboard.</p>`,
+   350→      cta: { label: 'Review Applicant', url: 'https://indigate.work' },
+   351→    }),
+   352→  }),
+   353→
+   354→  passwordReset: (resetUrl: string) => ({
+   355→    subject: 'Reset your IndiGate password',
+   356→    html: buildEmail({
+   357→      title: 'Password Reset',
+   358→      heading: 'Reset your password',
+   359→      body: '<p>You requested a password reset. Click the button below to choose a new password. This link expires in 1 hour.</p><p>If you didn\'t request this, ignore this email — your account is safe.</p>',
+   360→      cta: { label: 'Reset Password', url: resetUrl },
+   361→    }),
+   362→  }),
+   363→
+   364→  emailVerification: (verifyUrl: string) => ({
+   365→    subject: 'Verify your IndiGate email',
+   366→    html: buildEmail({
+   367→      title: 'Verify Email',
+   368→      heading: 'Verify your email address',
+   369→      body: '<p>Click the button below to verify your email address and activate your IndiGate account.</p>',
+   370→      cta: { label: 'Verify Email', url: verifyUrl },
+   371→    }),
+   372→  }),
+   373→
+   374→  adminNewCompany: (companyName: string, email: string) => ({
+   375→    subject: `[Admin] New company pending approval — ${companyName}`,
+   376→    html: buildEmail({
+   377→      title: 'New Company Registration',
+   378→      heading: 'New company needs approval',
+   379→      body: `<p><strong>${companyName}</strong> (${email}) has registered and is awaiting approval. Log in to the admin panel to review and approve.</p>`,
+   380→      cta: { label: 'Open Admin Panel', url: 'https://indigate.work' },
+   381→    }),
+   382→  }),
+   383→}
+   384→
+   385→STEP 3 — Wire emails to existing API routes:
+   386→
+   387→a) src/app/api/auth/register/route.ts — after user creation:
+   388→   import { sendEmail, emails } from '@/lib/email'
+   389→   // For CANDIDATE: (fire-and-forget, don't await)
+   390→   sendEmail({ to: user.email, ...emails.welcomeCandidate(parsed.data.fullName ?? '') })
+   391→   // For COMPANY: send welcome + notify admins
+   392→   sendEmail({ to: user.email, ...emails.welcomeCompany(parsed.data.companyName ?? '') })
+   393→   sendEmail({ to: process.env.ADMIN_EMAIL!, ...emails.adminNewCompany(companyName, email) })
+   394→
+   395→b) src/app/api/auth/reset-request/route.ts — after creating reset token:
+   396→   import { sendEmail, emails } from '@/lib/email'
+   397→   const resetUrl = `https://indigate.work/?view=reset&token=${resetToken}`
+   398→   sendEmail({ to: user.email, ...emails.passwordReset(resetUrl) })
+   399→   (IMPORTANT: The token is already being created and saved to DB in this route.
+   400→    Just add the sendEmail call — don't change any other logic.)
+   401→
+   402→c) src/app/api/applications/route.ts POST — after creating application:
+   403→   import { sendEmail, emails } from '@/lib/email'
+   404→   // Get candidate email and company email from DB (already in scope as variables)
+   405→   // Send to candidate:
+   406→   sendEmail({ to: candidateUser.email, ...emails.applicationSubmitted(candidate.fullName, job.title, company.companyName) })
+   407→   // Send to company contact:
+   408→   sendEmail({ to: companyUser.email, ...emails.newApplication(company.companyName, candidate.fullName, job.title, candidate.jlptLevel) })
+   409→   (Fire-and-forget for both — don't await, don't block the response)
+   410→
+   411→d) src/app/api/applications/[id]/status/route.ts PATCH — after updating status:
+   412→   import { sendEmail, emails } from '@/lib/email'
+   413→   // Get candidate user email from DB
+   414→   sendEmail({ to: candidateEmail, ...emails.statusUpdate(candidate.fullName, job.title, company.companyName, newStatus) })
+   415→
+   416→e) src/app/api/admin/companies/[id]/route.ts PATCH (approve) — after approval:
+   417→   import { sendEmail, emails } from '@/lib/email'
+   418→   sendEmail({ to: companyUser.email, ...emails.companyApproved(company.companyName) })
+   419→
+   420→STEP 4 — Change registration to not auto-verify:
+   421→In src/app/api/auth/register/route.ts, change:
+   422→  isVerified: true  →  isVerified: false
+   423→Then send verification email. But also add this check to login:
+   424→In src/app/api/auth/login/route.ts, after finding user:
+   425→  if (!user.isVerified) return err("Please verify your email before logging in.", 403)
+   426→NOTE: Keep demo seed accounts as isVerified: true so they still work.
+   427→
+   428→STEP 5 — Add verification email to register route:
+   429→After creating user, generate a 6-digit code:
+   430→  const code = Math.floor(100000 + Math.random() * 900000).toString()
+   431→  await db.user.update({ where: { id: user.id }, data: { verifyToken: code } })
+   432→  const verifyUrl = `https://indigate.work/?view=verify&email=${encodeURIComponent(email)}`
+   433→  sendEmail({ to: email, ...emails.emailVerification(verifyUrl) })
+   434→(The verify route already handles the OTP check — just feed it the code)
+   435→
+   436→Expected result: Every major event sends a real email. Resend dashboard shows logs.
+   437→```
+   438→
+   439→---
+   440→
+   441→## MILESTONE C — Resume PDF Export
+   442→**Problem:** The resume builder has a `print()` function but it prints the whole page, not just the resume. There's no clean PDF download.
+   443→**Goal:** Download button generates a clean PDF of the EN or JP resume.
+   444→**Time:** 2–3 hours
+   445→
+   446→```
+   447→[PASTE THE EXISTING ARCHITECTURE BLOCK ABOVE]
+   448→
+   449→MILESTONE C: Clean PDF export from the resume builder.
+   450→
+   451→CONTEXT:
+   452→- src/components/candidate/resume-builder.tsx has tab state: "edit" | "preview-ja" | "preview-en"
+   453→- src/components/candidate/resume-preview.tsx renders <JapaneseResume> and <EnglishResume>
+   454→  with className="resume-page" which already has print styles in globals.css
+   455→- Current print() button calls window.print() — prints the full page, not just the resume
+   456→- We need a server-side PDF generation approach using puppeteer or similar
+   457→
+   458→APPROACH: Use @react-pdf/renderer for pure client-side PDF generation.
+   459→This avoids any server dependency and works in the browser.
+   460→
+   461→STEP 1 — Install:
+   462→npm install @react-pdf/renderer
+   463→npm install -D @types/react-pdf
+   464→
+   465→STEP 2 — Create src/lib/pdf-templates/english-resume-pdf.tsx:
+   466→A React PDF Document that mirrors the EnglishResume component.
+   467→Use @react-pdf/renderer primitives (Document, Page, View, Text, StyleSheet).
+   468→Match the visual layout of the existing resume-preview.tsx EnglishResume component.
+   469→Use colors: #1a1a1a for headings, #444 for body, #f59e0b for section accents.
+   470→Use fonts: Helvetica for English resume.
+   471→Section order: Personal Info → Languages → Education → Work Projects → Activities → Awards → Self-PR → Hobbies
+   472→
+   473→STEP 3 — Create src/lib/pdf-templates/japanese-resume-pdf.tsx:
+   474→Japanese 履歴書 PDF Document.
+   475→Use @react-pdf/renderer with the same data structure as JapaneseResume.
+   476→For Japanese text rendering, register the Noto Sans JP font:
+   477→  Font.register({ family: 'NotoSansJP', src: '/fonts/NotoSansJP-Regular.ttf' })
+   478→Download Noto Sans JP from Google Fonts and place in public/fonts/.
+   479→Layout matches the Japanese table-based resume layout.
+   480→
+   481→STEP 4 — Update src/components/candidate/resume-builder.tsx:
+   482→In the toolbar where print() is called, replace the single Print button
+   483→with two Download buttons:
+   484→
+   485→import { PDFDownloadLink } from '@react-pdf/renderer'
+   486→import { EnglishResumePDF } from '@/lib/pdf-templates/english-resume-pdf'
+   487→import { JapaneseResumePDF } from '@/lib/pdf-templates/japanese-resume-pdf'
+   488→
+   489→// In the toolbar JSX (near the existing Save and Printer buttons):
+   490→<PDFDownloadLink
+   491→  document={<EnglishResumePDF data={data} />}
+   492→  fileName={`${data.name || 'resume'}_EN.pdf`}
+   493→>
+   494→  {({ loading }) => (
+   495→    <Button variant="outline" size="sm" disabled={loading}>
+   496→      <Download className="h-4 w-4 mr-1.5" />
+   497→      {loading ? 'Generating...' : 'Download EN'}
+   498→    </Button>
+   499→  )}
+   500→</PDFDownloadLink>
+   501→
+   502→<PDFDownloadLink
+   503→  document={<JapaneseResumePDF data={data} />}
+   504→  fileName={`${data.nameJa || data.name || 'resume'}_JP.pdf`}
+   505→>
+   506→  {({ loading }) => (
+   507→    <Button variant="outline" size="sm" disabled={loading}>
+   508→      <Download className="h-4 w-4 mr-1.5" />
+   509→      {loading ? '生成中...' : '履歴書 PDF'}
+   510→    </Button>
+   511→  )}
+   512→</PDFDownloadLink>
+   513→
+   514→// Keep the existing window.print() button for print-to-PDF fallback
+   515→
+   516→STEP 5 — Remove the old Printer button that called window.print()
+   517→OR keep it as "Print Preview" — user's choice. 
+   518→If kept, add @media print CSS to globals.css to hide everything except .resume-page.
+   519→
+   520→Expected result: Clicking "Download EN" or "履歴書 PDF" downloads a clean,
+   521→formatted PDF of the resume data. No page chrome, no navbar, just the resume.
+   522→```
+   523→
+   524→---
+   525→
+   526→## MILESTONE D — Candidate Search for Companies
+   527→**Problem:** Companies can only see people who applied to THEIR jobs. There's no way to proactively find candidates.
+   528→**Goal:** New "Find Talent" tab in company dashboard — search all candidates by JLPT, skills, experience.
+   529→**Time:** 2–3 hours
+   530→
+   531→```
+   532→[PASTE THE EXISTING ARCHITECTURE BLOCK ABOVE]
+   533→
+   534→MILESTONE D: Candidate talent pool search for companies.
+   535→
+   536→STEP 1 — Create src/app/api/candidates/search/route.ts (GET):
+   537→Auth: session must be COMPANY or ADMIN.
+   538→Query params:
+   539→  - jlptLevel: "N1"|"N2"|"N3"|"N4"|"N5"|"NONE"|"" (filter by JLPT)
+   540→  - skills: "React,Go,SQL" (comma-separated — match any)
+   541→  - minExp: number (minimum years experience)
+   542→  - search: string (searches fullName, bio, skills)
+   543→  - page: number (default 1), limit: number (default 12)
+   544→
+   545→Query logic (Prisma):
+   546→  - Only return candidates where: user.isVerified = true AND resumeUrl IS NOT NULL
+   547→  - If jlptLevel: where.jlptLevel = jlptLevel
+   548→  - If minExp: where.experienceYears = { gte: minExp }
+   549→  - If search: where.OR = [{ fullName: { contains: search }}, { bio: { contains: search }}, { skills: { contains: search }}]
+   550→  - For skills filter (JSON string field): use SQLite's LIKE '%skill%' for each skill
+   551→
+   552→Return CandidateProfileDTO[] with these fields ONLY (never expose user.email or auth data):
+   553→  id, fullName, jlptLevel, skills, experienceYears, bio, location, resumeUrl, photoUrl,
+   554→  education (first entry only), createdAt
+   555→DO NOT return: phone, linkedinUrl, email, userId, savedJobIds, resumeData, resumeName
+   556→
+   557→Response: { candidates: CandidateDTO[], total, page, totalPages }
+   558→
+   559→STEP 2 — Add new View to store:
+   560→In src/lib/store.ts, the companyTab type currently has:
+   561→  "overview" | "jobs" | "new" | "applicants" | "profile"
+   562→Add "talent" to this union:
+   563→  "overview" | "jobs" | "new" | "applicants" | "talent" | "profile"
+   564→
+   565→STEP 3 — Add i18n keys to src/lib/i18n.ts (both en and ja sections):
+   566→en: {
+   567→  "dash.company.talent": "Find Talent",
+   568→  "dash.company.talent.search": "Search candidates",
+   569→  "dash.company.talent.jlpt": "JLPT Level",
+   570→  "dash.company.talent.exp": "Min. experience",
+   571→  "dash.company.talent.skills": "Skills",
+   572→  "dash.company.talent.empty": "No candidates match your filters.",
+   573→  "dash.company.talent.resume": "View Resume",
+   574→  "dash.company.talent.years": "yrs experience",
+   575→  "dash.company.talent.invite": "Invite to Apply",
+   576→}
+   577→ja: {
+   578→  "dash.company.talent": "人材を探す",
+   579→  "dash.company.talent.search": "候補者を検索",
+   580→  "dash.company.talent.jlpt": "JLPTレベル",
+   581→  "dash.company.talent.exp": "最低経験年数",
+   582→  "dash.company.talent.skills": "スキル",
+   583→  "dash.company.talent.empty": "条件に合う候補者が見つかりません。",
+   584→  "dash.company.talent.resume": "履歴書を見る",
+   585→  "dash.company.talent.years": "年の経験",
+   586→  "dash.company.talent.invite": "求人に招待",
+   587→}
+   588→
+   589→STEP 4 — Update src/components/company/company-dashboard.tsx:
+   590→(This file is ~1600 lines. Add ONLY what's described — do not rewrite the file.)
+   591→
+   592→a) Find the NavItem list array at the top of CompanyDashboard.
+   593→   Add after the "applicants" entry:
+   594→   { id: "talent", label: t("dash.company.talent"), icon: Users2 }
+   595→   (Import Users2 from lucide-react if not already imported)
+   596→
+   597→b) Add the "talent" case in the tab switch/render section.
+   598→   Render a new <TalentSearch /> component (defined in same file or separate).
+   599→
+   600→c) Create the TalentSearch component (can be in same file at the bottom):
+   601→
+   602→function TalentSearch() {
+   603→  const { t, locale } = useT()
+   604→  const [search, setSearch] = useState("")
+   605→  const [jlpt, setJlpt] = useState("")
+   606→  const [minExp, setMinExp] = useState("")
+   607→  const [skills, setSkills] = useState("")
+   608→  const [page, setPage] = useState(1)
+   609→  const [results, setResults] = useState<CandidateDTO[]>([])
+   610→  const [total, setTotal] = useState(0)
+   611→  const [loading, setLoading] = useState(false)
+   612→  const [selected, setSelected] = useState<CandidateDTO | null>(null)
+   613→
+   614→  async function fetchCandidates() {
+   615→    setLoading(true)
+   616→    try {
+   617→      const params = new URLSearchParams()
+   618→      if (search) params.set("search", search)
+   619→      if (jlpt) params.set("jlptLevel", jlpt)
+   620→      if (minExp) params.set("minExp", minExp)
+   621→      if (skills) params.set("skills", skills)
+   622→      params.set("page", String(page))
+   623→      const res = await api<{ candidates: CandidateDTO[]; total: number }>(`/api/candidates/search?${params}`)
+   624→      setResults(res.candidates)
+   625→      setTotal(res.total)
+   626→    } catch {
+   627→      toast.error("Failed to load candidates.")
+   628→    } finally {
+   629→      setLoading(false)
+   630→    }
+   631→  }
+   632→
+   633→  useEffect(() => { fetchCandidates() }, [page, jlpt, minExp])
+   634→
+   635→  // Debounced search on text input
+   636→  useEffect(() => {
+   637→    const t = setTimeout(fetchCandidates, 400)
+   638→    return () => clearTimeout(t)
+   639→  }, [search, skills])
+   640→
+   641→  return (
+   642→    <div className="space-y-6">
+   643→      {/* Filters bar */}
+   644→      <div className="flex flex-wrap gap-3">
+   645→        <Input
+   646→          placeholder={t("dash.company.talent.search")}
+   647→          value={search}
+   648→          onChange={e => setSearch(e.target.value)}
+   649→          className="w-64"
+   650→        />
+   651→        <Select value={jlpt} onValueChange={setJlpt}>
+   652→          <SelectTrigger className="w-36">
+   653→            <SelectValue placeholder={t("dash.company.talent.jlpt")} />
+   654→          </SelectTrigger>
+   655→          <SelectContent>
+   656→            <SelectItem value="">Any JLPT</SelectItem>
+   657→            {JLPT_LEVELS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+   658→          </SelectContent>
+   659→        </Select>
+   660→        <Select value={minExp} onValueChange={setMinExp}>
+   661→          <SelectTrigger className="w-40">
+   662→            <SelectValue placeholder={t("dash.company.talent.exp")} />
+   663→          </SelectTrigger>
+   664→          <SelectContent>
+   665→            <SelectItem value="">Any experience</SelectItem>
+   666→            {[1,2,3,5,8].map(y => <SelectItem key={y} value={String(y)}>{y}+ years</SelectItem>)}
+   667→          </SelectContent>
+   668→        </Select>
+   669→        <Input
+   670→          placeholder="Skills (React, Go...)"
+   671→          value={skills}
+   672→          onChange={e => setSkills(e.target.value)}
+   673→          className="w-48"
+   674→        />
+   675→      </div>
+   676→
+   677→      {/* Results */}
+   678→      <div className="text-sm text-muted-foreground">{total} candidates found</div>
+   679→      {loading ? (
+   680→        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   681→          {[...Array(6)].map((_, i) => <CardSkeleton key={i} />)}
+   682→        </div>
+   683→      ) : results.length === 0 ? (
+   684→        <EmptyState icon={Users2} title={t("dash.company.talent.empty")} />
+   685→      ) : (
+   686→        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   687→          {results.map(c => (
+   688→            <CandidateCard key={c.id} candidate={c} onView={() => setSelected(c)} />
+   689→          ))}
+   690→        </div>
+   691→      )}
+   692→
+   693→      {/* Pagination */}
+   694→      {total > 12 && (
+   695→        <div className="flex gap-2 justify-center">
+   696→          <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
+   697→          <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)}>Next</Button>
+   698→        </div>
+   699→      )}
+   700→
+   701→      {/* Candidate detail Sheet */}
+   702→      <Sheet open={!!selected} onOpenChange={open => !open && setSelected(null)}>
+   703→        <SheetContent className="w-[480px] sm:max-w-[480px] overflow-y-auto">
+   704→          {selected && <CandidateDetailPanel candidate={selected} />}
+   705→        </SheetContent>
+   706→      </Sheet>
+   707→    </div>
+   708→  )
+   709→}
+   710→
+   711→function CandidateCard({ candidate, onView }: { candidate: CandidateDTO; onView: () => void }) {
+   712→  // Card showing: avatar (initials), name, JLPT badge, top 3 skills, experience, bio (truncated), "View Profile" button
+   713→  // Use same design as MetricCard / existing card styles (shadow-premium, rounded-xl, glass)
+   714→}
+   715→
+   716→function CandidateDetailPanel({ candidate }: { candidate: CandidateDTO }) {
+   717→  // Full profile: name, JLPT, all skills, experience, bio, education, "View Resume" link
+   718→  // Resume link opens in new tab (candidate.resumeUrl)
+   719→}
+   720→
+   721→STEP 5 — Define CandidateDTO type in src/lib/types.ts (add to existing types):
+   722→(Safe subset of CandidateProfileDTO — no private fields)
+   723→export interface CandidateTalentDTO {
+   724→  id: string
+   725→  fullName: string
+   726→  jlptLevel: JLPTLevel
+   727→  skills: string[]
+   728→  experienceYears: number
+   729→  bio: string | null
+   730→  location: string | null
+   731→  photoUrl: string | null
+   732→  resumeUrl: string | null
+   733→  education: EducationEntry[] | null
+   734→  createdAt: string
+   735→}
+   736→
+   737→Expected result: Company dashboard has a "Find Talent" tab.
+   738→Companies can search 200+ candidates by JLPT, skills, experience.
+   739→Clicking a candidate shows their full profile in a slide-over panel.
+   740→```
+   741→
+   742→---
+   743→
+   744→## MILESTONE E — SEO, Security & Production Hardening
+   745→**Problem:** next.config.ts ignores TypeScript errors, no security headers, no sitemap, no OpenGraph. Not production-safe.
+   746→**Goal:** Fix all production blockers and add SEO infrastructure.
+   747→**Time:** 2 hours
+   748→
+   749→```
+   750→[PASTE THE EXISTING ARCHITECTURE BLOCK ABOVE]
+   751→
+   752→MILESTONE E: Security hardening, SEO, and production config.
+   753→
+   754→STEP 1 — Fix next.config.ts:
+   755→import type { NextConfig } from 'next'
+   756→
+   757→const nextConfig: NextConfig = {
+   758→  output: 'standalone',
+   759→  typescript: { ignoreBuildErrors: false },  // CHANGED: fix all TS errors now
+   760→  reactStrictMode: true,                     // CHANGED: enable strict mode
+   761→  images: {
+   762→    remotePatterns: [
+   763→      { protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/public/**' },
+   764→    ],
+   765→  },
+   766→  async headers() {
+   767→    return [
+   768→      {
+   769→        source: '/(.*)',
+   770→        headers: [
+   771→          { key: 'X-Frame-Options', value: 'DENY' },
+   772→          { key: 'X-Content-Type-Options', value: 'nosniff' },
+   773→          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+   774→          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+   775→          {
+   776→            key: 'Content-Security-Policy',
+   777→            value: [
+   778→              "default-src 'self'",
+   779→              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",  // needed for Next.js
+   780→              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+   781→              "font-src 'self' https://fonts.gstatic.com",
+   782→              "img-src 'self' data: blob: https://*.supabase.co",
+   783→              "connect-src 'self' https://*.supabase.co https://api.resend.com",
+   784→            ].join('; '),
+   785→          },
+   786→        ],
+   787→      },
+   788→    ]
+   789→  },
+   790→}
+   791→export default nextConfig
+   792→
+   793→STEP 2 — Add rate limiting to auth routes.
+   794→Create src/lib/rate-limit.ts:
+   795→
+   796→const store = new Map<string, { count: number; resetAt: number }>()
+   797→
+   798→export function rateLimit(key: string, maxRequests: number, windowMs: number): boolean {
+   799→  const now = Date.now()
+   800→  const record = store.get(key)
+   801→  if (!record || now > record.resetAt) {
+   802→    store.set(key, { count: 1, resetAt: now + windowMs })
+   803→    return true // allowed
+   804→  }
+   805→  if (record.count >= maxRequests) return false // blocked
+   806→  record.count++
+   807→  return true // allowed
+   808→}
+   809→
+   810→// Clean up old entries every 5 minutes
+   811→setInterval(() => {
+   812→  const now = Date.now()
+   813→  for (const [key, val] of store.entries()) {
+   814→    if (now > val.resetAt) store.delete(key)
+   815→  }
+   816→}, 5 * 60 * 1000)
+   817→
+   818→Add to src/app/api/auth/login/route.ts (top of POST handler):
+   819→  const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
+   820→  if (!rateLimit(`login:${ip}`, 5, 15 * 60 * 1000)) {
+   821→    return err('Too many login attempts. Try again in 15 minutes.', 429)
+   822→  }
+   823→
+   824→Add to src/app/api/auth/register/route.ts (top of POST handler):
+   825→  const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
+   826→  if (!rateLimit(`register:${ip}`, 3, 60 * 60 * 1000)) {
+   827→    return err('Too many registration attempts. Try again later.', 429)
+   828→  }
+   829→
+   830→STEP 3 — Add SEO: sitemap and robots.
+   831→
+   832→Create src/app/sitemap.ts:
+   833→import { db } from '@/lib/db'
+   834→import type { MetadataRoute } from 'next'
+   835→
+   836→export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+   837→  const jobs = await db.job.findMany({
+   838→    where: { isActive: true },
+   839→    select: { id: true, postedAt: true },
+   840→    orderBy: { postedAt: 'desc' },
+   841→  })
+   842→  const staticPages: MetadataRoute.Sitemap = [
+   843→    { url: 'https://indigate.work', lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
+   844→    { url: 'https://indigate.work/?view=jobs', lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+   845→    { url: 'https://indigate.work/?view=about', lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
+   846→    { url: 'https://indigate.work/?view=for-companies', lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
+   847→    { url: 'https://indigate.work/?view=contact', lastModified: new Date(), changeFrequency: 'monthly', priority: 0.4 },
+   848→  ]
+   849→  // NOTE: Since jobs are in SPA, we link to the root with a view param.
+   850→  // Google can crawl these if JavaScript rendering is enabled (Vercel handles this).
+   851→  const jobPages: MetadataRoute.Sitemap = jobs.map(job => ({
+   852→    url: `https://indigate.work/?view=job-detail&jobId=${job.id}`,
+   853→    lastModified: job.postedAt,
+   854→    changeFrequency: 'weekly',
+   855→    priority: 0.8,
+   856→  }))
+   857→  return [...staticPages, ...jobPages]
+   858→}
+   859→
+   860→Update public/robots.txt:
+   861→User-agent: *
+   862→Allow: /
+   863→Disallow: /api/
+   864→Sitemap: https://indigate.work/sitemap.xml
+   865→
+   866→STEP 4 — Update src/app/layout.tsx metadata:
+   867→In the existing layout.tsx, find the metadata export and upgrade it:
+   868→export const metadata: Metadata = {
+   869→  title: {
+   870→    default: 'IndiGate | India–Japan Talent Platform',
+   871→    template: '%s | IndiGate',
+   872→  },
+   873→  description: 'IndiGate connects Indian professionals with top Japanese companies. Browse jobs with visa sponsorship, JLPT-matched roles, and relocation support.',
+   874→  keywords: ['India Japan jobs', 'work in Japan', 'JLPT jobs', 'Indian talent Japan', 'IndiGate'],
+   875→  openGraph: {
+   876→    type: 'website',
+   877→    locale: 'en_US',
+   878→    url: 'https://indigate.work',
+   879→    siteName: 'IndiGate',
+   880→    title: 'IndiGate | India–Japan Talent Platform',
+   881→    description: 'Bridge your career to Japan. Find JLPT-matched jobs with visa sponsorship.',
+   882→    images: [{ url: 'https://indigate.work/og-image.png', width: 1200, height: 630 }],
+   883→  },
+   884→  twitter: {
+   885→    card: 'summary_large_image',
+   886→    title: 'IndiGate | India–Japan Talent Platform',
+   887→    description: 'Bridge your career to Japan.',
+   888→    images: ['https://indigate.work/og-image.png'],
+   889→  },
+   890→  robots: { index: true, follow: true },
+   891→}
+   892→
+   893→STEP 5 — Create public/og-image.png:
+   894→A 1200×630 OG image with:
+   895→- Saffron/crimson gradient background
+   896→- IndiGate logo text
+   897→- Tagline: "India × Japan Talent Platform"
+   898→- India and Japan flag emojis or icons
+   899→Create this as an SVG first, convert to PNG:
+   900→Create public/og-image.svg with the design above.
+   901→Then: bunx sharp public/og-image.svg -o public/og-image.png
+   902→(sharp is already a dependency)
+   903→
+   904→STEP 6 — Fix TypeScript errors:
+   905→After changing ignoreBuildErrors to false, run:
+   906→  bunx tsc --noEmit
+   907→Fix any errors that appear. Common ones:
+   908→- bcryptjs types (already noted in worklog): add to devDeps or use @types/bcryptjs which is already installed
+   909→- Any 'any' types: replace with proper types from src/lib/types.ts
+   910→
+   911→Expected result: Security headers in all responses, rate-limited auth, 
+   912→sitemap.xml accessible, OG image shows when shared on social media,
+   913→TypeScript compiles cleanly.
+   914→```
+   915→
+   916→---
+   917→
+   918→## MILESTONE F — Job Analytics for Companies
+   919→**Problem:** Companies have no insight into how their job listings perform. No view counts, no application rate, no time-to-hire.
+   920→**Goal:** Real job analytics in company dashboard — views, applies, funnel.
+   921→**Time:** 2 hours
+   922→
+   923→```
+   924→[PASTE THE EXISTING ARCHITECTURE BLOCK ABOVE]
+   925→
+   926→MILESTONE F: Job view tracking and analytics for companies.
+   927→
+   928→STEP 1 — Add JobView model to prisma/schema.prisma:
+   929→model JobView {
+   930→  id        String   @id @default(cuid())
+   931→  jobId     String
+   932→  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+   933→  sessionId String   // anonymous session ID (cookie), not user ID
+   934→  viewedAt  DateTime @default(now())
+   935→
+   936→  @@index([jobId])
+   937→  @@index([sessionId])
+   938→  @@index([viewedAt])
+   939→}
+   940→
+   941→Also add to Job model: views JobView[]
+   942→Then run: bun run db:push
+   943→
+   944→STEP 2 — Create src/app/api/jobs/[id]/view/route.ts (POST):
+   945→- No auth required (anonymous views)
+   946→- Get or create anonymous session ID from cookie "ig_session_anon"
+   947→  If cookie doesn't exist, generate one: crypto.randomUUID()
+   948→  Set cookie with 1-year expiry
+   949→- Check if this sessionId already viewed this job in last 24 hours:
+   950→  const existing = await db.jobView.findFirst({
+   951→    where: { jobId: id, sessionId, viewedAt: { gte: new Date(Date.now() - 86400000) } }
+   952→  })
+   953→  If existing: return ok({ counted: false }) (deduplication)
+   954→- Create JobView record
+   955→- Return ok({ counted: true })
+   956→
+   957→STEP 3 — Track job views: In src/components/jobs/job-detail-view.tsx,
+   958→find the useEffect or on-mount logic. Add:
+   959→  useEffect(() => {
+   960→    if (jobId) fetch(`/api/jobs/${jobId}/view`, { method: 'POST' }).catch(() => {})
+   961→  }, [jobId])
+   962→(Fire-and-forget, never block rendering)
+   963→
+   964→STEP 4 — Create src/app/api/companies/me/analytics/route.ts (GET):
+   965→Auth: COMPANY role required.
+   966→Fetches analytics for all jobs belonging to this company:
+   967→
+   968→For each job:
+   969→  - viewCount: db.jobView.count({ where: { jobId: job.id } })
+   970→  - viewsThisWeek: count where viewedAt >= 7 days ago
+   971→  - applicationCount: (already in job DTO)
+   972→  - conversionRate: (applicationCount / viewCount * 100).toFixed(1) + "%"
+   973→  - statusBreakdown: count by application status
+   974→
+   975→Return:
+   976→{
+   977→  totalViews: number,
+   978→  totalApplications: number,
+   979→  averageConversion: string,
+   980→  jobs: Array<{
+   981→    id, title, isActive,
+   982→    viewCount, viewsThisWeek, applicationCount, conversionRate,
+   983→    statusBreakdown: { APPLIED, SHORTLISTED, INTERVIEWED, OFFERED, REJECTED }
+   984→  }>
+   985→}
+   986→
+   987→STEP 5 — Add "Analytics" tab to company dashboard.
+   988→In src/components/company/company-dashboard.tsx:
+   989→
+   990→a) Add to companyTab type in store (src/lib/store.ts):
+   991→   "overview" | "jobs" | "new" | "applicants" | "talent" | "analytics" | "profile"
+   992→
+   993→b) Add NavItem: { id: "analytics", label: "Analytics", icon: BarChart2 }
+   994→
+   995→c) Create Analytics component inside company-dashboard.tsx:
+   996→
+   997→function Analytics() {
+   998→  // Fetch /api/companies/me/analytics
+   999→  // Show:
+  1000→  // 1. Three top metric cards: Total Views, Total Applications, Avg. Conversion Rate
+  1001→  // 2. BarChart (recharts) showing views vs applications per job (horizontal bar chart)
+  1002→  // 3. Table: per-job breakdown with columns:
+  1003→  //    Job Title | Views | Views/Week | Applications | Conversion | Status
+  1004→  // Use the same MetricCard component from dashboard-shell.tsx
+  1005→  // Use recharts BarChart with the same ChartContainer pattern as admin dashboard
+  1006→}
+  1007→
+  1008→Add i18n keys:
+  1009→en: {
+  1010→  "dash.company.analytics": "Analytics",
+  1011→  "dash.company.analytics.views": "Total views",
+  1012→  "dash.company.analytics.conversion": "Avg. conversion",
+  1013→  "dash.company.analytics.thisweek": "Views this week",
+  1014→  "dash.company.analytics.empty": "Analytics will appear once your jobs get views.",
+  1015→}
+  1016→ja: {
+  1017→  "dash.company.analytics": "アナリティクス",
+  1018→  "dash.company.analytics.views": "総閲覧数",
+  1019→  "dash.company.analytics.conversion": "平均転換率",
+  1020→  "dash.company.analytics.thisweek": "今週の閲覧数",
+  1021→  "dash.company.analytics.empty": "求人が閲覧されるとアナリティクスが表示されます。",
+  1022→}
+  1023→
+  1024→Expected result: Every job detail view is counted. Company dashboard shows
+  1025→a real analytics tab with view counts, applications, conversion rates per job.
+  1026→```
+  1027→
+  1028→---
+  1029→
+  1030→## MILESTONE G — PostgreSQL Migration (Production Database)
+  1031→**Problem:** SQLite is in-process and can't scale beyond a single server. Not suitable for Vercel's serverless architecture. Arrays/enums stored as strings.
+  1032→**Goal:** Migrate to PostgreSQL on Supabase. Use native Postgres arrays and enums.
+  1033→**Time:** 3–4 hours (mostly careful migration)
+  1034→
+  1035→```
+  1036→[PASTE THE EXISTING ARCHITECTURE BLOCK ABOVE]
+  1037→
+  1038→MILESTONE G: Migrate database from SQLite to PostgreSQL (Supabase).
+  1039→
+  1040→IMPORTANT: This is a careful migration. Read every step before executing.
+  1041→The schema uses JSON strings for arrays because SQLite doesn't support arrays.
+  1042→PostgreSQL supports native arrays — we upgrade them.
+  1043→
+  1044→STEP 1 — Add Supabase PostgreSQL connection:
+  1045→In Supabase dashboard → Settings → Database → Connection strings
+  1046→Copy:
+  1047→- Transaction mode URL (port 6543) → DATABASE_URL in .env
+  1048→- Direct URL (port 5432) → DIRECT_URL in .env
+  1049→
+  1050→Update .env:
+  1051→DATABASE_URL="postgresql://postgres.xxx:password@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+  1052→DIRECT_URL="postgresql://postgres.xxx:password@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres"
+  1053→
+  1054→STEP 2 — Update prisma/schema.prisma:
+  1055→Change datasource:
+  1056→  datasource db {
+  1057→    provider  = "postgresql"
+  1058→    url       = env("DATABASE_URL")
+  1059→    directUrl = env("DIRECT_URL")
+  1060→  }
+  1061→
+  1062→Upgrade String[] fields to native Postgres arrays:
+  1063→- CandidateProfile.skills:     String   @default("[]")  →  String[]  @default([])
+  1064→- CandidateProfile.savedJobIds: String  @default("[]")  →  String[]  @default([])
+  1065→- Job.skillsRequired:           String  @default("[]")  →  String[]  @default([])
+  1066→
+  1067→Add native Postgres enums (optional but cleaner):
+  1068→enum Role { CANDIDATE COMPANY ADMIN }
+  1069→enum JLPTLevel { N1 N2 N3 N4 N5 NONE }
+  1070→enum JobType { FULL_TIME PART_TIME INTERNSHIP CONTRACT }
+  1071→enum SalaryType { HOURLY MONTHLY YEARLY }
+  1072→enum ApplicationStatus { APPLIED SHORTLISTED INTERVIEWED OFFERED REJECTED WITHDRAWN }
+  1073→
+  1074→Update all String fields that were enums:
+  1075→  User.role: String → Role
+  1076→  CandidateProfile.jlptLevel: String → JLPTLevel
+  1077→  Job.jobType: String → JobType
+  1078→  Job.jlptRequired: String → JLPTLevel
+  1079→  Job.salaryType: String → SalaryType
+  1080→  Application.status: String → ApplicationStatus
+  1081→
+  1082→STEP 3 — Fix all JSON.parse() calls throughout the codebase.
+  1083→Since skills, savedJobIds, skillsRequired are now native arrays, remove JSON.parse():
+  1084→Search for: JSON.parse(candidate.skills) → candidate.skills (already an array)
+  1085→Search for: JSON.parse(job.skillsRequired) → job.skillsRequired
+  1086→Search for: JSON.stringify(skills) when saving → just pass the array directly
+  1087→
+  1088→In src/lib/api.ts, find toCandidateDTO(), toJobDTO() mappers.
+  1089→Update the JSON.parse() calls for array fields to direct use.
+  1090→In Prisma queries that filter by skills (SQLite LIKE) → use Postgres containment:
+  1091→  { skills: { hasSome: skillsArray } }   // Prisma Postgres array filter
+  1092→
+  1093→STEP 4 — Run migration:
+  1094→  npx prisma generate
+  1095→  npx prisma db push
+  1096→(This creates all tables on the Postgres DB)
+  1097→
+  1098→STEP 5 — Re-seed the production Postgres DB:
+  1099→  npx prisma db seed
+  1100→(Run this once to create the demo data + admin account)
+  1101→
+  1102→STEP 6 — Test locally connecting to Supabase:
+  1103→  bun run dev
+  1104→Test: login, browse jobs, apply, check admin panel — everything should work.
+  1105→Fix any runtime errors from the array/enum type changes.
+  1106→
+  1107→STEP 7 — Update Vercel environment variables:
+  1108→In Vercel dashboard → your project → Settings → Environment Variables:
+  1109→Set DATABASE_URL to the Transaction mode URL (port 6543)
+  1110→Set DIRECT_URL to the Direct URL (port 5432)
+  1111→Set all other env vars from .env
+  1112→
+  1113→STEP 8 — Deploy to Vercel:
+  1114→  bun run build
+  1115→  vercel --prod
+  1116→After deploy: verify at https://indigate.work
+  1117→
+  1118→Expected result: Platform runs on PostgreSQL. Native arrays for skills.
+  1119→Data persists across deploys. Multiple Vercel instances work simultaneously.
+  1120→```
+  1121→
+  1122→---
+  1123→
+  1124→## MILESTONE H — Interview Scheduling + Visa Guide
+  1125→**Problem:** When a company changes status to INTERVIEWED, there's no way to set an actual date/time. And the platform doesn't help candidates understand Japan's visa process — a key differentiator for IndiGate.
+  1126→**Goal:** Interview date picker when shortlisting. Visa guide section on landing page.
+  1127→**Time:** 3–4 hours
+  1128→
+  1129→```
+  1130→[PASTE THE EXISTING ARCHITECTURE BLOCK ABOVE]
+  1131→
+  1132→MILESTONE H: Interview scheduling and Visa Guide resources.
+  1133→
+  1134→PART 1: INTERVIEW SCHEDULING
+  1135→
+  1136→STEP 1 — Add interviewDate and interviewNotes to Application model in schema.prisma:
+  1137→model Application {
+  1138→  ... (existing fields)
+  1139→  interviewDate  DateTime?
+  1140→  interviewNotes String?   // notes visible to candidate
+  1141→}
+  1142→Run: bun run db:push
+  1143→
+  1144→STEP 2 — Update src/app/api/applications/[id]/status/route.ts:
+  1145→When status is changed to INTERVIEWED, accept optional body fields:
+  1146→  interviewDate: string (ISO date)
+  1147→  interviewNotes: string (e.g. "Google Meet link: ...")
+  1148→Update the Application record with these fields.
+  1149→
+  1150→STEP 3 — In company-dashboard.tsx, in the applicants section:
+  1151→When clicking "Schedule Interview" (status → INTERVIEWED), instead of
+  1152→immediately updating, open a small Dialog/Popover first:
+  1153→
+  1154→Dialog content:
+  1155→  - DatePicker for interview date/time (use existing Calendar from shadcn/ui)
+  1156→  - Textarea: "Interview notes (shared with candidate)"
+  1157→    placeholder: "Include meeting link, format (video/in-person), duration..."
+  1158→  - Confirm button → updates status to INTERVIEWED with date and notes
+  1159→
+  1160→STEP 4 — In candidate-dashboard.tsx, in the Applications tab:
+  1161→When an application has status=INTERVIEWED and interviewDate is set, show:
+  1162→  - Interview date formatted: "Interview: [Day], [Date] at [Time] JST"
+  1163→  - Interview notes in a light info box
+  1164→  - Calendar icon button that adds to Google Calendar:
+  1165→    href="https://www.google.com/calendar/event?action=TEMPLATE
+  1166→          &text=Interview at [Company]
+  1167→          &dates=[startTime]/[endTime]
+  1168→          &details=[interviewNotes]"
+  1169→
+  1170→STEP 5 — Update ApplicationDTO in src/lib/types.ts:
+  1171→  interviewDate: string | null
+  1172→  interviewNotes: string | null
+  1173→
+  1174→Add i18n keys:
+  1175→en: {
+  1176→  "dash.apps.interview.date": "Interview scheduled",
+  1177→  "dash.apps.interview.notes": "Interview details",
+  1178→  "dash.apps.interview.calendar": "Add to Calendar",
+  1179→  "dash.company.schedule.date": "Interview date & time",
+  1180→  "dash.company.schedule.notes": "Notes for candidate",
+  1181→  "dash.company.schedule.confirm": "Schedule Interview",
+  1182→}
+  1183→ja: {
+  1184→  "dash.apps.interview.date": "面接日程",
+  1185→  "dash.apps.interview.notes": "面接詳細",
+  1186→  "dash.apps.interview.calendar": "カレンダーに追加",
+  1187→  "dash.company.schedule.date": "面接日時",
+  1188→  "dash.company.schedule.notes": "候補者へのメモ",
+  1189→  "dash.company.schedule.confirm": "面接を設定",
+  1190→}
+  1191→
+  1192→---
+  1193→
+  1194→PART 2: VISA GUIDE SECTION
+  1195→
+  1196→STEP 6 — Create a new "Visa Guide" section on the landing page.
+  1197→In src/components/landing/landing-page.tsx, add a new section after "How It Works":
+  1198→
+  1199→The section should explain the 3 most common visa paths for Indian workers in Japan:
+  1200→  a) Specified Skilled Worker (特定技能) Visa
+  1201→     - Level: SSW Type 1 (1-4 years) or Type 2 (indefinite renewable)
+  1202→     - Requires: JLPT N4+ and skills test for the specific industry
+  1203→     - Industries: Manufacturing, Construction, Food service, Agriculture
+  1204→     - Used for: Factory workers, production line staff
+  1205→     
+  1206→  b) Engineer / Specialist in Humanities Visa (技術・人文知識・国際業務)
+  1207→     - Level: White-collar, highly educated
+  1208→     - Requires: Bachelor's degree OR 10 years experience in the field
+  1209→     - Industries: IT, Finance, Engineering, Translation/Interpretation
+  1210→     - Used for: Software engineers, finance analysts, interpreters
+  1211→     
+  1212→  c) Intra-company Transfer Visa (企業内転勤)
+  1213→     - For: Employees transferred from India office to Japan office
+  1214→     - Requires: Working at the same company ≥ 1 year
+  1215→     - Sponsored by: The Japanese company in the IndiGate network
+  1216→
+  1217→Design: Use an expandable Accordion (shadcn Accordion is already installed).
+  1218→Each visa type is one accordion item.
+  1219→Inside each: brief description, requirements list, typical JLPT needed, IndiGate's role.
+  1220→Add a "We handle all visa paperwork" callout box at the bottom.
+  1221→
+  1222→i18n: Add all visa guide strings to both en and ja in src/lib/i18n.ts:
+  1223→en: {
+  1224→  "visa.title": "Understanding Japan Visa Types",
+  1225→  "visa.subtitle": "IndiGate guides you through the right visa path for your career",
+  1226→  "visa.ssw.title": "Specified Skilled Worker (SSW)",
+  1227→  "visa.ssw.desc": "For skilled workers in manufacturing, construction, agriculture, and hospitality. Requires JLPT N4+ and a skills test.",
+  1228→  "visa.engineer.title": "Engineer / Specialist Visa",
+  1229→  "visa.engineer.desc": "For IT professionals, engineers, and business specialists. Requires a degree or 10 years experience.",
+  1230→  "visa.transfer.title": "Intra-Company Transfer",
+  1231→  "visa.transfer.desc": "For professionals transferring within a company from India to Japan.",
+  1232→  "visa.support": "IndiGate handles all documentation, coordination with the Japanese Immigration Bureau, and pre-departure guidance.",
+  1233→  "visa.cta": "Talk to our visa specialist",
+  1234→}
+  1235→ja: {
+  1236→  "visa.title": "日本のビザの種類を理解する",
+  1237→  "visa.subtitle": "IndiGateがあなたのキャリアに合ったビザ申請をサポートします",
+  1238→  "visa.ssw.title": "特定技能ビザ",
+  1239→  "visa.ssw.desc": "製造業、建設業、農業、飲食業などの技能労働者向け。JLPT N4以上と技能試験が必要。",
+  1240→  "visa.engineer.title": "技術・人文知識・国際業務ビザ",
+  1241→  "visa.engineer.desc": "ITエンジニア、専門家、ビジネス職向け。学士号または10年以上の経験が必要。",
+  1242→  "visa.transfer.title": "企業内転勤ビザ",
+  1243→  "visa.transfer.desc": "インドから日本の同一企業に転勤するプロフェッショナル向け。",
+  1244→  "visa.support": "IndiGateは書類作成、出入国在留管理局との調整、渡航前ガイダンスをすべてサポートします。",
+  1245→  "visa.cta": "ビザ専門家に相談する",
+  1246→}
+  1247→
+  1248→Expected result: When a company schedules an interview, the candidate sees
+  1249→the date, notes, and can add it to Google Calendar.
+  1250→Landing page has a professional visa guide section that differentiates
+  1251→IndiGate from generic job boards.
+  1252→```
+  1253→
+  1254→---
+  1255→
+  1256→## QUICK REFERENCE — What You've Built vs What's Left
+  1257→
+  1258→### ✅ Already complete (don't regenerate):
+  1259→- SPA architecture with Zustand view navigation
+  1260→- Custom HMAC cookie auth + all auth flows
+  1261→- SQLite Prisma schema (8 models, seed data)
+  1262→- Bilingual i18n (EN + JA) — complete
+  1263→- Landing page + all static pages
+  1264→- Jobs listing with full filtering
+  1265→- Job detail view + apply dialog
+  1266→- Candidate dashboard: overview, profile, applications, saved jobs, resume upload UI
+  1267→- Resume builder with EN/JP preview (print exists)
+  1268→- Company dashboard: overview, post job, manage applicants, profile
+  1269→- Admin panel: stats+charts, approve companies, manage all entities, CSV export
+  1270→- Notification bell
+  1271→- Framer Motion animations throughout
+  1272→- Full shadcn/ui component library
+  1273→
+  1274→### ❌ Gaps found in audit (fix these in order):
+  1275→1. **MILESTONE A** — `/api/upload` route missing → file uploads broken for ALL users
+  1276→2. **MILESTONE B** — No emails sent anywhere → silent failures, no password reset
+  1277→3. **MILESTONE C** — Resume builder can't export clean PDFs
+  1278→4. **MILESTONE D** — Companies can't proactively search candidates
+  1279→5. **MILESTONE E** — Security headers, rate limiting, TypeScript errors hidden
+  1280→6. **MILESTONE F** — No job view tracking or analytics
+  1281→7. **MILESTONE G** — SQLite not suitable for production Vercel deployment
+  1282→8. **MILESTONE H** — No interview scheduling, no visa guide (key differentiator)
+  1283→
+  1284→### Priority order:
+  1285→**This week:** A (upload) → B (email) → E (security)
+  1286→**Next week:** C (PDF export) → D (talent search)
+  1287→**Before launch:** G (PostgreSQL) → F (analytics) → H (interview + visa)
+  1288→
+  1289→---
+  1290→
+  1291→*IndiGate Production Upgrade Guide · Indobox Inc · Abhishek · June 2026*
+  1292→

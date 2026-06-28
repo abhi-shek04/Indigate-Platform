@@ -95,6 +95,7 @@ model Job {
   updatedAt      DateTime @updatedAt
 
   applications Application[]
+  views         JobView[]
 
   @@index([isActive, postedAt])
   @@index([companyId])
@@ -110,12 +111,26 @@ model Application {
   coverNote          String?
   resumeUrlSnapshot  String?
   notes              String?
+  interviewDate      DateTime?
+  interviewNotes     String?
   appliedAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   @@unique([candidateId, jobId])
   @@index([jobId])
   @@index([candidateId])
+}
+
+model JobView {
+  id        String   @id @default(cuid())
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  sessionId String   // anonymous session cookie ID
+  viewedAt  DateTime @default(now())
+
+  @@index([jobId])
+  @@index([sessionId])
+  @@index([viewedAt])
 }
 
 model Notification {

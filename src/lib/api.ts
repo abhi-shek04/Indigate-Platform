@@ -166,6 +166,8 @@ export function toApplicationDTO(a: {
   coverNote: string | null;
   resumeUrlSnapshot: string | null;
   notes: string | null;
+  interviewDate: Date | null;
+  interviewNotes: string | null;
   appliedAt: Date;
   updatedAt: Date;
   candidate?: Parameters<typeof toCandidateDTO>[0];
@@ -179,6 +181,8 @@ export function toApplicationDTO(a: {
     coverNote: a.coverNote,
     resumeUrlSnapshot: a.resumeUrlSnapshot,
     notes: a.notes,
+    interviewDate: a.interviewDate?.toISOString() ?? null,
+    interviewNotes: a.interviewNotes,
     appliedAt: a.appliedAt.toISOString(),
     updatedAt: a.updatedAt.toISOString(),
     candidate: a.candidate ? toCandidateDTO(a.candidate) : undefined,

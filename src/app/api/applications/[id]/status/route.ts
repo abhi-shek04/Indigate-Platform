@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { ok, err, handleError, toApplicationDTO, notify } from "@/lib/api";
+import { sendEmail, emails } from "@/lib/email";
 import { z } from "zod";
 
 const schema = z.object({
@@ -14,6 +15,8 @@ const schema = z.object({
     "WITHDRAWN",
   ]),
   notes: z.string().optional(),
+  interviewDate: z.string().optional(),
+  interviewNotes: z.string().optional(),
 });
 
 const STATUS_MESSAGE: Record<string, string> = {
@@ -53,9 +56,20 @@ export async function PATCH(
         parsed.data.status === "WITHDRAWN");
     if (!canUpdate) return err("Forbidden.", 403);
 
+    const updateData: Record<string, unknown> = {
+      status: parsed.data.status,
+      notes: parsed.data.notes ?? app.notes,
+    };
+    // Interview scheduling (Milestone H)
+    if (parsed.data.status === "INTERVIEWED") {
+      if (parsed.data.interviewDate)
+        updateData.interviewDate = new Date(parsed.data.interviewDate);
+      if (parsed.data.interviewNotes !== undefined)
+        updateData.interviewNotes = parsed.data.interviewNotes;
+    }
     const updated = await db.application.update({
       where: { id },
-      data: { status: parsed.data.status, notes: parsed.data.notes ?? app.notes },
+      data: updateData,
       include: { job: { include: { company: true } }, candidate: true },
     });
 
@@ -66,6 +80,22 @@ export async function PATCH(
         `Application ${parsed.data.status.toLowerCase()}`,
         `${STATUS_MESSAGE[parsed.data.status]} Role: ${app.job.title} at ${app.job.company.companyName}.`,
       );
+      // Fire-and-forget status email to candidate
+      const candidateUser = await db.user.findUnique({
+        where: { id: app.candidate.userId },
+        select: { email: true },
+      });
+      if (candidateUser) {
+        void sendEmail({
+          to: candidateUser.email,
+          ...emails.statusUpdate(
+            app.candidate.fullName,
+            app.job.title,
+            app.job.company.companyName,
+            parsed.data.status,
+          ),
+        });
+      }
     }
 
     return ok(toApplicationDTO(updated));

@@ -44,6 +44,21 @@ export interface CandidateProfileDTO {
   updatedAt: string;
 }
 
+// Safe subset for company talent search — no private fields
+export interface CandidateTalentDTO {
+  id: string;
+  fullName: string;
+  jlptLevel: JLPTLevel;
+  skills: string[];
+  experienceYears: number;
+  bio: string | null;
+  location: string | null;
+  photoUrl: string | null;
+  resumeUrl: string | null;
+  education: EducationEntry[] | null;
+  createdAt: string;
+}
+
 export interface CompanyProfileDTO {
   id: string;
   userId: string;
@@ -93,6 +108,8 @@ export interface ApplicationDTO {
   coverNote: string | null;
   resumeUrlSnapshot: string | null;
   notes: string | null;
+  interviewDate: string | null;
+  interviewNotes: string | null;
   appliedAt: string;
   updatedAt: string;
 }

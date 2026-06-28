@@ -42,6 +42,8 @@ export interface AppState {
     | "jobs"
     | "new"
     | "applicants"
+    | "talent"
+    | "analytics"
     | "profile";
   companyApplicantsJobId: string | null;
   // admin dashboard tab

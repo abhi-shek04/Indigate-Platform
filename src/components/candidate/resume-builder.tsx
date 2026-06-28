@@ -32,10 +32,14 @@ import {
   Sparkles,
   Loader2,
   X,
+  Download,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { PDFDownloadLink } from "@react-pdf/renderer";
+import { EnglishResumePDF } from "@/lib/pdf-templates/english-resume-pdf";
+import { JapaneseResumePDF } from "@/lib/pdf-templates/japanese-resume-pdf";
 import {
   EMPTY_RESUME,
   GENDER_OPTIONS,
@@ -221,14 +225,36 @@ export function ResumeBuilder() {
             Create a professional resume in both English and Japanese 履歴書 format.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button onClick={save} disabled={saving} className="bg-brand-gradient text-white hover:opacity-90 font-semibold">
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             Save
           </Button>
-          <Button onClick={print} variant="outline" className="font-semibold">
-            <Printer className="mr-2 h-4 w-4" />
-            Print / PDF
+          <PDFDownloadLink
+            document={<EnglishResumePDF data={data} />}
+            fileName={`${data.name || "resume"}_EN.pdf`}
+          >
+            {({ loading }) => (
+              <Button variant="outline" size="sm" disabled={loading} className="font-semibold h-9">
+                <Download className="h-4 w-4 mr-1.5" />
+                {loading ? "Generating…" : "EN PDF"}
+              </Button>
+            )}
+          </PDFDownloadLink>
+          <PDFDownloadLink
+            document={<JapaneseResumePDF data={data} />}
+            fileName={`${data.nameJa || data.name || "resume"}_JP.pdf`}
+          >
+            {({ loading }) => (
+              <Button variant="outline" size="sm" disabled={loading} className="font-semibold h-9">
+                <Download className="h-4 w-4 mr-1.5" />
+                {loading ? "生成中…" : "履歴書 PDF"}
+              </Button>
+            )}
+          </PDFDownloadLink>
+          <Button onClick={print} variant="ghost" size="sm" className="font-semibold h-9">
+            <Printer className="h-4 w-4 mr-1.5" />
+            Print
           </Button>
         </div>
       </div>

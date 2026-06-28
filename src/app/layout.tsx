@@ -21,31 +21,42 @@ const jakarta = Plus_Jakarta_Sans({
   weight: ["500", "600", "700", "800"],
 });
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://indigate.work";
+
 export const metadata: Metadata = {
-  title: "IndiGate — India × Japan Talent Platform",
+  title: {
+    default: "IndiGate | India–Japan Talent Platform",
+    template: "%s | IndiGate",
+  },
   description:
-    "IndiGate connects Indian professionals with Japanese companies. Find jobs in Japan, upload your resume, and launch your cross-border career.",
+    "IndiGate connects Indian professionals with top Japanese companies. Browse jobs with visa sponsorship, JLPT-matched roles, and relocation support.",
   keywords: [
-    "IndiGate",
     "India Japan jobs",
-    "Japan jobs for Indians",
+    "work in Japan",
     "JLPT jobs",
-    "cross-border talent",
-    "Indobox",
+    "Indian talent Japan",
+    "IndiGate",
+    "Japan visa sponsorship",
   ],
   authors: [{ name: "Indobox Inc" }],
   openGraph: {
-    title: "IndiGate — India × Japan Talent Platform",
-    description:
-      "Connect Indian professionals with Japanese companies. Find jobs in Japan and launch your cross-border career.",
-    siteName: "IndiGate",
     type: "website",
+    locale: "en_US",
+    url: APP_URL,
+    siteName: "IndiGate",
+    title: "IndiGate | India–Japan Talent Platform",
+    description:
+      "Bridge your career to Japan. Find JLPT-matched jobs with visa sponsorship and full relocation support.",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "IndiGate" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "IndiGate — India × Japan Talent Platform",
-    description: "Connect Indian professionals with Japanese companies.",
+    title: "IndiGate | India–Japan Talent Platform",
+    description: "Bridge your career to Japan.",
+    images: ["/og-image.png"],
   },
+  robots: { index: true, follow: true },
+  metadataBase: new URL(APP_URL),
 };
 
 export default function RootLayout({

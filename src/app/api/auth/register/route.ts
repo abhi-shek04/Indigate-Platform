@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { createSession } from "@/lib/auth";
 import { ok, err, handleError, notify } from "@/lib/api";
+import { sendEmail, emails } from "@/lib/email";
+import { rateLimit } from "@/lib/rate-limit";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -18,6 +20,10 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+    if (!rateLimit(`register:${ip}`, 5, 60 * 60 * 1000)) {
+      return err("Too many registration attempts. Try again later.", 429);
+    }
     const body = await req.json().catch(() => null);
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
@@ -58,6 +64,11 @@ export async function POST(req: NextRequest) {
           fullName: fullName ?? name ?? email.split("@")[0],
         },
       });
+      // Fire-and-forget welcome email
+      void sendEmail({
+        to: email,
+        ...emails.welcomeCandidate(fullName ?? name ?? ""),
+      });
     } else {
       await db.companyProfile.create({
         data: {
@@ -68,6 +79,17 @@ export async function POST(req: NextRequest) {
           isApproved: false,
         },
       });
+      // Welcome the company + notify admins (fire-and-forget)
+      void sendEmail({
+        to: email,
+        ...emails.welcomeCompany(companyName ?? ""),
+      });
+      if (process.env.ADMIN_EMAIL) {
+        void sendEmail({
+          to: process.env.ADMIN_EMAIL,
+          ...emails.adminNewCompany(companyName ?? "", email),
+        });
+      }
       const admins = await db.user.findMany({ where: { role: "ADMIN" } });
       await Promise.all(
         admins.map((a) =>

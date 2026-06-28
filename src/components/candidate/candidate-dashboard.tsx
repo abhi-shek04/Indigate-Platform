@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { Fragment, useEffect, useState, useCallback } from "react";
 import { useApp } from "@/lib/store";
 import { useT } from "@/lib/use-t";
 import { api, formatRelative, formatDate } from "@/lib/api-client";
@@ -480,7 +480,8 @@ function Applications() {
             </TableHeader>
             <TableBody>
               {apps.map((a) => (
-                <TableRow key={a.id}>
+                <Fragment key={a.id}>
+                <TableRow>
                   <TableCell className="pl-5 sm:pl-6">
                     <button
                       onClick={() =>
@@ -554,6 +555,14 @@ function Applications() {
                     )}
                   </TableCell>
                 </TableRow>
+                {a.status === "INTERVIEWED" && a.interviewDate && (
+                  <TableRow className="bg-violet-50/50 dark:bg-violet-950/20">
+                    <TableCell colSpan={4} className="px-5 sm:px-6 py-3">
+                      <InterviewInfo app={a} />
+                    </TableCell>
+                  </TableRow>
+                )}
+                </Fragment>
               ))}
             </TableBody>
           </Table>
@@ -1071,6 +1080,61 @@ function Saved() {
       {jobs.map((j) => (
         <JobCard key={j.id} job={j} />
       ))}
+    </div>
+  );
+}
+
+/* ============== Interview Info (Milestone H) ============== */
+
+function InterviewInfo({ app }: { app: ApplicationDTO }) {
+  const { locale } = useT();
+  if (!app.interviewDate) return null;
+  const d = new Date(app.interviewDate);
+  const dateStr = d.toLocaleString(locale === "ja" ? "ja-JP" : "en-US", {
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Tokyo",
+  });
+  // Google Calendar link
+  const start = d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+  const end = new Date(d.getTime() + 60 * 60 * 1000)
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .split(".")[0] + "Z";
+  const calTitle = encodeURIComponent(
+    `Interview at ${app.job?.company?.companyName ?? "Company"}`,
+  );
+  const calDetails = encodeURIComponent(app.interviewNotes || "");
+  const calUrl = `https://www.google.com/calendar/event?action=TEMPLATE&text=${calTitle}&dates=${start}/${end}&details=${calDetails}&ctz=Asia/Tokyo`;
+
+  return (
+    <div className="flex items-start gap-3 flex-wrap">
+      <div className="grid place-items-center h-9 w-9 rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 shrink-0">
+        <CalendarClock className="h-4 w-4" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-violet-800 dark:text-violet-300">
+          {locale === "ja" ? "面接日程" : "Interview scheduled"}
+        </p>
+        <p className="text-sm text-foreground">
+          {dateStr} JST
+        </p>
+        {app.interviewNotes && (
+          <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">
+            {app.interviewNotes}
+          </p>
+        )}
+      </div>
+      <a href={calUrl} target="_blank" rel="noreferrer">
+        <Button size="sm" variant="outline" className="shrink-0">
+          <CalendarClock className="mr-1.5 h-3.5 w-3.5" />
+          {locale === "ja" ? "カレンダーに追加" : "Add to Calendar"}
+        </Button>
+      </a>
     </div>
   );
 }

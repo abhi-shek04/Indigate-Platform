@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { ok, err, handleError, notify } from "@/lib/api";
+import { sendEmail, emails } from "@/lib/email";
 
 export async function PATCH(
   req: NextRequest,
@@ -32,6 +33,11 @@ export async function PATCH(
         "Company approved 🎉",
         `Welcome aboard! ${company.companyName} is now approved. You can start posting jobs.`,
       );
+      // Fire-and-forget approval email
+      void sendEmail({
+        to: company.user.email,
+        ...emails.companyApproved(company.companyName),
+      });
       return ok({ ok: true, approved: true });
     } else if (action === "reject") {
       await db.companyProfile.update({

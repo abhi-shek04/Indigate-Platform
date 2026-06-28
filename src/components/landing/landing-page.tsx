@@ -34,9 +34,18 @@ import {
   ShieldCheck,
   Heart,
   Star,
+  Building2,
+  Wrench,
+  ArrowLeftRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { JobDTO, TestimonialDTO } from "@/lib/types";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 interface Stats {
   jobCount: number;
@@ -343,6 +352,65 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* VISA GUIDE */}
+      <section className="py-20 sm:py-24 bg-card/40 border-y border-border">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+          <Reveal variants={fadeUp} className="text-center max-w-2xl mx-auto">
+            <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
+              <Plane className="mr-1 h-3 w-3" />
+              Visa Guide
+            </Badge>
+            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+              {t("visa.title")}
+            </h2>
+            <p className="mt-2 text-muted-foreground">{t("visa.subtitle")}</p>
+          </Reveal>
+
+          <Reveal variants={fadeUp} delay={0.15}>
+            <Accordion type="single" collapsible className="mt-10 space-y-3">
+              <VisaAccordionItem
+                value="ssw"
+                icon={Wrench}
+                title={t("visa.ssw.title")}
+                desc={t("visa.ssw.desc")}
+                requirements={["JLPT N4 or higher", "Industry skills test", "Valid passport", "Health certificate"]}
+              />
+              <VisaAccordionItem
+                value="engineer"
+                icon={Building2}
+                title={t("visa.engineer.title")}
+                desc={t("visa.engineer.desc")}
+                requirements={["Bachelor's degree OR 10 years experience", "Job offer from Japanese company", "Relevant field experience", "Valid passport"]}
+              />
+              <VisaAccordionItem
+                value="transfer"
+                icon={ArrowLeftRight}
+                title={t("visa.transfer.title")}
+                desc={t("visa.transfer.desc")}
+                requirements={["1+ year at same company", "Transfer to Japan office", "Valid passport", "Employment contract"]}
+              />
+            </Accordion>
+          </Reveal>
+
+          {/* Support callout */}
+          <Reveal variants={fadeUp} delay={0.3}>
+            <div className="mt-8 rounded-2xl bg-brand-gradient p-6 sm:p-8 text-center shadow-glow-brand">
+              <ShieldCheck className="h-8 w-8 text-white mx-auto mb-3" />
+              <p className="text-white font-semibold text-lg leading-relaxed max-w-2xl mx-auto">
+                {t("visa.support")}
+              </p>
+              <MagneticButton
+                onClick={() => navigate("home")}
+                className="mt-5 bg-white text-crimson hover:bg-white/90 font-bold h-11 px-6 rounded-xl inline-flex items-center gap-2 cursor-pointer"
+              >
+                {t("visa.cta")}
+                <ArrowRight className="h-4 w-4" />
+              </MagneticButton>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
       {/* WHY INDIGATE / VALUE PROPS */}
       <section className="py-20 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -624,5 +692,50 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="text-sm font-medium mb-1.5 block">{label}</span>
       {children}
     </label>
+  );
+}
+
+function VisaAccordionItem({
+  value,
+  icon: Icon,
+  title,
+  desc,
+  requirements,
+}: {
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  desc: string;
+  requirements: string[];
+}) {
+  const { t } = useT();
+  return (
+    <AccordionItem
+      value={value}
+      className="rounded-xl border border-border bg-background px-5 overflow-hidden data-[state=open]:shadow-premium transition-shadow"
+    >
+      <AccordionTrigger className="hover:no-underline py-5">
+        <div className="flex items-center gap-3 text-left">
+          <div className="grid place-items-center h-10 w-10 rounded-lg bg-saffron/10 text-saffron shrink-0">
+            <Icon className="h-5 w-5" />
+          </div>
+          <span className="font-display font-bold text-base">{title}</span>
+        </div>
+      </AccordionTrigger>
+      <AccordionContent className="pb-5 pt-1">
+        <p className="text-sm text-muted-foreground leading-relaxed mb-4">{desc}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+          {t("visa.requirements")}
+        </p>
+        <ul className="space-y-1.5">
+          {requirements.map((r) => (
+            <li key={r} className="flex items-start gap-2 text-sm">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+              <span>{r}</span>
+            </li>
+          ))}
+        </ul>
+      </AccordionContent>
+    </AccordionItem>
   );
 }

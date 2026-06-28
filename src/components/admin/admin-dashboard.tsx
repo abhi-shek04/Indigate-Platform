@@ -44,6 +44,22 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ChartContainer,
@@ -69,6 +85,9 @@ import {
   TrendingUp,
   Hourglass,
   Trophy,
+  Plus,
+  Pencil,
+  Mail,
 } from "lucide-react";
 import {
   Area,
@@ -92,6 +111,8 @@ import {
   JLPT_BADGE,
   STATUS_BADGE,
   APPLICATION_STATUSES,
+  JOB_TYPES,
+  type TestimonialDTO,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -102,6 +123,7 @@ const NAV: NavItem[] = [
   { key: "companies", label: "Companies", icon: Building2 },
   { key: "applications", label: "Applications", icon: FileText },
   { key: "testimonials", label: "Testimonials", icon: Quote },
+  { key: "contacts", label: "Enquiries", icon: Mail },
 ];
 
 interface AdminStats {
@@ -174,6 +196,7 @@ export function AdminDashboard() {
       {tab === "companies" && <CompaniesTab />}
       {tab === "applications" && <ApplicationsTab />}
       {tab === "testimonials" && <TestimonialsTab />}
+      {tab === "contacts" && <ContactsTab />}
     </DashboardShell>
   );
 }
@@ -553,6 +576,10 @@ function JobsTab() {
   const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editorState, setEditorState] = useState<{
+    mode: "create" | "edit";
+    job: JobDTO | null;
+  } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -629,6 +656,14 @@ function JobsTab() {
             />
           </div>
           <ExportCsvButton resource="jobs" />
+          <Button
+            size="sm"
+            className="bg-brand-gradient text-white hover:opacity-90 font-semibold"
+            onClick={() => setEditorState({ mode: "create", job: null })}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Post Job
+          </Button>
         </div>
       </div>
 
@@ -697,6 +732,18 @@ function JobsTab() {
                       />
                     </TableCell>
                     <TableCell className="text-right pr-5 sm:pr-6">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-muted-foreground hover:text-crimson"
+                          aria-label="Edit job"
+                          onClick={() =>
+                            setEditorState({ mode: "edit", job: j })
+                          }
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
                       <AlertDialog
                         open={deleteId === j.id}
                         onOpenChange={(o) => setDeleteId(o ? j.id : null)}
@@ -731,6 +778,7 @@ function JobsTab() {
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -739,11 +787,373 @@ function JobsTab() {
           </div>
         </SectionCard>
       )}
+
+      {editorState && (
+        <JobEditorSheet
+          mode={editorState.mode}
+          job={editorState.job}
+          onClose={() => setEditorState(null)}
+          onSaved={load}
+        />
+      )}
     </div>
   );
 }
 
-/* ============== Candidates tab ============== */
+/* ============== Job Editor Sheet (admin) ============== */
+
+interface JobFormState {
+  companyId: string;
+  title: string;
+  titleJa: string;
+  description: string;
+  descriptionJa: string;
+  location: string;
+  jobType: string;
+  jlptRequired: string;
+  salaryMin: string;
+  salaryMax: string;
+  salaryType: string;
+  skillsInput: string;
+  deadline: string;
+  isActive: boolean;
+}
+
+function JobEditorSheet({
+  mode,
+  job,
+  onClose,
+  onSaved,
+}: {
+  mode: "create" | "edit";
+  job: JobDTO | null;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  const [companies, setCompanies] = useState<
+    { id: string; companyName: string }[]
+  >([]);
+  const [form, setForm] = useState<JobFormState>({
+    companyId: "",
+    title: "",
+    titleJa: "",
+    description: "",
+    descriptionJa: "",
+    location: "",
+    jobType: "FULL_TIME",
+    jlptRequired: "NONE",
+    salaryMin: "",
+    salaryMax: "",
+    salaryType: "MONTHLY",
+    skillsInput: "",
+    deadline: "",
+    isActive: true,
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    // Pre-fill form in edit mode
+    if (job) {
+      setForm({
+        companyId: job.companyId,
+        title: job.title,
+        titleJa: job.titleJa ?? "",
+        description: job.description,
+        descriptionJa: job.descriptionJa ?? "",
+        location: job.location,
+        jobType: job.jobType,
+        jlptRequired: job.jlptRequired,
+        salaryMin: job.salaryMin ? String(job.salaryMin) : "",
+        salaryMax: job.salaryMax ? String(job.salaryMax) : "",
+        salaryType: job.salaryType,
+        skillsInput: job.skillsRequired.join(", "),
+        deadline: job.deadline
+          ? new Date(job.deadline).toISOString().slice(0, 10)
+          : "",
+        isActive: job.isActive,
+      });
+    }
+  }, [job]);
+
+  // Load companies for create mode
+  useEffect(() => {
+    if (mode === "create") {
+      api<{ items: CompanyProfileDTO[] }>(
+        "/api/admin/list/companies",
+      )
+        .then((res) =>
+          setCompanies(
+            res.items
+              .filter((c) => c.isApproved)
+              .map((c) => ({ id: c.id, companyName: c.companyName })),
+          ),
+        )
+        .catch(() => {});
+    }
+  }, [mode]);
+
+  function update<K extends keyof JobFormState>(
+    key: K,
+    value: JobFormState[K],
+  ) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (mode === "create" && !form.companyId) {
+      toast.error("Select a company.");
+      return;
+    }
+    if (form.description.length < 50) {
+      toast.error("Description must be at least 50 characters.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload: Record<string, unknown> = {
+        title: form.title,
+        titleJa: form.titleJa || undefined,
+        description: form.description,
+        descriptionJa: form.descriptionJa || undefined,
+        location: form.location,
+        jobType: form.jobType,
+        jlptRequired: form.jlptRequired,
+        salaryMin: form.salaryMin ? Number(form.salaryMin) : undefined,
+        salaryMax: form.salaryMax ? Number(form.salaryMax) : undefined,
+        salaryType: form.salaryType,
+        skillsRequired: form.skillsInput
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+        deadline: form.deadline || undefined,
+        isActive: form.isActive,
+      };
+      if (mode === "create") {
+        payload.companyId = form.companyId;
+        await api("/api/admin/jobs", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        toast.success("Job created.");
+      } else if (job) {
+        await api(`/api/admin/jobs/${job.id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+        toast.success("Job updated.");
+      }
+      await onSaved();
+      onClose();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Sheet open onOpenChange={(o) => !o && onClose()}>
+      <SheetContent className="w-[440px] sm:max-w-[440px] overflow-y-auto scroll-area">
+        <SheetHeader>
+          <SheetTitle>
+            {mode === "create" ? "Post New Job" : "Edit Job"}
+          </SheetTitle>
+        </SheetHeader>
+        <form onSubmit={submit} className="space-y-4 mt-4 pr-1">
+          {mode === "create" && (
+            <div>
+              <Label className="mb-1.5 block text-xs font-medium">
+                Company *
+              </Label>
+              <Select
+                value={form.companyId}
+                onValueChange={(v) => update("companyId", v)}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Select approved company" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.companyName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <FormField label="Title *">
+            <Input
+              required
+              value={form.title}
+              onChange={(e) => update("title", e.target.value)}
+              placeholder="Senior Backend Engineer"
+            />
+          </FormField>
+          <FormField label="Title (Japanese)">
+            <Input
+              value={form.titleJa}
+              onChange={(e) => update("titleJa", e.target.value)}
+              placeholder="シニアバックエンドエンジニア"
+            />
+          </FormField>
+          <FormField label="Description * (min 50 chars)">
+            <Textarea
+              required
+              rows={5}
+              minLength={50}
+              value={form.description}
+              onChange={(e) => update("description", e.target.value)}
+              placeholder="Describe the role, responsibilities, requirements..."
+            />
+          </FormField>
+          <FormField label="Description (Japanese)">
+            <Textarea
+              rows={4}
+              value={form.descriptionJa}
+              onChange={(e) => update("descriptionJa", e.target.value)}
+            />
+          </FormField>
+          <FormField label="Location *">
+            <Input
+              required
+              value={form.location}
+              onChange={(e) => update("location", e.target.value)}
+              placeholder="Tokyo, Japan"
+            />
+          </FormField>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Job type">
+              <Select
+                value={form.jobType}
+                onValueChange={(v) => update("jobType", v)}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {JOB_TYPES.map((jt) => (
+                    <SelectItem key={jt} value={jt}>
+                      {jt.replace("_", " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField label="JLPT required">
+              <Select
+                value={form.jlptRequired}
+                onValueChange={(v) => update("jlptRequired", v)}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {JLPT_LEVELS.map((l) => (
+                    <SelectItem key={l} value={l}>
+                      {l}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <FormField label="Salary min">
+              <Input
+                type="number"
+                value={form.salaryMin}
+                onChange={(e) => update("salaryMin", e.target.value)}
+                placeholder="500000"
+              />
+            </FormField>
+            <FormField label="Salary max">
+              <Input
+                type="number"
+                value={form.salaryMax}
+                onChange={(e) => update("salaryMax", e.target.value)}
+                placeholder="800000"
+              />
+            </FormField>
+            <FormField label="Type">
+              <Select
+                value={form.salaryType}
+                onValueChange={(v) => update("salaryType", v)}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="HOURLY">Hourly</SelectItem>
+                  <SelectItem value="MONTHLY">Monthly</SelectItem>
+                  <SelectItem value="YEARLY">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormField>
+          </div>
+          <FormField label="Skills (comma-separated)">
+            <Input
+              value={form.skillsInput}
+              onChange={(e) => update("skillsInput", e.target.value)}
+              placeholder="React, Go, PostgreSQL"
+            />
+          </FormField>
+          <FormField label="Deadline">
+            <Input
+              type="date"
+              value={form.deadline}
+              onChange={(e) => update("deadline", e.target.value)}
+            />
+          </FormField>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <Switch
+              checked={form.isActive}
+              onCheckedChange={(v) => update("isActive", v)}
+            />
+            <span className="text-sm">Active</span>
+          </label>
+          <div className="flex gap-2 pt-2 sticky bottom-0 bg-card pb-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={saving}
+              className="flex-1 bg-brand-gradient text-white hover:opacity-90 font-semibold"
+            >
+              {saving
+                ? "Saving..."
+                : mode === "create"
+                  ? "Create Job"
+                  : "Save Changes"}
+            </Button>
+          </div>
+        </form>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function FormField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <Label className="mb-1.5 block text-xs font-medium">{label}</Label>
+      {children}
+    </div>
+  );
+}
 
 function CandidatesTab() {
   const { t, locale } = useT();
@@ -1219,6 +1629,11 @@ function TestimonialsTab() {
   const [items, setItems] = useState<TestimonialRow[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editorState, setEditorState] = useState<{
+    mode: "create" | "edit";
+    item: TestimonialRow | null;
+  } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1241,16 +1656,26 @@ function TestimonialsTab() {
   async function toggle(id: string) {
     setBusyId(id);
     try {
-      await api(`/api/admin/list/testimonials`, {
-        method: "PATCH",
-        body: JSON.stringify({ id }),
-      });
-      toast.success("Updated.");
+      await api(`/api/admin/testimonials/${id}/toggle`, { method: "PATCH" });
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed.");
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function remove(id: string) {
+    setBusyId(id);
+    try {
+      await api(`/api/admin/testimonials/${id}`, { method: "DELETE" });
+      toast.success("Testimonial deleted.");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed.");
+    } finally {
+      setBusyId(null);
+      setDeleteId(null);
     }
   }
 
@@ -1260,6 +1685,14 @@ function TestimonialsTab() {
         <h2 className="font-display font-extrabold text-xl">
           {t("admin.testimonials")}
         </h2>
+        <Button
+          size="sm"
+          className="bg-brand-gradient text-white hover:opacity-90 font-semibold"
+          onClick={() => setEditorState({ mode: "create", item: null })}
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          Add Testimonial
+        </Button>
       </div>
 
       {loading ? (
@@ -1268,7 +1701,20 @@ function TestimonialsTab() {
           <CardSkeleton lines={4} />
         </div>
       ) : !items || items.length === 0 ? (
-        <EmptyState icon={Quote} title="No testimonials yet" />
+        <EmptyState
+          icon={Quote}
+          title="No testimonials yet"
+          description="Add success stories from placed candidates and happy employers."
+          action={
+            <Button
+              className="bg-brand-gradient text-white"
+              onClick={() => setEditorState({ mode: "create", item: null })}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Add Testimonial
+            </Button>
+          }
+        />
       ) : (
         <div className="grid sm:grid-cols-2 gap-4">
           {items.map((row) => (
@@ -1307,19 +1753,465 @@ function TestimonialsTab() {
                 <span className="text-xs text-muted-foreground">
                   Order #{row.order}
                 </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={busyId === row.id}
-                  onClick={() => toggle(row.id)}
-                >
-                  {row.isActive ? "Hide" : "Show"}
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busyId === row.id}
+                    onClick={() => toggle(row.id)}
+                  >
+                    {row.isActive ? "Hide" : "Show"}
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-muted-foreground hover:text-crimson"
+                    aria-label="Edit"
+                    onClick={() =>
+                      setEditorState({ mode: "edit", item: row })
+                    }
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <AlertDialog
+                    open={deleteId === row.id}
+                    onOpenChange={(o) => setDeleteId(o ? row.id : null)}
+                  >
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        aria-label="Delete"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          Delete this testimonial?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          "{row.name}"'s testimonial will be permanently
+                          removed.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-white hover:bg-destructive/90"
+                          onClick={() => remove(row.id)}
+                        >
+                          {t("common.delete")}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {editorState && (
+        <TestimonialEditorSheet
+          mode={editorState.mode}
+          item={editorState.item}
+          onClose={() => setEditorState(null)}
+          onSaved={load}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ============== Testimonial Editor Sheet ============== */
+
+interface TestimonialFormState {
+  name: string;
+  role: string;
+  company: string;
+  content: string;
+  contentJa: string;
+  photoUrl: string;
+  order: string;
+  isActive: boolean;
+}
+
+function TestimonialEditorSheet({
+  mode,
+  item,
+  onClose,
+  onSaved,
+}: {
+  mode: "create" | "edit";
+  item: TestimonialRow | null;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  const [form, setForm] = useState<TestimonialFormState>({
+    name: "",
+    role: "",
+    company: "",
+    content: "",
+    contentJa: "",
+    photoUrl: "",
+    order: "0",
+    isActive: true,
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (item) {
+      setForm({
+        name: item.name,
+        role: item.role,
+        company: item.company ?? "",
+        content: item.content,
+        contentJa: item.contentJa ?? "",
+        photoUrl: item.photoUrl ?? "",
+        order: String(item.order),
+        isActive: item.isActive,
+      });
+    }
+  }, [item]);
+
+  function update<K extends keyof TestimonialFormState>(
+    key: K,
+    value: TestimonialFormState[K],
+  ) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (form.content.length < 10) {
+      toast.error("Content must be at least 10 characters.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload: Record<string, unknown> = {
+        name: form.name,
+        role: form.role,
+        company: form.company || undefined,
+        content: form.content,
+        contentJa: form.contentJa || undefined,
+        photoUrl: form.photoUrl || undefined,
+        order: Number(form.order) || 0,
+        isActive: form.isActive,
+      };
+      if (mode === "create") {
+        await api("/api/admin/testimonials", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        toast.success("Testimonial created.");
+      } else if (item) {
+        await api(`/api/admin/testimonials/${item.id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+        toast.success("Testimonial updated.");
+      }
+      await onSaved();
+      onClose();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Sheet open onOpenChange={(o) => !o && onClose()}>
+      <SheetContent className="w-[440px] sm:max-w-[440px] overflow-y-auto scroll-area">
+        <SheetHeader>
+          <SheetTitle>
+            {mode === "create" ? "Add Testimonial" : "Edit Testimonial"}
+          </SheetTitle>
+        </SheetHeader>
+        <form onSubmit={submit} className="space-y-4 mt-4 pr-1">
+          <FormField label="Name *">
+            <Input
+              required
+              value={form.name}
+              onChange={(e) => update("name", e.target.value)}
+              placeholder="Arjun Sharma"
+            />
+          </FormField>
+          <FormField label="Role *">
+            <Input
+              required
+              value={form.role}
+              onChange={(e) => update("role", e.target.value)}
+              placeholder="Backend Engineer"
+            />
+          </FormField>
+          <FormField label="Company">
+            <Input
+              value={form.company}
+              onChange={(e) => update("company", e.target.value)}
+              placeholder="TechNova Japan"
+            />
+          </FormField>
+          <FormField label="Content (English) *">
+            <Textarea
+              required
+              rows={4}
+              minLength={10}
+              value={form.content}
+              onChange={(e) => update("content", e.target.value)}
+              placeholder="IndiGate made my move to Tokyo seamless..."
+            />
+          </FormField>
+          <FormField label="Content (Japanese)">
+            <Textarea
+              rows={4}
+              value={form.contentJa}
+              onChange={(e) => update("contentJa", e.target.value)}
+              placeholder="IndiGateのおかげで東京への移住がスムーズでした..."
+            />
+          </FormField>
+          <FormField label="Photo URL">
+            <Input
+              value={form.photoUrl}
+              onChange={(e) => update("photoUrl", e.target.value)}
+              placeholder="https://..."
+            />
+          </FormField>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Display order">
+              <Input
+                type="number"
+                value={form.order}
+                onChange={(e) => update("order", e.target.value)}
+              />
+            </FormField>
+            <label className="flex items-center gap-2 cursor-pointer pt-6">
+              <Switch
+                checked={form.isActive}
+                onCheckedChange={(v) => update("isActive", v)}
+              />
+              <span className="text-sm">Active</span>
+            </label>
+          </div>
+          <div className="flex gap-2 pt-2 sticky bottom-0 bg-card pb-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={saving}
+              className="flex-1 bg-brand-gradient text-white hover:opacity-90 font-semibold"
+            >
+              {saving
+                ? "Saving..."
+                : mode === "create"
+                  ? "Create"
+                  : "Save Changes"}
+            </Button>
+          </div>
+        </form>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+/* ============== Contacts tab ============== */
+
+interface ContactRow {
+  id: string;
+  name: string;
+  email: string;
+  subject: string | null;
+  message: string;
+  userId: string | null;
+  createdAt: string;
+}
+
+function ContactsTab() {
+  const { t, locale } = useT();
+  const [items, setItems] = useState<ContactRow[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<ContactRow | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api<{ items: ContactRow[] }>(
+        "/api/admin/list/contacts",
+      );
+      setItems(res.items);
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const filtered = useMemo(() => {
+    if (!items) return [];
+    const q = search.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.email.toLowerCase().includes(q) ||
+        (c.subject ?? "").toLowerCase().includes(q) ||
+        c.message.toLowerCase().includes(q),
+    );
+  }, [items, search]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h2 className="font-display font-extrabold text-xl">
+          Contact Enquiries
+        </h2>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("common.search")}
+              className="pl-8 h-9 w-[200px]"
+            />
+          </div>
+          <ExportCsvButton resource="contacts" />
+        </div>
+      </div>
+
+      {loading ? (
+        <CardSkeleton lines={8} />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={Mail}
+          title="No enquiries yet"
+          description="Contact form submissions will appear here."
+        />
+      ) : (
+        <SectionCard bodyClassName="p-0">
+          <div className="max-h-[70vh] overflow-y-auto scroll-area">
+            <Table>
+              <TableHeader className="sticky top-0 bg-card z-10">
+                <TableRow>
+                  <TableHead className="pl-5 sm:pl-6">Name</TableHead>
+                  <TableHead className="hidden sm:table-cell">Email</TableHead>
+                  <TableHead className="hidden md:table-cell">Subject</TableHead>
+                  <TableHead className="hidden lg:table-cell">Message</TableHead>
+                  <TableHead className="hidden sm:table-cell">Date</TableHead>
+                  <TableHead className="text-right pr-5 sm:pr-6">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell className="pl-5 sm:pl-6">
+                      <p className="font-semibold text-sm">{c.name}</p>
+                      <p className="text-xs text-muted-foreground sm:hidden">
+                        {c.email}
+                      </p>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell text-sm">
+                      {c.email}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-sm">
+                      {c.subject || "—"}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground max-w-xs truncate">
+                      {c.message}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+                      {formatDate(c.createdAt, locale)}
+                    </TableCell>
+                    <TableCell className="text-right pr-5 sm:pr-6">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setSelected(c)}
+                      >
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </SectionCard>
+      )}
+
+      <Sheet
+        open={!!selected}
+        onOpenChange={(o) => !o && setSelected(null)}
+      >
+        <SheetContent className="w-[440px] sm:max-w-[440px] overflow-y-auto scroll-area">
+          <SheetHeader>
+            <SheetTitle>Enquiry from {selected?.name}</SheetTitle>
+          </SheetHeader>
+          {selected && (
+            <div className="space-y-4 mt-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                  Email
+                </p>
+                <a
+                  href={`mailto:${selected.email}`}
+                  className="text-sm text-crimson hover:underline"
+                >
+                  {selected.email}
+                </a>
+              </div>
+              {selected.subject && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                    Subject
+                  </p>
+                  <p className="text-sm">{selected.subject}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                  Message
+                </p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap bg-muted/40 rounded-lg p-3">
+                  {selected.message}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                  Received
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {formatDate(selected.createdAt, locale)}
+                </p>
+              </div>
+              <a href={`mailto:${selected.email}`}>
+                <Button className="w-full bg-brand-gradient text-white hover:opacity-90 font-semibold">
+                  <Mail className="mr-2 h-4 w-4" />
+                  Reply by Email
+                </Button>
+              </a>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

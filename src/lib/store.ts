@@ -53,7 +53,8 @@ export interface AppState {
     | "candidates"
     | "companies"
     | "applications"
-    | "testimonials";
+    | "testimonials"
+    | "contacts";
   // locale
   locale: Locale;
   // actions

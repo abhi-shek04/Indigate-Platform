@@ -177,6 +177,41 @@ export async function GET(
       return ok({ items: rows });
     }
 
+    if (resource === "contacts") {
+      const rows = await db.contactSubmission.findMany({
+        orderBy: { createdAt: "desc" },
+        include: { user: { select: { email: true } } },
+      });
+      const items = rows.map((c) => ({
+        id: c.id,
+        name: c.name,
+        email: c.email,
+        subject: c.subject,
+        message: c.message,
+        userId: c.userId,
+        createdAt: c.createdAt.toISOString(),
+      }));
+      if (exportCsv) {
+        const header = ["Name", "Email", "Subject", "Message", "Date"];
+        const lines = items.map((i) =>
+          [
+            csvEscape(i.name),
+            csvEscape(i.email),
+            csvEscape(i.subject ?? ""),
+            csvEscape(i.message),
+            csvEscape(new Date(i.createdAt).toLocaleDateString()),
+          ].join(","),
+        );
+        return new Response([header.join(","), ...lines].join("\n"), {
+          headers: {
+            "Content-Type": "text/csv",
+            "Content-Disposition": `attachment; filename="indigate-contacts.csv"`,
+          },
+        });
+      }
+      return ok({ items });
+    }
+
     return err("Unknown resource.", 404);
   } catch (e) {
     return handleError(e);

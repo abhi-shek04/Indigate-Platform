@@ -37,6 +37,7 @@ import {
   Building2,
   Wrench,
   ArrowLeftRight,
+  HelpCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { JobDTO, TestimonialDTO } from "@/lib/types";
@@ -532,6 +533,49 @@ export function LandingPage() {
           </div>
         </section>
       )}
+
+      {/* FAQ */}
+      <section className="py-20 sm:py-24">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+          <Reveal variants={fadeUp} className="text-center mb-12">
+            <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
+              <HelpCircle className="mr-1 h-3 w-3" />
+              {t("faq.badge")}
+            </Badge>
+            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+              {t("faq.title")}
+            </h2>
+            <p className="mt-2 text-muted-foreground">{t("faq.subtitle")}</p>
+          </Reveal>
+          <Reveal variants={fadeUp} delay={0.1}>
+            <Accordion type="single" collapsible className="space-y-2">
+              {[
+                { q: t("faq.q1"), a: t("faq.a1") },
+                { q: t("faq.q2"), a: t("faq.a2") },
+                { q: t("faq.q3"), a: t("faq.a3") },
+                { q: t("faq.q4"), a: t("faq.a4") },
+                { q: t("faq.q5"), a: t("faq.a5") },
+                { q: t("faq.q6"), a: t("faq.a6") },
+                { q: t("faq.q7"), a: t("faq.a7") },
+                { q: t("faq.q8"), a: t("faq.a8") },
+              ].map((item, i) => (
+                <AccordionItem
+                  key={i}
+                  value={`faq-${i}`}
+                  className="border border-border rounded-xl px-6 bg-background"
+                >
+                  <AccordionTrigger className="font-display font-semibold text-left hover:no-underline py-5 text-base">
+                    {item.q}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground leading-relaxed pb-5">
+                    {item.a}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </Reveal>
+        </div>
+      </section>
 
       {/* CTA */}
       <section className="py-20 sm:py-24">

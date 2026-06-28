@@ -84,7 +84,6 @@ import {
   CalendarClock,
   BarChart2,
   Search,
-  ExternalLink,
 } from "lucide-react";
 import type {
   ApplicationDTO,
@@ -1850,10 +1849,13 @@ function CandidateTalentCard({
       <div className="mt-4 flex items-center justify-between">
         <span className="text-xs text-muted-foreground">
           {candidate.experienceYears} {t("dash.company.talent.years")}
+          {candidate.hasResume && (
+            <span className="text-emerald-600 font-medium ml-2">✓ Resume</span>
+          )}
         </span>
         <Button size="sm" variant="outline" onClick={onView}>
           <Eye className="mr-1.5 h-3.5 w-3.5" />
-          {t("dash.company.talent.resume")}
+          View profile
         </Button>
       </div>
     </div>
@@ -1891,27 +1893,26 @@ function CandidateDetailPanel({ candidate }: { candidate: CandidateTalentDTO }) 
           ))}
         </div>
       </div>
-      {candidate.education && candidate.education.length > 0 && (
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Education</h3>
-          <div className="space-y-2">
-            {candidate.education.map((e, i) => (
-              <div key={i} className="text-sm">
-                <p className="font-medium">{e.degree} — {e.field}</p>
-                <p className="text-muted-foreground text-xs">{e.institution} · {e.year}</p>
-              </div>
-            ))}
-          </div>
+          <p className="text-xs text-muted-foreground">Experience</p>
+          <p className="font-medium">{candidate.experienceYears} years</p>
         </div>
-      )}
-      {candidate.resumeUrl && (
-        <a href={candidate.resumeUrl} target="_blank" rel="noreferrer">
-          <Button className="w-full bg-brand-gradient text-white hover:opacity-90 font-semibold">
-            <ExternalLink className="mr-2 h-4 w-4" />
-            {t("dash.company.talent.resume")}
-          </Button>
-        </a>
-      )}
+        <div>
+          <p className="text-xs text-muted-foreground">Education records</p>
+          <p className="font-medium">{candidate.educationCount}</p>
+        </div>
+        {candidate.hasResume && (
+          <div>
+            <p className="text-xs text-muted-foreground">Resume</p>
+            <p className="font-medium text-emerald-600">✓ Uploaded</p>
+          </div>
+        )}
+      </div>
+      <div className="pt-3 border-t text-xs text-muted-foreground leading-relaxed">
+        Contact details (email, phone, resume) are shared only after this
+        candidate applies to your job. Use your job postings to attract them.
+      </div>
     </div>
   );
 }

@@ -86,15 +86,39 @@ export async function PATCH(
         select: { email: true },
       });
       if (candidateUser) {
-        void sendEmail({
-          to: candidateUser.email,
-          ...emails.statusUpdate(
-            app.candidate.fullName,
-            app.job.title,
-            app.job.company.companyName,
-            parsed.data.status,
-          ),
-        });
+        // For INTERVIEWED with a date, send the dedicated interview email
+        if (
+          parsed.data.status === "INTERVIEWED" &&
+          parsed.data.interviewDate
+        ) {
+          const formattedDate = new Date(
+            parsed.data.interviewDate,
+          ).toLocaleString("en-US", {
+            dateStyle: "full",
+            timeStyle: "short",
+            timeZone: "Asia/Tokyo",
+          }) + " JST";
+          void sendEmail({
+            to: candidateUser.email,
+            ...emails.interviewScheduled(
+              app.candidate.fullName,
+              app.job.title,
+              app.job.company.companyName,
+              formattedDate,
+              parsed.data.interviewNotes ?? "",
+            ),
+          });
+        } else {
+          void sendEmail({
+            to: candidateUser.email,
+            ...emails.statusUpdate(
+              app.candidate.fullName,
+              app.job.title,
+              app.job.company.companyName,
+              parsed.data.status,
+            ),
+          });
+        }
       }
     }
 

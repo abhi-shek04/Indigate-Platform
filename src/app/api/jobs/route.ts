@@ -67,29 +67,48 @@ const createSchema = z.object({
   salaryType: z.enum(["HOURLY", "MONTHLY", "YEARLY"]),
   skillsRequired: z.array(z.string()).default([]),
   deadline: z.string().optional(),
+  companyId: z.string().optional(), // ADMIN only: post on behalf of a company
 });
 
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return err("Unauthorized.", 401);
-    if (session.role !== "COMPANY") return err("Only companies can post jobs.", 403);
-
-    const company = await db.companyProfile.findUnique({
-      where: { userId: session.id },
-    });
-    if (!company) return err("Company profile not found.", 404);
-    if (!company.isApproved)
-      return err("Your company is pending admin approval.", 403);
+    if (session.role !== "COMPANY" && session.role !== "ADMIN")
+      return err("Only companies and admins can post jobs.", 403);
 
     const body = await req.json().catch(() => null);
     const parsed = createSchema.safeParse(body);
     if (!parsed.success)
       return err(parsed.error.issues[0]?.message ?? "Invalid input.", 422);
 
+    // Determine which company to post under
+    let companyId: string;
+    if (session.role === "ADMIN") {
+      // Admin can specify any approved company
+      if (!parsed.data.companyId)
+        return err("Admin must specify a companyId.", 422);
+      const targetCompany = await db.companyProfile.findUnique({
+        where: { id: parsed.data.companyId },
+      });
+      if (!targetCompany) return err("Company not found.", 404);
+      if (!targetCompany.isApproved)
+        return err("Target company is not approved.", 400);
+      companyId = targetCompany.id;
+    } else {
+      // Company posts under their own profile
+      const company = await db.companyProfile.findUnique({
+        where: { userId: session.id },
+      });
+      if (!company) return err("Company profile not found.", 404);
+      if (!company.isApproved)
+        return err("Your company is pending admin approval.", 403);
+      companyId = company.id;
+    }
+
     const job = await db.job.create({
       data: {
-        companyId: company.id,
+        companyId,
         title: parsed.data.title,
         titleJa: parsed.data.titleJa || null,
         description: parsed.data.description,

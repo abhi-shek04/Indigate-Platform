@@ -205,4 +205,20 @@ export const emails = {
       cta: { label: "Open Admin Panel", url: `${APP_URL}/` },
     }),
   }),
+
+  interviewScheduled: (
+    candidateName: string,
+    jobTitle: string,
+    companyName: string,
+    date: string,
+    notes: string,
+  ) => ({
+    subject: `Interview scheduled — ${jobTitle} at ${companyName}`,
+    html: buildEmail({
+      title: "Interview Scheduled",
+      heading: "Interview scheduled 📅",
+      body: `<p>Hi ${candidateName}, <strong>${companyName}</strong> has scheduled an interview for <strong>${jobTitle}</strong>.</p><p><strong>Date &amp; time:</strong> ${date}</p>${notes ? `<p><strong>Details:</strong> ${notes}</p>` : ""}`,
+      cta: { label: "View in dashboard", url: `${APP_URL}/` },
+    }),
+  }),
 };

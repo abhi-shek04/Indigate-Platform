@@ -3,7 +3,17 @@ import { db } from "@/lib/db";
 import type { Role, SessionUser } from "@/lib/types";
 
 const SESSION_COOKIE = "indigate_session";
-const SECRET = process.env.SESSION_SECRET || "indigate-dev-secret-change-me";
+const SECRET =
+  process.env.SESSION_SECRET ?? "indigate-dev-secret-change-in-dotenv";
+
+if (
+  process.env.NODE_ENV === "production" &&
+  !process.env.SESSION_SECRET
+) {
+  throw new Error(
+    "SESSION_SECRET env var must be set in production. Generate one with: openssl rand -base64 32",
+  );
+}
 
 // Simple HMAC-signed JSON session token (no external deps).
 async function hmac(

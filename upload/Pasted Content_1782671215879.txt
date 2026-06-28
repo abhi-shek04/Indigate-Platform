@@ -1,0 +1,1759 @@
+ade guide
+Write the complete real-world upgrade guide
+
+Write the complete real-world upgrade guide
+bash
+
+cat > /mnt/user-data/outputs/indigate_realworld_complete.md << 'ENDOFFILE'
+# IndiGate — Real World Complete Upgrade Guide
+### Every missing feature + every improvement for a production-grade platform
+> Abhishek / Indobox Inc · Read everything before starting
+
+---
+
+## WHAT YOU HAVE RIGHT NOW (confirmed by codebase audit)
+
+✅ SPA architecture with Zustand view navigation  
+✅ Custom HMAC cookie auth (login/register/forgot/verify/reset all exist)  
+✅ Prisma SQLite schema — 8 models, full seed data (12 jobs, 6 companies, 5 candidates)  
+✅ Landing page — hero, stats count-up, featured jobs, how-it-works, value props, testimonials marquee, CTA, contact form  
+✅ Jobs listing with search + filters  
+✅ Job detail page + apply modal  
+✅ Candidate dashboard — overview, profile, applications, saved jobs, resume upload UI, resume builder (EN+JP preview)  
+✅ Company dashboard — overview, post job, manage applicants, company profile  
+✅ Admin panel — stats+charts, approve companies, manage all data, CSV export  
+✅ Notification bell with polling  
+✅ Framer Motion animations throughout  
+✅ Bilingual EN/JA i18n  
+
+❌ **What's broken or missing — this guide fixes all of it**
+
+---
+
+## ⚡ MASTER CONTEXT
+> Paste this block at the TOP of every prompt below. Every single one.
+
+```
+Project: IndiGate — India × Japan cross-border talent platform
+Company: Indobox Inc, Hyderabad | Domain: indigate.work
+
+━━━ ARCHITECTURE (READ BEFORE WRITING ANY CODE) ━━━
+
+This is a SINGLE-PAGE APP. There is only ONE route: "/".
+All views render inside src/app/page.tsx via Zustand store.
+Navigation = useApp().navigate(viewName) — NOT Next.js router.
+Do NOT create new pages/routes unless explicitly told to.
+
+Auth: Custom HMAC-signed cookie sessions — src/lib/auth.ts
+  Server: getSession() / requireSession() / requireRole()
+  Client: useApp().user / useApp().refreshAuth()
+  NOT NextAuth. Never import from next-auth.
+
+DB: SQLite via Prisma (db/custom.db). Arrays stored as JSON strings.
+  Arrays: JSON.parse(field) to read, JSON.stringify(arr) to write
+  Enums: plain strings validated in app layer
+
+State: useApp() from src/lib/store.ts — single Zustand store for everything
+i18n: useT() from src/lib/use-t.ts — t("key") for strings, pick(en, ja) for inline
+
+API calls: api() from src/lib/api-client.ts for JSON
+          raw fetch() for FormData uploads
+          ok() / err() from src/lib/api.ts for responses
+
+Design tokens (use these — never invent new ones):
+  bg-brand-gradient    text-gradient-brand    bg-mesh
+  glass    shadow-premium    shadow-glow-brand
+  text-crimson / bg-crimson    text-saffron / bg-saffron
+  font-display (Plus Jakarta Sans)
+
+━━━ KEY FILES ━━━
+src/lib/store.ts       — Zustand store, View type, all state
+src/lib/auth.ts        — session management
+src/lib/api.ts         — ok(), err(), DTO mappers
+src/lib/api-client.ts  — api() fetch wrapper
+src/lib/types.ts       — all TypeScript types
+src/lib/i18n.ts        — EN + JA dictionary
+src/lib/motion.tsx     — Reveal, RevealGroup, fadeUp, staggerItem
+src/components/brand/motion-primitives.tsx — MagneticButton, SpotlightCard
+
+━━━ CURRENT TABS IN STORE ━━━
+candidateTab: "overview"|"applications"|"profile"|"resume"|"saved"|"builder"
+companyTab:   "overview"|"jobs"|"new"|"applicants"|"profile"
+adminTab:     "overview"|"jobs"|"candidates"|"companies"|"applications"|"testimonials"
+
+━━━ DEMO ACCOUNTS (seeded) ━━━
+Candidate: arjun@example.com / candidate123
+Company:   hr@technova.jp / company123
+Admin:     admin@indigate.work / admin123
+
+━━━ CODING RULES ━━━
+- TypeScript strict — no 'any', no type assertions without reason
+- Every API route: check session at top, return proper HTTP codes
+- Every mutation: loading state on button + sonner toast on success/error
+- Every new i18n string: add to BOTH en and ja in src/lib/i18n.ts
+- Extend existing files — never recreate from scratch
+- 'use client' only when component uses hooks/browser events
+```
+
+---
+
+# PHASE 1 — CRITICAL BUGS (do these first — platform is broken without them)
+
+---
+
+## PROMPT 1 — File Upload System
+**The `/api/upload` route does not exist. Resumes and logos cannot be saved anywhere. This is the #1 blocking bug.**
+
+```
+[PASTE MASTER CONTEXT]
+
+PROMPT 1: Build the missing /api/upload route using Supabase Storage.
+
+CONTEXT:
+- candidate-dashboard.tsx calls: fetch("/api/upload", { method: "POST", body: formData })
+  with formData.append("file", file) and formData.append("kind", "resume")
+- company-dashboard.tsx calls the same with kind="logo"
+- src/app/api/upload/route.ts DOES NOT EXIST — create it now
+
+STEP 1 — Install Supabase client:
+npm install @supabase/supabase-js
+
+Add to .env:
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_KEY=your-service-role-key-NOT-anon-key
+SUPABASE_STORAGE_BUCKET=indigate-uploads
+
+STEP 2 — Create src/lib/supabase.ts:
+import { createClient } from '@supabase/supabase-js'
+export const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_KEY!
+)
+
+STEP 3 — Create src/app/api/upload/route.ts:
+import { NextRequest } from 'next/server'
+import { getSession } from '@/lib/auth'
+import { ok, err, handleError } from '@/lib/api'
+import { db } from '@/lib/db'
+import { supabaseAdmin } from '@/lib/supabase'
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getSession()
+    if (!session) return err('Unauthorized.', 401)
+
+    const formData = await req.formData()
+    const file = formData.get('file') as File | null
+    const kind = formData.get('kind') as string | null
+
+    if (!file || !kind) return err('Missing file or kind.', 400)
+
+    // Validate by kind
+    const validations: Record<string, { roles: string[]; types: string[]; maxMB: number }> = {
+      resume: { roles: ['CANDIDATE'], types: ['application/pdf'], maxMB: 5 },
+      logo:   { roles: ['COMPANY'],   types: ['image/jpeg','image/png','image/webp'], maxMB: 2 },
+      photo:  { roles: ['CANDIDATE'], types: ['image/jpeg','image/png','image/webp'], maxMB: 2 },
+    }
+    const rule = validations[kind]
+    if (!rule) return err('Invalid upload kind.', 400)
+    if (!rule.roles.includes(session.role)) return err('Forbidden.', 403)
+    if (!rule.types.includes(file.type)) return err(`Invalid file type for ${kind}.`, 400)
+    if (file.size > rule.maxMB * 1024 * 1024) return err(`File too large. Max ${rule.maxMB}MB.`, 400)
+
+    // Build storage path
+    const ext = file.name.split('.').pop() ?? 'bin'
+    const path = `${kind}s/${session.id}/${Date.now()}.${ext}`
+
+    // Convert File to Buffer
+    const buffer = Buffer.from(await file.arrayBuffer())
+
+    // Upload to Supabase Storage
+    const bucket = process.env.SUPABASE_STORAGE_BUCKET!
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from(bucket)
+      .upload(path, buffer, { contentType: file.type, upsert: true })
+    if (uploadError) throw new Error(uploadError.message)
+
+    // Get public URL
+    const { data } = supabaseAdmin.storage.from(bucket).getPublicUrl(path)
+    const url = data.publicUrl
+
+    // Save URL to DB based on kind
+    if (kind === 'resume') {
+      await db.candidateProfile.update({
+        where: { userId: session.id },
+        data: { resumeUrl: url, resumeName: file.name },
+      })
+    } else if (kind === 'logo') {
+      await db.companyProfile.update({
+        where: { userId: session.id },
+        data: { logoUrl: url },
+      })
+    } else if (kind === 'photo') {
+      await db.candidateProfile.update({
+        where: { userId: session.id },
+        data: { photoUrl: url },
+      })
+    }
+
+    return ok({ url, name: file.name })
+  } catch (e) {
+    return handleError(e)
+  }
+}
+
+STEP 4 — Update next.config.ts to allow Supabase images:
+images: {
+  remotePatterns: [
+    { protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/public/**' },
+  ],
+},
+Also set: typescript: { ignoreBuildErrors: false }
+
+STEP 5 — In Supabase dashboard:
+Storage → Create bucket → Name: "indigate-uploads" → Public: ON
+Policies: Allow public SELECT (read), restrict INSERT to authenticated (our API handles this)
+
+STEP 6 — Also add a DELETE endpoint to the same route for removing resumes:
+DELETE /api/upload?kind=resume
+- Verify session is CANDIDATE
+- Set resumeUrl=null, resumeName=null in CandidateProfile
+- Return ok({ removed: true })
+
+Expected result: Resume upload saves a real file. Logo upload works.
+Profile photos save. Files appear in Supabase Storage dashboard.
+```
+
+---
+
+## PROMPT 2 — Email System (Resend)
+**Password reset tokens exist in the DB but never email. Registration sends nothing. Companies never get notified of applications.**
+
+```
+[PASTE MASTER CONTEXT]
+
+PROMPT 2: Real transactional emails with Resend.
+
+STEP 1 — Install:
+npm install resend
+
+Add to .env:
+RESEND_API_KEY=re_your_key_from_resend.com
+EMAIL_FROM=IndiGate <noreply@indigate.work>
+ADMIN_EMAIL=admin@indigate.work
+
+STEP 2 — Create src/lib/email.ts with full template system:
+
+import { Resend } from 'resend'
+const resend = new Resend(process.env.RESEND_API_KEY)
+
+export async function sendEmail(to: string, subject: string, html: string) {
+  if (!process.env.RESEND_API_KEY) {
+    console.log('[EMAIL DEV - not sent]', { to, subject })
+    return
+  }
+  const { error } = await resend.emails.send({
+    from: process.env.EMAIL_FROM ?? 'IndiGate <noreply@indigate.work>',
+    to, subject, html,
+  })
+  if (error) console.error('[RESEND ERROR]', error)
+}
+
+// Base HTML template - inline styles for email client compatibility
+function base(heading: string, body: string, cta?: { label: string; url: string }): string {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">
+  <style>body{margin:0;padding:0;background:#f8f5f0;font-family:Arial,sans-serif}
+  .wrap{max-width:560px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+  .head{background:linear-gradient(135deg,#f59e0b,#dc2626);padding:28px 36px}
+  .logo{font-size:22px;font-weight:800;color:#fff;letter-spacing:-.5px}
+  .body{padding:36px;color:#1a1a1a;line-height:1.7;font-size:15px}
+  h1{margin:0 0 16px;font-size:22px}
+  p{margin:0 0 14px;color:#444}
+  .btn{display:inline-block;padding:13px 28px;background:linear-gradient(135deg,#f59e0b,#dc2626);color:#fff!important;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;margin-top:8px}
+  .foot{padding:20px 36px;background:#f8f5f0;border-top:1px solid #eee;font-size:12px;color:#999}
+  </style></head><body>
+  <div class="wrap">
+    <div class="head"><span class="logo">IndiGate</span></div>
+    <div class="body">
+      <h1>${heading}</h1>${body}
+      ${cta ? `<a href="${cta.url}" class="btn">${cta.label}</a>` : ''}
+    </div>
+    <div class="foot">© 2025 IndiGate by Indobox Inc · 🇮🇳 India × Japan 🇯🇵 · <a href="https://indigate.work" style="color:#f59e0b">indigate.work</a></div>
+  </div></body></html>`
+}
+
+// All email templates
+export const Email = {
+  welcomeCandidate: (name: string) => ({
+    subject: 'Welcome to IndiGate — your Japan career starts here',
+    html: base('Welcome, ' + name + '! 🎉',
+      '<p>Your IndiGate account is ready. Complete your profile, upload your resume, and start applying to top jobs in Japan.</p>' +
+      '<p><strong>Next steps:</strong><br>1. Complete your profile (JLPT level, skills, bio)<br>2. Upload your resume (PDF)<br>3. Browse and apply to jobs</p>',
+      { label: 'Go to my dashboard →', url: 'https://indigate.work' }
+    ),
+  }),
+
+  welcomeCompany: (companyName: string, contactName: string) => ({
+    subject: `${companyName} — account under review`,
+    html: base('Welcome, ' + contactName,
+      `<p>Thank you for registering <strong>${companyName}</strong> on IndiGate.</p>` +
+      '<p>Our team will review your account within <strong>24–48 hours</strong>. You will receive an email the moment you\'re approved.</p>' +
+      '<p>Questions? Email us at <a href="mailto:contact@indigate.work">contact@indigate.work</a></p>'
+    ),
+  }),
+
+  companyApproved: (companyName: string, contactName: string) => ({
+    subject: `${companyName} is approved — start hiring on IndiGate`,
+    html: base('You\'re approved! ✅',
+      `<p>Hi ${contactName}, <strong>${companyName}</strong> has been approved on IndiGate.</p>` +
+      '<p>You can now post jobs and start connecting with Japan-ready Indian professionals.</p>',
+      { label: 'Post your first job →', url: 'https://indigate.work' }
+    ),
+  }),
+
+  passwordReset: (code: string) => ({
+    subject: 'Your IndiGate password reset code',
+    html: base('Reset your password',
+      '<p>Use this code to reset your password. It expires in <strong>30 minutes</strong>.</p>' +
+      `<div style="font-size:38px;font-weight:800;letter-spacing:10px;color:#dc2626;background:#fff5f5;border:2px solid #fecdd3;border-radius:10px;padding:18px;text-align:center;margin:20px 0;font-family:monospace">${code}</div>` +
+      '<p style="font-size:13px;color:#999">If you didn\'t request this, ignore this email.</p>'
+    ),
+  }),
+
+  emailVerification: (code: string) => ({
+    subject: 'Verify your IndiGate email — code inside',
+    html: base('Verify your email',
+      '<p>Enter this code in IndiGate to verify your email address.</p>' +
+      `<div style="font-size:38px;font-weight:800;letter-spacing:10px;color:#dc2626;background:#fff5f5;border:2px solid #fecdd3;border-radius:10px;padding:18px;text-align:center;margin:20px 0;font-family:monospace">${code}</div>`
+    ),
+  }),
+
+  applicationSubmitted: (candidateName: string, jobTitle: string, companyName: string) => ({
+    subject: `Application submitted — ${jobTitle} at ${companyName}`,
+    html: base('Application sent! 🚀',
+      `<p>Hi ${candidateName}, your application for <strong>${jobTitle}</strong> at <strong>${companyName}</strong> was submitted successfully.</p>` +
+      '<p>You\'ll be notified when the company reviews your profile. Track all your applications on your dashboard.</p>',
+      { label: 'Track my applications →', url: 'https://indigate.work' }
+    ),
+  }),
+
+  statusUpdate: (candidateName: string, jobTitle: string, companyName: string, status: string) => {
+    const map: Record<string, { subject: string; heading: string; body: string }> = {
+      SHORTLISTED: {
+        subject: `You've been shortlisted! — ${jobTitle} at ${companyName}`,
+        heading: 'Congratulations — you\'re shortlisted! 🎉',
+        body: `<p>Hi ${candidateName}, <strong>${companyName}</strong> has shortlisted you for <strong>${jobTitle}</strong>. They'll be in touch about next steps.</p>`,
+      },
+      INTERVIEWED: {
+        subject: `Interview invitation — ${jobTitle} at ${companyName}`,
+        heading: 'Interview invitation 🤝',
+        body: `<p>Hi ${candidateName}, <strong>${companyName}</strong> would like to interview you for <strong>${jobTitle}</strong>. Check your dashboard for the date and details.</p>`,
+      },
+      OFFERED: {
+        subject: `Job offer received! — ${jobTitle} at ${companyName}`,
+        heading: 'You received a job offer! 🥳',
+        body: `<p>Hi ${candidateName}, <strong>${companyName}</strong> has extended a job offer for <strong>${jobTitle}</strong>. Log in to review and respond.</p>`,
+      },
+      REJECTED: {
+        subject: `Update on your application — ${jobTitle}`,
+        heading: 'Application update',
+        body: `<p>Hi ${candidateName}, thank you for your interest in <strong>${jobTitle}</strong> at <strong>${companyName}</strong>. They have decided to move forward with other candidates. Keep applying — the right role is out there.</p>`,
+      },
+    }
+    const m = map[status]
+    if (!m) return null
+    return { subject: m.subject, html: base(m.heading, m.body, { label: 'View dashboard →', url: 'https://indigate.work' }) }
+  },
+
+  newApplicant: (companyName: string, candidateName: string, jobTitle: string, jlptLevel: string) => ({
+    subject: `New application for ${jobTitle}`,
+    html: base('New applicant! 📋',
+      `<p><strong>${candidateName}</strong> (JLPT ${jlptLevel}) has applied to <strong>${jobTitle}</strong>.</p>` +
+      '<p>Review their profile and resume on your company dashboard.</p>',
+      { label: 'Review applicant →', url: 'https://indigate.work' }
+    ),
+  }),
+
+  adminNewCompany: (companyName: string, contactEmail: string) => ({
+    subject: `[Admin] New company pending approval — ${companyName}`,
+    html: base('New company needs approval',
+      `<p><strong>${companyName}</strong> (${contactEmail}) has registered and is awaiting admin approval.</p>`,
+      { label: 'Open admin panel →', url: 'https://indigate.work' }
+    ),
+  }),
+
+  interviewScheduled: (candidateName: string, jobTitle: string, companyName: string, date: string, notes: string) => ({
+    subject: `Interview scheduled — ${jobTitle} at ${companyName}`,
+    html: base('Interview scheduled 📅',
+      `<p>Hi ${candidateName}, <strong>${companyName}</strong> has scheduled an interview for <strong>${jobTitle}</strong>.</p>` +
+      `<p><strong>Date & time:</strong> ${date}</p>` +
+      (notes ? `<p><strong>Details:</strong> ${notes}</p>` : ''),
+      { label: 'View in dashboard →', url: 'https://indigate.work' }
+    ),
+  }),
+}
+
+STEP 3 — Wire emails into existing API routes.
+Edit these files — ADD the import + send call. Do not change any other logic.
+
+a) src/app/api/auth/register/route.ts
+   After user is created, generate verify code:
+     const code = Math.floor(100000 + Math.random() * 900000).toString()
+     await db.user.update({ where: { id: user.id }, data: { verifyToken: code, isVerified: false } })
+   Then fire-and-forget (do NOT await — don't block registration response):
+     import { sendEmail, Email } from '@/lib/email'
+     if (role === 'CANDIDATE') {
+       sendEmail(email, ...Object.values(Email.welcomeCandidate(fullName ?? '')))
+       sendEmail(email, ...Object.values(Email.emailVerification(code)))
+     }
+     if (role === 'COMPANY') {
+       sendEmail(email, ...Object.values(Email.welcomeCompany(companyName ?? '', name ?? '')))
+       sendEmail(process.env.ADMIN_EMAIL!, ...Object.values(Email.adminNewCompany(companyName ?? '', email)))
+     }
+   ALSO change: isVerified: true → isVerified: false in the user.create call
+   (Demo seed accounts stay isVerified: true so they keep working)
+
+b) src/app/api/auth/login/route.ts
+   After finding user but BEFORE checking password, add:
+     if (!user.isVerified) return err('Please verify your email before logging in. Check your inbox.', 403)
+   NOTE: wrap this in a condition so it only applies to non-demo accounts, OR
+   just apply it to all — demo accounts have isVerified: true in seed so they still work.
+
+c) src/app/api/auth/reset-request/route.ts
+   Find the console.log line. Replace it with:
+     import { sendEmail, Email } from '@/lib/email'
+     sendEmail(user.email, ...Object.values(Email.passwordReset(token)))
+
+d) src/app/api/applications/route.ts (POST handler)
+   After creating the application, fire-and-forget:
+     // Get candidate's user email
+     const candidateUser = await db.user.findUnique({ where: { id: candidate.userId }, select: { email: true } })
+     // Get company's user email
+     const companyUser = await db.user.findUnique({ where: { id: job.company.userId }, select: { email: true } })
+     if (candidateUser) sendEmail(candidateUser.email, ...Object.values(Email.applicationSubmitted(candidate.fullName, job.title, job.company.companyName)))
+     if (companyUser) sendEmail(companyUser.email, ...Object.values(Email.newApplicant(job.company.companyName, candidate.fullName, job.title, candidate.jlptLevel)))
+
+e) src/app/api/applications/[id]/status/route.ts (PATCH handler)
+   After updating status, fire-and-forget:
+     const emailContent = Email.statusUpdate(candidate.fullName, job.title, company.companyName, newStatus)
+     if (emailContent && candidateUser?.email) {
+       sendEmail(candidateUser.email, emailContent.subject, emailContent.html)
+     }
+
+f) src/app/api/admin/companies/[id]/route.ts (PATCH — approve action)
+   After isApproved update:
+     sendEmail(company.user.email, ...Object.values(Email.companyApproved(company.companyName, company.user.name ?? 'there')))
+
+Expected result: Every key event sends a real email. Resend dashboard shows delivery logs.
+Password reset works. Email verification required for new signups.
+```
+
+---
+
+## PROMPT 3 — Security Hardening
+**Session secret is hardcoded. TypeScript errors are hidden. No rate limiting. Not safe for production.**
+
+```
+[PASTE MASTER CONTEXT]
+
+PROMPT 3: Security hardening for production.
+
+STEP 1 — Fix hardcoded session secret in src/lib/auth.ts:
+Find: const SECRET = process.env.SESSION_SECRET || "indigate-dev-secret-change-me"
+Replace with:
+  const SECRET = process.env.SESSION_SECRET ?? 'indigate-dev-secret-change-in-dotenv'
+  if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET env var must be set in production')
+  }
+
+Add to .env:
+SESSION_SECRET=  ← generate with: openssl rand -base64 32
+
+STEP 2 — Create src/lib/rate-limit.ts:
+const store = new Map<string, { count: number; resetAt: number }>()
+
+export function rateLimit(key: string, max: number, windowMs: number): boolean {
+  const now = Date.now()
+  const entry = store.get(key)
+  if (!entry || now > entry.resetAt) {
+    store.set(key, { count: 1, resetAt: now + windowMs })
+    return true
+  }
+  if (entry.count >= max) return false
+  entry.count++
+  return true
+}
+
+// Cleanup every 5 min
+setInterval(() => {
+  const now = Date.now()
+  for (const [k, v] of store) if (now > v.resetAt) store.delete(k)
+}, 5 * 60 * 1000)
+
+STEP 3 — Apply rate limiting to auth routes:
+In src/app/api/auth/login/route.ts, top of POST:
+  const ip = req.headers.get('x-forwarded-for') ?? 'local'
+  if (!rateLimit(`login:${ip}`, 10, 15 * 60 * 1000)) {
+    return err('Too many login attempts. Please wait 15 minutes.', 429)
+  }
+
+In src/app/api/auth/register/route.ts, top of POST:
+  if (!rateLimit(`register:${ip}`, 5, 60 * 60 * 1000)) {
+    return err('Too many registrations from this IP. Please try again later.', 429)
+  }
+
+In src/app/api/auth/reset-request/route.ts, top of POST:
+  if (!rateLimit(`reset:${ip}`, 3, 60 * 60 * 1000)) {
+    return err('Too many password reset requests. Please try again in 1 hour.', 429)
+  }
+
+STEP 4 — Fix next.config.ts:
+const nextConfig = {
+  output: 'standalone',
+  typescript: { ignoreBuildErrors: false },  // CRITICAL: enable TS checks
+  reactStrictMode: true,
+  async headers() {
+    return [{
+      source: '/(.*)',
+      headers: [
+        { key: 'X-Frame-Options', value: 'DENY' },
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+      ],
+    }]
+  },
+}
+
+STEP 5 — Run TypeScript check and fix ALL errors:
+bunx tsc --noEmit
+Fix every error that appears. Common issues:
+  - 'any' types: replace with proper types from src/lib/types.ts
+  - Missing return types on async functions: add Promise<NextResponse>
+  - Unused imports: remove them
+Do NOT use @ts-ignore or @ts-expect-error — fix the actual problem.
+
+Expected result: Production-safe auth. Rate limited. TypeScript compiles cleanly.
+```
+
+---
+
+# PHASE 2 — CORE FEATURES (the platform is incomplete without these)
+
+---
+
+## PROMPT 4 — Resume PDF Export
+**The resume builder has bilingual EN/JP preview but can only window.print(). No clean PDF download.**
+
+```
+[PASTE MASTER CONTEXT]
+
+PROMPT 4: Clean PDF download from the resume builder.
+
+STEP 1 — Install:
+npm install @react-pdf/renderer
+npm install -D @types/react-pdf
+
+STEP 2 — Download Noto Sans JP font for Japanese rendering:
+Create public/fonts/ directory.
+Download NotoSansJP-Regular.ttf and NotoSansJP-Bold.ttf from Google Fonts.
+Place both in public/fonts/.
+
+STEP 3 — Create src/lib/pdf/english-resume.tsx:
+A @react-pdf/renderer Document matching the EnglishResume in resume-preview.tsx.
+
+import { Document, Page, View, Text, StyleSheet, Font } from '@react-pdf/renderer'
+import type { ResumeData } from '@/lib/resume-types'
+
+Font.register({ family: 'Helvetica' }) // built into react-pdf
+
+const S = StyleSheet.create({
+  page: { padding: 48, fontFamily: 'Helvetica', fontSize: 10, color: '#1a1a1a' },
+  name: { fontSize: 22, fontWeight: 'bold', marginBottom: 4 },
+  contact: { fontSize: 9, color: '#666', marginBottom: 16 },
+  sectionTitle: { fontSize: 11, fontWeight: 'bold', borderBottomWidth: 1, borderColor: '#f59e0b', paddingBottom: 3, marginBottom: 8, marginTop: 16 },
+  row: { flexDirection: 'row', marginBottom: 4 },
+  label: { width: 120, fontWeight: 'bold', color: '#444' },
+  value: { flex: 1 },
+  chip: { backgroundColor: '#f3f4f6', padding: '2 6', borderRadius: 4, marginRight: 4, fontSize: 9 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+})
+
+export function EnglishResumePDF({ data }: { data: ResumeData }) {
+  return (
+    <Document>
+      <Page size="A4" style={S.page}>
+        {/* Header */}
+        <Text style={S.name}>{data.name || 'Your Name'}</Text>
+        <Text style={S.contact}>
+          {[data.email, data.phone, data.address].filter(Boolean).join(' · ')}
+        </Text>
+
+        {/* Languages */}
+        {data.languages.length > 0 && (
+          <>
+            <Text style={S.sectionTitle}>LANGUAGES</Text>
+            <View style={S.chips}>
+              {data.languages.map((l, i) => <Text key={i} style={S.chip}>{l}</Text>)}
+            </View>
+          </>
+        )}
+
+        {/* Education */}
+        {data.education.length > 0 && (
+          <>
+            <Text style={S.sectionTitle}>EDUCATION</Text>
+            {data.education.map((e, i) => (
+              <View key={i} style={{ marginBottom: 6 }}>
+                <View style={S.row}>
+                  <Text style={S.label}>{e.year}</Text>
+                  <Text style={S.value}>{e.degree} in {e.field} — {e.institution}</Text>
+                </View>
+              </View>
+            ))}
+          </>
+        )}
+
+        {/* Work / Projects */}
+        {data.projects.length > 0 && (
+          <>
+            <Text style={S.sectionTitle}>WORK EXPERIENCE / PROJECTS</Text>
+            {data.projects.map((p, i) => (
+              <View key={i} style={{ marginBottom: 8 }}>
+                <View style={S.row}>
+                  <Text style={S.label}>{p.period}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: 'bold' }}>{p.name}</Text>
+                    <Text style={{ color: '#444', marginTop: 2 }}>{p.description}</Text>
+                    {p.techStack && <Text style={{ color: '#888', fontSize: 9, marginTop: 2 }}>Tech: {p.techStack}</Text>}
+                  </View>
+                </View>
+              </View>
+            ))}
+          </>
+        )}
+
+        {/* Activities */}
+        {data.activities.length > 0 && (
+          <>
+            <Text style={S.sectionTitle}>ACTIVITIES & VOLUNTEERING</Text>
+            {data.activities.map((a, i) => (
+              <View key={i} style={{ marginBottom: 6 }}>
+                <View style={S.row}>
+                  <Text style={S.label}>{a.period}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: 'bold' }}>{a.role} — {a.organization}</Text>
+                    <Text style={{ color: '#444', marginTop: 2 }}>{a.duties}</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </>
+        )}
+
+        {/* Self PR */}
+        {data.selfPr && (
+          <>
+            <Text style={S.sectionTitle}>ABOUT ME</Text>
+            <Text style={{ color: '#444', lineHeight: 1.6 }}>{data.selfPr}</Text>
+          </>
+        )}
+      </Page>
+    </Document>
+  )
+}
+
+STEP 4 — Create src/lib/pdf/japanese-resume.tsx:
+Japanese 履歴書 PDF matching the JapaneseResume component in resume-preview.tsx.
+
+import { Document, Page, View, Text, StyleSheet, Font } from '@react-pdf/renderer'
+import type { ResumeData } from '@/lib/resume-types'
+import { GENDER_OPTIONS, NATIONALITY_OPTIONS } from '@/lib/resume-types'
+
+Font.register({ family: 'NotoSansJP', src: '/fonts/NotoSansJP-Regular.ttf' })
+Font.register({ family: 'NotoSansJP-Bold', src: '/fonts/NotoSansJP-Bold.ttf' })
+
+const S = StyleSheet.create({
+  page: { padding: 32, fontFamily: 'NotoSansJP', fontSize: 9, color: '#000' },
+  title: { fontSize: 18, fontFamily: 'NotoSansJP-Bold', textAlign: 'center', marginBottom: 16 },
+  table: { borderWidth: 1, borderColor: '#000' },
+  row: { flexDirection: 'row', borderBottomWidth: 1, borderColor: '#000' },
+  th: { backgroundColor: '#f5f5f5', padding: '4 6', fontFamily: 'NotoSansJP-Bold', borderRightWidth: 1, borderColor: '#000', minWidth: 70 },
+  td: { padding: '4 6', flex: 1, borderRightWidth: 1, borderColor: '#000' },
+  sectionTitle: { backgroundColor: '#f0f0f0', padding: '3 6', fontFamily: 'NotoSansJP-Bold', fontSize: 9 },
+})
+
+export function JapaneseResumePDF({ data }: { data: ResumeData }) {
+  const gender = GENDER_OPTIONS.find(o => o.value === data.gender)?.labelJa ?? '—'
+  const nationality = NATIONALITY_OPTIONS.find(o => o.value === data.nationality)?.labelJa ?? data.nationality ?? '—'
+
+  return (
+    <Document>
+      <Page size="A4" style={S.page}>
+        <Text style={S.title}>履歴書</Text>
+        <View style={S.table}>
+          <View style={S.row}>
+            <Text style={S.th}>氏名</Text>
+            <Text style={{ ...S.td, fontFamily: 'NotoSansJP-Bold', fontSize: 11 }}>
+              {data.nameJa || data.name || '—'}
+            </Text>
+            <Text style={S.th}>生年月日</Text>
+            <Text style={S.td}>{data.dob || '—'}</Text>
+          </View>
+          <View style={S.row}>
+            <Text style={S.th}>性別</Text>
+            <Text style={S.td}>{gender}</Text>
+            <Text style={S.th}>国籍</Text>
+            <Text style={S.td}>{nationality}</Text>
+          </View>
+          <View style={S.row}>
+            <Text style={S.th}>メール</Text>
+            <Text style={S.td}>{data.email || '—'}</Text>
+            <Text style={S.th}>電話</Text>
+            <Text style={S.td}>{data.phone || '—'}</Text>
+          </View>
+          <View style={S.row}>
+            <Text style={S.th}>住所</Text>
+            <Text style={{ ...S.td, flex: 3 }}>{data.address || '—'}</Text>
+          </View>
+
+          {/* Education section */}
+          <View style={S.row}><Text style={{ ...S.sectionTitle, flex: 1 }}>学歴</Text></View>
+          {data.education.map((e, i) => (
+            <View key={i} style={S.row}>
+              <Text style={{ ...S.td, minWidth: 60 }}>{e.year}</Text>
+              <Text style={{ ...S.td, flex: 3 }}>{e.institutionJa || e.institution}　{e.degreeJa || e.degree}　{e.fieldJa || e.field}　卒業</Text>
+            </View>
+          ))}
+
+          {/* Projects/Work */}
+          <View style={S.row}><Text style={{ ...S.sectionTitle, flex: 1 }}>職歴・プロジェクト</Text></View>
+          {data.projects.map((p, i) => (
+            <View key={i} style={S.row}>
+              <Text style={{ ...S.td, minWidth: 60 }}>{p.period}</Text>
+              <Text style={{ ...S.td, flex: 3 }}>{p.nameJa || p.name}　{p.descriptionJa || p.description}</Text>
+            </View>
+          ))}
+
+          {/* Self PR */}
+          {data.selfPrJa && (
+            <>
+              <View style={S.row}><Text style={{ ...S.sectionTitle, flex: 1 }}>自己PR</Text></View>
+              <View style={S.row}><Text style={{ ...S.td, flex: 1, lineHeight: 1.6 }}>{data.selfPrJa}</Text></View>
+            </>
+          )}
+        </View>
+      </Page>
+    </Document>
+  )
+}
+
+STEP 5 — Update src/components/candidate/resume-builder.tsx:
+Find the toolbar buttons (near the existing Save and Printer buttons).
+Replace the Printer button with two PDFDownloadLink buttons:
+
+import { PDFDownloadLink } from '@react-pdf/renderer'
+import { EnglishResumePDF } from '@/lib/pdf/english-resume'
+import { JapaneseResumePDF } from '@/lib/pdf/japanese-resume'
+
+// In JSX toolbar:
+<PDFDownloadLink
+  document={<EnglishResumePDF data={data} />}
+  fileName={`${data.name || 'resume'}_IndiGate_EN.pdf`}
+>
+  {({ loading }) => (
+    <Button variant="outline" size="sm" disabled={loading}>
+      <Download className="h-4 w-4 mr-1.5" />
+      {loading ? 'Generating...' : 'Download EN'}
+    </Button>
+  )}
+</PDFDownloadLink>
+
+<PDFDownloadLink
+  document={<JapaneseResumePDF data={data} />}
+  fileName={`${data.nameJa || data.name || 'resume'}_IndiGate_JP.pdf`}
+>
+  {({ loading }) => (
+    <Button variant="outline" size="sm" disabled={loading}>
+      <Download className="h-4 w-4 mr-1.5" />
+      {loading ? '生成中...' : '履歴書 PDF'}
+    </Button>
+  )}
+</PDFDownloadLink>
+
+Expected result: Clicking "Download EN" or "履歴書 PDF" instantly downloads a clean,
+formatted PDF. No browser chrome, no navbar — just the resume.
+```
+
+---
+
+## PROMPT 5 — Company Talent Search
+**Companies can only see people who applied to their own jobs. No way to proactively find candidates.**
+
+```
+[PASTE MASTER CONTEXT]
+
+PROMPT 5: Candidate talent pool search for companies.
+
+STEP 1 — Add type to src/lib/types.ts (safe public subset — no private fields):
+export interface CandidateTalentDTO {
+  id: string
+  fullName: string
+  jlptLevel: JLPTLevel
+  skills: string[]
+  experienceYears: number
+  bio: string | null
+  location: string | null
+  photoUrl: string | null
+  hasResume: boolean         // true/false only — never expose actual URL
+  educationCount: number     // count only — no details exposed
+  createdAt: string
+}
+
+STEP 2 — Create src/app/api/candidates/search/route.ts:
+GET — auth required, role must be COMPANY or ADMIN
+
+Query params: jlptLevel, skills (comma-separated), minExp (number), search (text), page (default 1), limit (default 12)
+
+Logic:
+- Only return candidates where user.isVerified=true AND resumeUrl IS NOT NULL
+- Build Prisma where clause:
+  - jlptLevel: exact match
+  - experienceYears: { gte: Number(minExp) }
+  - search: { OR: [{ fullName: { contains: search }}, { bio: { contains: search }}, { skills: { contains: search }}] }
+  - skills: for each skill in comma-split, check { skills: { contains: skill } }
+- Select fields: id, fullName, jlptLevel, skills, experienceYears, bio, location, photoUrl, resumeUrl (boolean only!), education, createdAt
+- Sort by updatedAt DESC
+- Paginate with skip/take
+
+Map to CandidateTalentDTO — NEVER return actual resumeUrl, phone, linkedinUrl, userId, email:
+  hasResume: !!candidate.resumeUrl
+  educationCount: JSON.parse(candidate.education ?? '[]').length
+  skills: JSON.parse(candidate.skills)
+
+Return: { candidates: CandidateTalentDTO[], total, page, totalPages }
+
+STEP 3 — Update src/lib/store.ts:
+Add 'talent' to companyTab union type:
+  companyTab: "overview" | "jobs" | "new" | "applicants" | "talent" | "profile"
+
+STEP 4 — Update src/lib/i18n.ts, add to BOTH en and ja sections:
+en: {
+  "dash.company.talent": "Find Talent",
+  "talent.search": "Search candidates...",
+  "talent.jlpt": "JLPT Level",
+  "talent.exp": "Min. Experience",
+  "talent.empty": "No candidates match your filters.",
+  "talent.hasresume": "Has resume",
+  "talent.viewprofile": "View profile",
+  "talent.years": "yrs exp",
+  "talent.privacy": "Candidate contact details are shared only after they apply to your job.",
+}
+ja: {
+  "dash.company.talent": "人材を探す",
+  "talent.search": "候補者を検索...",
+  "talent.jlpt": "JLPTレベル",
+  "talent.exp": "最低経験年数",
+  "talent.empty": "条件に合う候補者が見つかりません。",
+  "talent.hasresume": "履歴書あり",
+  "talent.viewprofile": "プロフィールを見る",
+  "talent.years": "年の経験",
+  "talent.privacy": "候補者の連絡先は応募後に共有されます。",
+}
+
+STEP 5 — In src/components/company/company-dashboard.tsx:
+a) Add NavItem: { key: 'talent', label: t('dash.company.talent'), icon: Users2 }
+   Import Users2 from lucide-react
+
+b) Add render case in tab switch: {tab === 'talent' && <TalentSearch />}
+
+c) Create TalentSearch component at bottom of the file:
+
+function TalentSearch() {
+  const { t } = useT()
+  const [candidates, setCandidates] = useState<CandidateTalentDTO[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [search, setSearch] = useState('')
+  const [jlpt, setJlpt] = useState('')
+  const [minExp, setMinExp] = useState('')
+  const [page, setPage] = useState(1)
+  const [selected, setSelected] = useState<CandidateTalentDTO | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const p = new URLSearchParams({ page: String(page), limit: '12' })
+      if (search) p.set('search', search)
+      if (jlpt) p.set('jlptLevel', jlpt)
+      if (minExp) p.set('minExp', minExp)
+      const res = await api<{ candidates: CandidateTalentDTO[]; total: number }>(`/api/candidates/search?${p}`)
+      setCandidates(res.candidates)
+      setTotal(res.total)
+    } catch { toast.error('Failed to load candidates.') }
+    finally { setLoading(false) }
+  }, [search, jlpt, minExp, page])
+
+  useEffect(() => { load() }, [load])
+
+  return (
+    <div className="space-y-5">
+      {/* Privacy notice */}
+      <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30 px-4 py-3 text-sm text-blue-800 dark:text-blue-300">
+        <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5" />
+        {t('talent.privacy')}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3">
+        <Input
+          placeholder={t('talent.search')}
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-56"
+        />
+        <Select value={jlpt} onValueChange={v => { setJlpt(v); setPage(1) }}>
+          <SelectTrigger className="w-36">
+            <SelectValue placeholder={t('talent.jlpt')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Any JLPT</SelectItem>
+            {JLPT_LEVELS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={minExp} onValueChange={v => { setMinExp(v); setPage(1) }}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder={t('talent.exp')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Any experience</SelectItem>
+            {[1,2,3,5,8].map(y => <SelectItem key={y} value={String(y)}>{y}+ years</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {(search || jlpt || minExp) && (
+          <Button variant="ghost" size="sm" onClick={() => { setSearch(''); setJlpt(''); setMinExp(''); setPage(1) }}>
+            <X className="h-4 w-4 mr-1" /> Clear
+          </Button>
+        )}
+      </div>
+
+      <p className="text-sm text-muted-foreground">{total} candidates found</p>
+
+      {/* Grid */}
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />)}
+        </div>
+      ) : candidates.length === 0 ? (
+        <EmptyState icon={Users2} title={t('talent.empty')} description="Try broadening your filters." />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {candidates.map(c => (
+            <TalentCard key={c.id} candidate={c} onView={() => setSelected(c)} />
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {total > 12 && (
+        <div className="flex justify-center gap-2">
+          <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Previous</Button>
+          <Button variant="outline" size="sm" disabled={candidates.length < 12} onClick={() => setPage(p => p + 1)}>Next →</Button>
+        </div>
+      )}
+
+      {/* Detail slide-over */}
+      <Sheet open={!!selected} onOpenChange={open => !open && setSelected(null)}>
+        <SheetContent side="right" className="w-[440px] overflow-y-auto">
+          {selected && <TalentDetailPanel candidate={selected} />}
+        </SheetContent>
+      </Sheet>
+    </div>
+  )
+}
+
+function TalentCard({ candidate: c, onView }: { candidate: CandidateTalentDTO; onView: () => void }) {
+  // Blur last name for privacy: "Arjun Sharma" → "Arjun S."
+  const displayName = c.fullName.trim().split(' ').map((w, i) => i === 0 ? w : w[0] + '.').join(' ')
+  return (
+    <div className="rounded-xl border border-border bg-background p-5 shadow-sm hover:shadow-premium transition-shadow">
+      <div className="flex items-start gap-3 mb-3">
+        <CandidateAvatar name={c.fullName} size={40} />
+        <div className="min-w-0">
+          <p className="font-semibold text-sm truncate">{displayName}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge className={cn('text-xs border', JLPT_BADGE[c.jlptLevel])}>{c.jlptLevel}</Badge>
+            {c.hasResume && <span className="text-xs text-emerald-600 font-medium">Has resume</span>}
+          </div>
+        </div>
+      </div>
+      {c.bio && <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{c.bio}</p>}
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        {c.skills.slice(0, 4).map(s => <span key={s} className="text-xs px-2 py-0.5 rounded-full bg-muted">{s}</span>)}
+        {c.skills.length > 4 && <span className="text-xs text-muted-foreground">+{c.skills.length - 4}</span>}
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">{c.experienceYears} yrs exp{c.location ? ` · ${c.location}` : ''}</span>
+        <Button size="sm" variant="outline" onClick={onView}>View profile</Button>
+      </div>
+    </div>
+  )
+}
+
+function TalentDetailPanel({ candidate: c }: { candidate: CandidateTalentDTO }) {
+  const displayName = c.fullName.trim().split(' ').map((w, i) => i === 0 ? w : w[0] + '.').join(' ')
+  return (
+    <div className="space-y-5 pt-2">
+      <div className="flex items-center gap-4">
+        <CandidateAvatar name={c.fullName} size={56} />
+        <div>
+          <p className="font-display font-bold text-lg">{displayName}</p>
+          <Badge className={cn('mt-1 border', JLPT_BADGE[c.jlptLevel])}>{c.jlptLevel}</Badge>
+        </div>
+      </div>
+      {c.bio && <div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">About</p><p className="text-sm leading-relaxed">{c.bio}</p></div>}
+      <div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Skills</p><div className="flex flex-wrap gap-1.5">{c.skills.map(s => <span key={s} className="text-xs px-2 py-1 rounded-full bg-muted border">{s}</span>)}</div></div>
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <div><p className="text-xs text-muted-foreground">Experience</p><p className="font-medium">{c.experienceYears} years</p></div>
+        <div><p className="text-xs text-muted-foreground">Education records</p><p className="font-medium">{c.educationCount}</p></div>
+        {c.location && <div><p className="text-xs text-muted-foreground">Location</p><p className="font-medium">{c.location}</p></div>}
+        {c.hasResume && <div><p className="text-xs text-muted-foreground">Resume</p><p className="font-medium text-emerald-600">✓ Uploaded</p></div>}
+      </div>
+      <div className="pt-3 border-t text-xs text-muted-foreground">
+        Contact details are shared after this candidate applies to your job.
+        Use the notification system to invite them.
+      </div>
+    </div>
+  )
+}
+
+Expected result: Company dashboard has a Find Talent tab with real candidate search.
+Privacy protected: last names blurred, resume URL never exposed to companies.
+```
+
+---
+
+## PROMPT 6 — Job View Analytics
+**Companies post jobs but have zero insight — no view counts, no conversion rate, no performance data.**
+
+```
+[PASTE MASTER CONTEXT]
+
+PROMPT 6: Job view tracking and company analytics.
+
+STEP 1 — Add JobView model to prisma/schema.prisma:
+model JobView {
+  id        String   @id @default(cuid())
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  sessionId String
+  viewedAt  DateTime @default(now())
+
+  @@index([jobId])
+  @@index([viewedAt])
+}
+
+Also add to Job model: views JobView[]
+Run: bun run db:push
+
+STEP 2 — Create src/app/api/jobs/[id]/view/route.ts:
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params
+    const cookieStore = await cookies()
+    
+    // Get or create anonymous session ID
+    let sessionId = cookieStore.get('ig_anon')?.value
+    if (!sessionId) {
+      sessionId = crypto.randomUUID()
+    }
+    
+    // Deduplicate: don't count same session twice in 24 hours
+    const existing = await db.jobView.findFirst({
+      where: { jobId: id, sessionId, viewedAt: { gte: new Date(Date.now() - 86400000) } }
+    })
+    
+    const headers = new Headers()
+    if (!cookieStore.get('ig_anon')?.value) {
+      headers.set('Set-Cookie', `ig_anon=${sessionId}; Path=/; Max-Age=31536000; SameSite=Lax; HttpOnly`)
+    }
+    
+    if (!existing) {
+      await db.jobView.create({ data: { jobId: id, sessionId } })
+    }
+    
+    return new Response(JSON.stringify({ counted: !existing }), { headers, status: 200 })
+  } catch (e) {
+    return handleError(e)
+  }
+}
+
+STEP 3 — Track views in job-detail-view.tsx:
+In the useEffect where the job is loaded, add after setJob(j):
+  fetch(`/api/jobs/${selectedJobId}/view`, { method: 'POST' }).catch(() => {})
+(Fire-and-forget — never block rendering)
+
+STEP 4 — Create src/app/api/companies/me/analytics/route.ts:
+Auth: COMPANY role required.
+
+Fetch all jobs for this company with their view + application counts:
+  const company = await db.companyProfile.findUnique({ where: { userId: session.id } })
+  const jobs = await db.job.findMany({
+    where: { companyId: company.id },
+    include: {
+      applications: { select: { id: true, status: true } },
+      views: { select: { id: true, viewedAt: true } },
+    }
+  })
+
+Build analytics per job:
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  return jobs.map(j => ({
+    id: j.id,
+    title: j.title,
+    isActive: j.isActive,
+    jobType: j.jobType,
+    viewCount: j.views.length,
+    viewsThisWeek: j.views.filter(v => v.viewedAt >= sevenDaysAgo).length,
+    applicationCount: j.applications.length,
+    conversionRate: j.views.length > 0 ? ((j.applications.length / j.views.length) * 100).toFixed(1) + '%' : '—',
+    statusBreakdown: Object.fromEntries(
+      ['APPLIED','SHORTLISTED','INTERVIEWED','OFFERED','REJECTED'].map(s => [
+        s, j.applications.filter(a => a.status === s).length
+      ])
+    )
+  }))
+
+Return total metrics + per-job array.
+
+STEP 5 — Add Analytics tab to company dashboard:
+In src/lib/store.ts: add 'analytics' to companyTab type
+In company-dashboard.tsx NAV array: add { key: 'analytics', label: 'Analytics', icon: BarChart2 }
+Add render case: {tab === 'analytics' && <AnalyticsTab />}
+
+STEP 6 — Create AnalyticsTab component:
+Fetches /api/companies/me/analytics on mount.
+Shows:
+  a) Three MetricCards: Total Views | Total Applications | Avg. Conversion Rate
+  b) BarChart (recharts) — views vs applications per job (horizontal, uses ChartContainer)
+  c) Table: Job | Views | Views/Week | Applications | Conversion | Status
+
+i18n keys (add to both en and ja):
+en: { "dash.company.analytics": "Analytics", "analytics.views": "Total views", "analytics.apps": "Total applications", "analytics.conversion": "Avg. conversion", "analytics.empty": "Analytics will appear once your jobs are viewed." }
+ja: { "dash.company.analytics": "アナリティクス", "analytics.views": "総閲覧数", "analytics.apps": "総応募数", "analytics.conversion": "平均転換率", "analytics.empty": "求人が閲覧されるとデータが表示されます。" }
+
+Expected result: Every job detail view is counted (deduplicated). Company sees view counts,
+conversion rates, and application funnel per job. Shows which listings are performing.
+```
+
+---
+
+## PROMPT 7 — Interview Scheduling
+**Companies change status to INTERVIEWED but there's no way to set a date/time. Candidates see no details.**
+
+```
+[PASTE MASTER CONTEXT]
+
+PROMPT 7: Interview date scheduling for companies + calendar integration for candidates.
+
+STEP 1 — Add fields to Application model in prisma/schema.prisma:
+In the Application model, add:
+  interviewDate  DateTime?
+  interviewNotes String?
+Run: bun run db:push
+
+STEP 2 — Update src/lib/types.ts ApplicationDTO:
+Add to ApplicationDTO interface:
+  interviewDate: string | null
+  interviewNotes: string | null
+
+Update toApplicationDTO in src/lib/api.ts to include these fields:
+  interviewDate: app.interviewDate?.toISOString() ?? null,
+  interviewNotes: app.interviewNotes ?? null,
+
+STEP 3 — Update src/app/api/applications/[id]/status/route.ts:
+The PATCH body schema should also accept:
+  interviewDate: z.string().optional()  // ISO date string
+  interviewNotes: z.string().max(500).optional()
+
+When updating to INTERVIEWED status, also save:
+  interviewDate: parsed.data.interviewDate ? new Date(parsed.data.interviewDate) : undefined,
+  interviewNotes: parsed.data.interviewNotes ?? undefined,
+
+Then send interview scheduled email:
+  if (newStatus === 'INTERVIEWED' && parsed.data.interviewDate) {
+    const formattedDate = new Date(parsed.data.interviewDate).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Asia/Tokyo' }) + ' JST'
+    sendEmail(candidateEmail, ...Object.values(Email.interviewScheduled(candidate.fullName, job.title, company.companyName, formattedDate, parsed.data.interviewNotes ?? '')))
+  }
+
+STEP 4 — In company-dashboard.tsx, find where the "Schedule Interview" / INTERVIEWED status button is.
+Currently it immediately calls PATCH /api/applications/[id]/status with { status: 'INTERVIEWED' }.
+Instead, open a Dialog first:
+
+Replace the direct status update with:
+  const [scheduleTarget, setScheduleTarget] = useState<{ appId: string } | null>(null)
+  const [interviewDate, setInterviewDate] = useState('')
+  const [interviewNotes, setInterviewNotes] = useState('')
+
+  // "Schedule Interview" button now sets scheduleTarget instead of calling API
+  onClick={() => setScheduleTarget({ appId: app.id })}
+
+  // Dialog:
+  <Dialog open={!!scheduleTarget} onOpenChange={open => !open && setScheduleTarget(null)}>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Schedule Interview</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-4 py-2">
+        <div>
+          <Label>Interview date & time</Label>
+          <Input
+            type="datetime-local"
+            value={interviewDate}
+            onChange={e => setInterviewDate(e.target.value)}
+            className="mt-1.5"
+          />
+          <p className="text-xs text-muted-foreground mt-1">Times are shown to candidate in JST (Japan Standard Time)</p>
+        </div>
+        <div>
+          <Label>Notes for candidate (optional)</Label>
+          <Textarea
+            value={interviewNotes}
+            onChange={e => setInterviewNotes(e.target.value)}
+            placeholder="Include: meeting link (Google Meet/Zoom), duration, format (video/in-person), who will interview..."
+            rows={3}
+            maxLength={500}
+            className="mt-1.5"
+          />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={() => setScheduleTarget(null)}>Cancel</Button>
+        <Button
+          disabled={!interviewDate}
+          onClick={async () => {
+            await api(`/api/applications/${scheduleTarget!.appId}/status`, {
+              method: 'PATCH',
+              body: JSON.stringify({ status: 'INTERVIEWED', interviewDate, interviewNotes }),
+            })
+            toast.success('Interview scheduled! Candidate has been notified.')
+            setScheduleTarget(null)
+            // refresh applicants list
+          }}
+        >
+          Schedule Interview
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+
+STEP 5 — In candidate-dashboard.tsx Applications tab:
+When an application has status=INTERVIEWED and interviewDate is set, show:
+
+  {app.status === 'INTERVIEWED' && app.interviewDate && (
+    <div className="mt-3 rounded-lg border border-violet-200 bg-violet-50 dark:border-violet-900 dark:bg-violet-950/30 p-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-violet-600" />
+          <span className="text-sm font-semibold text-violet-800 dark:text-violet-300">
+            {new Date(app.interviewDate).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US', {
+              weekday: 'short', month: 'short', day: 'numeric',
+              hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo'
+            })} JST
+          </span>
+        </div>
+        <a
+          href={`https://www.google.com/calendar/render?action=TEMPLATE&text=Interview+at+${encodeURIComponent(app.job?.company?.companyName ?? '')}&dates=${new Date(app.interviewDate).toISOString().replace(/[-:]/g,'').split('.')[0]}Z/${new Date(new Date(app.interviewDate).getTime() + 60*60*1000).toISOString().replace(/[-:]/g,'').split('.')[0]}Z&details=${encodeURIComponent(app.interviewNotes ?? '')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-violet-600 hover:underline flex items-center gap-1"
+        >
+          <Calendar className="h-3 w-3" /> Add to Calendar
+        </a>
+      </div>
+      {app.interviewNotes && (
+        <p className="mt-2 text-xs text-violet-700 dark:text-violet-400 leading-relaxed">{app.interviewNotes}</p>
+      )}
+    </div>
+  )}
+
+Add i18n keys to both en and ja in i18n.ts:
+en: { "interview.date": "Interview scheduled", "interview.addcal": "Add to Calendar", "interview.notes": "Interview details" }
+ja: { "interview.date": "面接日程", "interview.addcal": "カレンダーに追加", "interview.notes": "面接詳細" }
+
+Expected result: Companies set date+notes when scheduling an interview.
+Candidate sees the exact date/time and a Google Calendar link.
+Interview email includes the date and notes.
+```
+
+---
+
+## PROMPT 8 — Admin Full CRUD + Contact Submissions
+**Admin can toggle jobs active/inactive but cannot create, edit, or delete them. Contact submissions have no viewer.**
+
+```
+[PASTE MASTER CONTEXT]
+
+PROMPT 8: Full admin job CRUD + contact submissions tab.
+
+PART A — Admin can fully manage jobs
+
+STEP 1 — The existing /api/jobs/[id] PUT and DELETE already work for admin (checked in codebase).
+Admin also needs to CREATE jobs for any company.
+Update /api/jobs POST to allow ADMIN role:
+  Current check: if (session.role !== 'COMPANY')
+  Change to: if (session.role !== 'COMPANY' && session.role !== 'ADMIN')
+  If admin, allow them to pass a companyId in the body (not derived from session)
+  Add to createSchema: companyId: z.string().optional()
+  If admin: use parsed.data.companyId, else use company.id from session
+
+STEP 2 — In admin-dashboard.tsx, find the JobsTab component.
+Currently has: toggle active/inactive switch + delete AlertDialog.
+Add:
+  a) "Edit" button on each row → opens a Sheet (right-side panel)
+     Sheet contains a job edit form pre-filled with the job's current data
+     Fields: Title, Description (Textarea), Location, Job Type, JLPT, Salary min/max/type, Skills, Active toggle, Deadline
+     Submit → PUT /api/jobs/[id]
+     On success: toast + refresh jobs list
+
+  b) "Post Job" button at top right → same Sheet but empty (create mode)
+     Adds a "Company" Select dropdown populated from companiesList (already in admin stats response)
+     Shows only approved companies
+     Submit → POST /api/jobs with { ...fields, companyId }
+
+  c) The delete button should call DELETE /api/jobs/[id] (already exists)
+     Wrap in AlertDialog with: "This will permanently delete the job and all X applications. Cannot be undone."
+
+STEP 3 — Add application count to jobs table:
+The jobs in admin are fetched from /api/admin/list/jobs.
+Update that route to include application count per job.
+Add "Apps" column to the table.
+
+PART B — Contact submissions viewer
+
+STEP 4 — Add 'contacts' to adminTab in src/lib/store.ts:
+adminTab: "overview"|"jobs"|"candidates"|"companies"|"applications"|"testimonials"|"contacts"
+
+STEP 5 — Add to NAV array in admin-dashboard.tsx:
+{ key: 'contacts', label: 'Enquiries', icon: Mail }
+Add render case: {tab === 'contacts' && <ContactsTab />}
+
+STEP 6 — Update /api/admin/list/[resource] route:
+Add a 'contacts' resource case:
+  if (resource === 'contacts') {
+    const rows = await db.contactSubmission.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    })
+    return ok({ items: rows })
+  }
+
+STEP 7 — Create ContactsTab component in admin-dashboard.tsx:
+Fetches /api/admin/list/contacts.
+Shows a table: Name | Email | Subject | Message (first 60 chars) | Date | "View" button
+"View" button opens an AlertDialog showing the full message.
+"Export CSV" downloads via /api/admin/list/contacts?export=csv
+Update the admin list route to handle CSV export for contacts.
+
+Add i18n keys:
+en: { "admin.contacts": "Enquiries", "admin.contacts.from": "From", "admin.contacts.subject": "Subject", "admin.contacts.message": "Message", "admin.contacts.empty": "No contact submissions yet." }
+ja: { "admin.contacts": "お問い合わせ", "admin.contacts.from": "送信者", "admin.contacts.subject": "件名", "admin.contacts.message": "メッセージ", "admin.contacts.empty": "お問い合わせはまだありません。" }
+
+Expected result: Admin can create/edit/delete any job directly.
+All contact form submissions are visible and exportable from the admin panel.
+```
+
+---
+
+## PROMPT 9 — Visa Guide + FAQ on Landing Page
+**Two sections that make IndiGate genuinely different from a generic job board. Both missing from the current landing page.**
+
+```
+[PASTE MASTER CONTEXT]
+
+PROMPT 9: Visa Guide section and FAQ accordion on the landing page.
+
+Edit src/components/landing/landing-page.tsx.
+Add TWO new sections:
+  1. Visa Guide — after the "Why IndiGate" section, before testimonials
+  2. FAQ — after testimonials, before ContactSection
+
+━━━ SECTION 1: VISA GUIDE ━━━
+
+Import Accordion from '@/components/ui/accordion'
+Import: BookOpen, Stamp, GraduationCap, Building2 from lucide-react
+
+const visaTypes = [
+  {
+    icon: Stamp,
+    title: t('visa.ssw.title'),
+    badge: 'Most common',
+    badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+    desc: t('visa.ssw.desc'),
+    requirements: ['JLPT N4 or higher', 'Industry-specific skills test', 'Clean criminal record', 'Sponsored by a registered Japanese company'],
+    jlpt: 'N4+',
+    industries: 'Manufacturing · Construction · Agriculture · Food service',
+  },
+  {
+    icon: GraduationCap,
+    title: t('visa.engineer.title'),
+    badge: 'For IT & professionals',
+    badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300',
+    desc: t('visa.engineer.desc'),
+    requirements: ['Bachelor\'s degree (any field) OR 10 years relevant experience', 'Job relevant to degree/experience', 'Offer letter from Japanese company', 'No specific JLPT requirement (N3+ recommended)'],
+    jlpt: 'N3+ recommended',
+    industries: 'Software · Engineering · Finance · Translation',
+  },
+  {
+    icon: Building2,
+    title: t('visa.transfer.title'),
+    badge: 'For transfers',
+    badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+    desc: t('visa.transfer.desc'),
+    requirements: ['At least 1 year at current employer', 'Being transferred to Japan office of same company', 'Position matches existing role'],
+    jlpt: 'No requirement',
+    industries: 'Any industry with India + Japan offices',
+  },
+]
+
+Section JSX:
+<section className="py-20 sm:py-24">
+  <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <Reveal variants={fadeUp} className="text-center max-w-2xl mx-auto mb-12">
+      <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
+        <BookOpen className="mr-1 h-3 w-3" />
+        {t('visa.badge')}
+      </Badge>
+      <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+        {t('visa.title')}
+      </h2>
+      <p className="mt-2 text-muted-foreground">{t('visa.subtitle')}</p>
+    </Reveal>
+
+    <RevealGroup className="grid gap-5 md:grid-cols-3" stagger={0.12}>
+      {visaTypes.map((v, i) => (
+        <motion.div key={i} variants={staggerItem}>
+          <SpotlightCard className="h-full rounded-2xl border border-border bg-background p-6 hover:shadow-premium transition-shadow">
+            <div className="flex items-start justify-between mb-4">
+              <div className="grid place-items-center h-10 w-10 rounded-xl bg-brand-gradient text-white">
+                <v.icon className="h-5 w-5" />
+              </div>
+              <span className={cn('text-xs font-semibold px-2 py-1 rounded-full', v.badgeColor)}>{v.badge}</span>
+            </div>
+            <h3 className="font-display font-bold text-lg mb-2">{v.title}</h3>
+            <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{v.desc}</p>
+            <div className="space-y-2 text-xs">
+              <p className="font-semibold text-muted-foreground uppercase tracking-wide">Requirements</p>
+              <ul className="space-y-1">
+                {v.requirements.map((r, j) => (
+                  <li key={j} className="flex items-start gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                    <span>{r}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="pt-3 border-t grid grid-cols-2 gap-2">
+                <div><p className="text-muted-foreground">JLPT</p><p className="font-semibold">{v.jlpt}</p></div>
+                <div><p className="text-muted-foreground">Industries</p><p className="font-semibold text-xs">{v.industries.split('·')[0].trim()}...</p></div>
+              </div>
+            </div>
+          </SpotlightCard>
+        </motion.div>
+      ))}
+    </RevealGroup>
+
+    <Reveal variants={fadeUp} className="mt-10">
+      <div className="rounded-2xl bg-brand-gradient p-6 text-white text-center">
+        <p className="font-display font-bold text-lg">{t('visa.support')}</p>
+        <p className="text-white/80 text-sm mt-1">Our Hyderabad team handles all documentation, government coordination, and pre-departure guidance.</p>
+        <MagneticButton
+          onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
+          className="mt-4 bg-white text-crimson hover:bg-white/90 font-bold px-6 py-2.5 rounded-xl text-sm inline-flex items-center gap-2 cursor-pointer"
+        >
+          {t('visa.cta')} →
+        </MagneticButton>
+      </div>
+    </Reveal>
+  </div>
+</section>
+
+━━━ SECTION 2: FAQ ━━━
+
+const faqItems = [
+  { q: t('faq.q1'), a: t('faq.a1') },
+  { q: t('faq.q2'), a: t('faq.a2') },
+  { q: t('faq.q3'), a: t('faq.a3') },
+  { q: t('faq.q4'), a: t('faq.a4') },
+  { q: t('faq.q5'), a: t('faq.a5') },
+  { q: t('faq.q6'), a: t('faq.a6') },
+  { q: t('faq.q7'), a: t('faq.a7') },
+  { q: t('faq.q8'), a: t('faq.a8') },
+]
+
+Section JSX:
+<section className="py-20 sm:py-24 bg-card/40 border-y border-border">
+  <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+    <Reveal variants={fadeUp} className="text-center mb-12">
+      <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
+        <HelpCircle className="mr-1 h-3 w-3" />
+        {t('faq.badge')}
+      </Badge>
+      <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">{t('faq.title')}</h2>
+      <p className="mt-2 text-muted-foreground">{t('faq.subtitle')}</p>
+    </Reveal>
+    <Accordion type="single" collapsible className="space-y-2">
+      {faqItems.map((item, i) => (
+        <AccordionItem key={i} value={`faq-${i}`} className="border border-border rounded-xl px-6 bg-background">
+          <AccordionTrigger className="font-display font-semibold text-left hover:no-underline py-5 text-base">
+            {item.q}
+          </AccordionTrigger>
+          <AccordionContent className="text-muted-foreground leading-relaxed pb-5">
+            {item.a}
+          </AccordionContent>
+        </AccordionItem>
+      ))}
+    </Accordion>
+  </div>
+</section>
+
+Add ALL these keys to src/lib/i18n.ts in BOTH en and ja sections:
+
+en i18n additions:
+  "visa.badge": "Visa Guide"
+  "visa.title": "Understanding Japan visa types"
+  "visa.subtitle": "IndiGate guides you to the right visa path for your career"
+  "visa.ssw.title": "Specified Skilled Worker (SSW)"
+  "visa.ssw.desc": "For skilled workers in manufacturing, construction, agriculture, and hospitality. The most common path for Indian workers in Japan."
+  "visa.engineer.title": "Engineer / Specialist Visa"
+  "visa.engineer.desc": "For IT professionals, engineers, interpreters, and business specialists. Requires a bachelor's degree or 10+ years of experience."
+  "visa.transfer.title": "Intra-Company Transfer"
+  "visa.transfer.desc": "For professionals being transferred from their Indian office to the Japan branch of the same company."
+  "visa.support": "IndiGate handles all visa paperwork and government coordination"
+  "visa.cta": "Talk to our visa team"
+  "faq.badge": "FAQ"
+  "faq.title": "Common questions"
+  "faq.subtitle": "Everything you need to know before you start"
+  "faq.q1": "Is IndiGate free for candidates?"
+  "faq.a1": "Yes — completely free, forever. We charge only the hiring company upon a successful placement. You will never pay to register, apply, or use any feature."
+  "faq.q2": "What JLPT level do I need to apply for jobs in Japan?"
+  "faq.a2": "It depends on the role. Administrative and interpreter roles typically require N2. Engineering and IT roles often accept N3–N4 with strong technical skills. Manufacturing roles may accept N4–N5. Every listing shows its JLPT requirement clearly."
+  "faq.q3": "How long does the process take from application to offer?"
+  "faq.a3": "Most candidates receive their first interview within 2–4 weeks of completing their profile and applying to matching jobs. The full process from application to relocation typically takes 2–4 months depending on visa processing."
+  "faq.q4": "How does IndiGate verify companies?"
+  "faq.a4": "Every company undergoes a manual review by the Indobox team before they can post jobs or view candidates. We verify business registration and legitimacy. This usually takes 24–48 hours."
+  "faq.q5": "What happens after I receive a job offer?"
+  "faq.a5": "Our Hyderabad team assists with employment contract review, work visa documentation, and relocation support. You are never alone in this process."
+  "faq.q6": "Can I apply to multiple jobs at once?"
+  "faq.a6": "Yes. You can apply to as many open positions as you like. Your profile and resume are attached automatically to each application. Add a custom cover note for each role to stand out."
+  "faq.q7": "What types of jobs are available on IndiGate?"
+  "faq.a7": "Currently: IT engineering (software, embedded, infrastructure), manufacturing and quality inspection, administrative and interpreter roles, and finance and accounting. We add new categories as our company partnerships grow."
+  "faq.q8": "I registered as a company but can't post jobs. Why?"
+  "faq.a8": "New company accounts require manual approval (24–48 hours) to protect candidates from unverified listings. You'll receive an email the moment your account is approved. Complete your company profile while you wait."
+
+ja i18n additions (translate all the above keys with accurate Japanese):
+  "visa.badge": "ビザガイド"
+  "visa.title": "日本のビザの種類を理解する"
+  "visa.subtitle": "IndiGateがあなたのキャリアに合ったビザ申請をサポートします"
+  "visa.ssw.title": "特定技能ビザ"
+  "visa.ssw.desc": "製造業、建設業、農業、飲食業など向け。インド人労働者に最も一般的なビザです。"
+  "visa.engineer.title": "技術・人文知識・国際業務ビザ"
+  "visa.engineer.desc": "ITエンジニア、専門家、通訳・翻訳者向け。学士号または10年以上の経験が必要。"
+  "visa.transfer.title": "企業内転勤ビザ"
+  "visa.transfer.desc": "インド支社から日本支社に転勤するプロフェッショナル向け。"
+  "visa.support": "IndiGateがビザ申請書類と政府機関との調整をすべてサポートします"
+  "visa.cta": "ビザ専門家に相談する"
+  "faq.badge": "よくある質問"
+  "faq.title": "よくある質問"
+  "faq.subtitle": "はじめる前に知っておくべきこと"
+  "faq.q1": "候補者はIndiGateを無料で使えますか？"
+  "faq.a1": "はい、永久に完全無料です。採用企業にのみ成功報酬を請求します。登録・応募・機能の利用に一切費用はかかりません。"
+  "faq.q2": "日本での就職にはどのJLPTレベルが必要ですか？"
+  "faq.a2": "職種によって異なります。事務・通訳職はN2が一般的。ITや工学職はN3〜N4でも対応可能な場合があります。各求人に要件が明記されています。"
+  "faq.q3": "応募から内定までどのくらいかかりますか？"
+  "faq.a3": "プロフィールを完成させた後、2〜4週間以内に最初の面接連絡が来ることが多いです。応募から渡航まで通常2〜4ヶ月かかります。"
+  "faq.q4": "企業はどのように審査されますか？"
+  "faq.a4": "すべての企業はIndoboxチームによる手動審査を通過してから求人掲載が可能になります。通常24〜48時間かかります。"
+  "faq.q5": "内定後はどうなりますか？"
+  "faq.a5": "ハイデラバードのチームが雇用契約確認、就労ビザ申請、渡航サポートまでお手伝いします。一人で進める必要はありません。"
+  "faq.q6": "複数の求人に同時に応募できますか？"
+  "faq.a6": "はい。プロフィールと履歴書は各応募に自動添付されます。各求人ごとにカバーレターを追加することもできます。"
+  "faq.q7": "どんな職種がありますか？"
+  "faq.a7": "現在：ITエンジニアリング（ソフトウェア・組込み・インフラ）、製造・品質検査、事務・通訳、金融・会計。パートナー企業の増加に伴い新カテゴリを追加予定です。"
+  "faq.q8": "企業登録したのに求人投稿できません。なぜですか？"
+  "faq.a8": "候補者保護のため、新規企業アカウントは24〜48時間以内に手動審査が行われます。承認されたらメールでお知らせします。その間にプロフィールを完成させておいてください。"
+
+Expected result: Landing page has visa guide cards and 8-item FAQ accordion.
+Both fully bilingual. Makes IndiGate look like a serious, authoritative platform.
+```
+
+---
+
+## PROMPT 10 — PostgreSQL Migration + Vercel Deployment
+**SQLite is wiped on every Vercel deploy. Must migrate before going live.**
+
+```
+[PASTE MASTER CONTEXT]
+
+PROMPT 10: Migrate to PostgreSQL (Supabase) and deploy to Vercel.
+
+NOTE: You already have Supabase set up for file storage (Prompt 1).
+The same Supabase project has a PostgreSQL database — use that.
+
+STEP 1 — Get Supabase DB connection strings:
+In Supabase dashboard → Settings → Database → Connection string
+Copy:
+  Transaction mode (port 6543) → DATABASE_URL  (for runtime / serverless)
+  Direct (port 5432) → DIRECT_URL              (for migrations only)
+
+STEP 2 — Update .env:
+DATABASE_URL="postgresql://postgres.xxx:password@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://postgres.xxx:password@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres"
+
+STEP 3 — Update prisma/schema.prisma datasource block:
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+Now upgrade arrays from JSON strings to native Postgres arrays:
+Change these fields in the schema:
+  CandidateProfile.skills:      String  @default("[]")  →  String[]  @default([])
+  CandidateProfile.savedJobIds: String  @default("[]")  →  String[]  @default([])
+  Job.skillsRequired:           String  @default("[]")  →  String[]  @default([])
+
+STEP 4 — Fix all JSON.parse() calls for these fields throughout codebase:
+Search for: JSON.parse(c.skills) or JSON.parse(candidate.skills)
+Replace with: c.skills (it's already a string[] in Postgres)
+
+Search for: JSON.stringify(skills) when saving to Prisma
+Replace with: skills (pass array directly)
+
+Files to check:
+  - src/lib/api.ts (toCandidateDTO, toJobDTO mappers)
+  - src/app/api/candidates/me/route.ts
+  - src/app/api/candidates/me/saved-jobs/route.ts
+  - src/app/api/jobs/route.ts
+  - src/app/api/jobs/[id]/route.ts
+  - src/app/api/admin/list/[resource]/route.ts
+
+STEP 5 — Update skills filter in /api/candidates/search:
+Old SQLite approach: { skills: { contains: skill } }
+New Postgres approach: { skills: { has: skill } }  ← native array contains
+
+STEP 6 — Run migration:
+npx prisma generate
+npx prisma db push
+npx prisma db seed
+
+STEP 7 — Verify locally:
+bun run dev
+Test: login, post job, upload resume, apply — all must work.
+
+STEP 8 — Pre-deployment build check:
+bun run build  ← must pass with ZERO errors
+bunx tsc --noEmit  ← must pass with ZERO TypeScript errors
+bun run lint  ← must pass clean
+
+STEP 9 — Deploy to Vercel:
+a. Push all code to GitHub (git add . && git commit -m "production ready" && git push)
+b. Go to vercel.com → New Project → Import from GitHub
+c. Framework: Next.js (auto-detected)
+d. Add ALL environment variables in Vercel dashboard:
+   DATABASE_URL         = (Supabase transaction URL port 6543)
+   DIRECT_URL           = (Supabase direct URL port 5432)
+   NEXT_PUBLIC_SUPABASE_URL = (your supabase project URL)
+   SUPABASE_SERVICE_KEY = (supabase service role key)
+   SUPABASE_STORAGE_BUCKET = indigate-uploads
+   SESSION_SECRET       = (run: openssl rand -base64 32)
+   RESEND_API_KEY       = (from resend.com)
+   EMAIL_FROM           = IndiGate <noreply@indigate.work>
+   ADMIN_EMAIL          = admin@indigate.work
+   NEXT_PUBLIC_APP_URL  = https://indigate.work
+e. Deploy
+
+STEP 10 — Domain setup:
+In Vercel: Project → Settings → Domains → Add "indigate.work"
+In domain registrar: add A record → 76.76.21.21 (Vercel IP)
+Wait for SSL (5–15 min) then verify https://indigate.work
+
+STEP 11 — Post-launch checklist:
+[ ] Home page loads — stats show real numbers
+[ ] Register as candidate → welcome email + verification email arrive
+[ ] Verify email → login works
+[ ] Complete profile → upload resume → file appears in Supabase dashboard
+[ ] Apply to a job → confirmation email received + company gets notification email
+[ ] Register as company → admin notification email received
+[ ] Admin approves company → company receives approval email
+[ ] Company posts job → appears on jobs page immediately
+[ ] Company views talent search tab — candidates visible
+[ ] Admin panel: all tabs work, CSV exports work
+[ ] Language toggle EN/JA works everywhere
+[ ] Mobile (375px): all pages work
+
+STEP 12 — IMMEDIATELY after go-live:
+Change admin password (admin@indigate.work / admin123 is in public GitHub!)
+  Go to admin panel → add a "Change password" profile page → update
+Google Search Console: Add property → verify via HTML meta tag in layout.tsx
+Submit sitemap: https://indigate.work/sitemap.xml
+
+Expected result: IndiGate is live at https://indigate.work with real DB,
+real emails, real file storage, and real data that persists forever.
+```
+
+---
+
+# QUICK REFERENCE
+
+## Run order (do NOT skip steps):
+```
+Week 1 — Fix breaking bugs:
+  Prompt 1  → File upload (BLOCKING — nothing works without this)
+  Prompt 2  → Email system
+  Prompt 3  → Security hardening
+
+Week 2 — Add key features:
+  Prompt 4  → Resume PDF export
+  Prompt 5  → Talent search for companies
+  Prompt 6  → Job view analytics
+  Prompt 7  → Interview scheduling
+
+Week 3 — Polish + launch:
+  Prompt 8  → Admin CRUD + contact submissions
+  Prompt 9  → Visa guide + FAQ
+  Prompt 10 → PostgreSQL migration + Vercel deploy
+```
+
+## Services to sign up for (all free tier works):
+```
+Supabase:  supabase.com    → database + file storage (one account covers both)
+Resend:    resend.com      → email sending (free: 3000 emails/month)
+Vercel:    vercel.com      → hosting (free hobby tier works fine)
+```
+
+## Environment variables you need set (copy to .env):
+```
+DATABASE_URL=
+DIRECT_URL=
+NEXT_PUBLIC_SUPABASE_URL=
+SUPABASE_SERVICE_KEY=
+SUPABASE_STORAGE_BUCKET=indigate-uploads
+SESSION_SECRET=
+RESEND_API_KEY=
+EMAIL_FROM=IndiGate <noreply@indigate.work>
+ADMIN_EMAIL=admin@indigate.work
+NEXT_PUBLIC_APP_URL=https://indigate.work
+```
+
+## After launch — change these demo credentials immediately:
+```
+admin@indigate.work / admin123   ← CHANGE IN ADMIN PANEL
+hr@technova.jp / company123      ← REMOVE or update in Supabase
+arjun@example.com / candidate123 ← REMOVE or update in Supabase
+```
+
+---
+*IndiGate Real World Complete Guide · Indobox Inc · Abhishek · 2026*
+*10 prompts · Every missing feature · Production-grade · Real data everywhere*
+ENDOFFILE
+echo "Done. Size: $(wc -c < /mnt/user-data/outputs/indigate_realworld_complete.md) bytes, $(wc -l < /mnt/user-data/outputs/indigate_realworld_complete.md) lines"

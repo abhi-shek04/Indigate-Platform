@@ -24,6 +24,10 @@ export async function POST(req: NextRequest) {
     const user = await db.user.findUnique({ where: { email: parsed.data.email } });
     if (!user || !user.passwordHash) return err("Invalid email or password.", 401);
 
+    // Block unverified users from logging in (demo seed accounts are pre-verified)
+    if (!user.isVerified)
+      return err("Please verify your email before logging in. Check your inbox.", 403);
+
     const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
     if (!valid) return err("Invalid email or password.", 401);
 

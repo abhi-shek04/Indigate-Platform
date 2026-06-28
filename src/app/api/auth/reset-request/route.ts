@@ -2,12 +2,17 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { ok, err, handleError } from "@/lib/api";
 import { sendEmail, emails } from "@/lib/email";
+import { rateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const schema = z.object({ email: z.string().email() });
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+    if (!rateLimit(`reset:${ip}`, 3, 60 * 60 * 1000)) {
+      return err("Too many password reset requests. Please try again in 1 hour.", 429);
+    }
     const body = await req.json().catch(() => null);
     const parsed = schema.safeParse(body);
     if (!parsed.success) return err("Enter a valid email.", 422);

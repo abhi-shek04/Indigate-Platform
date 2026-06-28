@@ -45,6 +45,7 @@ export interface CandidateProfileDTO {
 }
 
 // Safe subset for company talent search — no private fields
+// NOTE: never expose resumeUrl, phone, linkedinUrl, userId, email
 export interface CandidateTalentDTO {
   id: string;
   fullName: string;
@@ -54,8 +55,8 @@ export interface CandidateTalentDTO {
   bio: string | null;
   location: string | null;
   photoUrl: string | null;
-  resumeUrl: string | null;
-  education: EducationEntry[] | null;
+  hasResume: boolean; // boolean only — never the actual URL
+  educationCount: number; // count only — no details exposed
   createdAt: string;
 }
 

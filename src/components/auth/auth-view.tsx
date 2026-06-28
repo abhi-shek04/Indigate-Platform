@@ -64,12 +64,9 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
           method: "POST",
           body: JSON.stringify(payload),
         });
-        await refreshAuth();
-        toast.success("Account created! Welcome to IndiGate 🎉");
-        const u = useApp.getState().user;
-        if (u?.role === "CANDIDATE") navigate("candidate");
-        else if (u?.role === "COMPANY") navigate("company");
-        else navigate("home");
+        // Account created with isVerified=false — go to verify mode
+        toast.success("Account created! Check your email for a verification code.");
+        setMode("verify");
       } else if (mode === "forgot") {
         await api("/api/auth/reset-request", {
           method: "POST",
@@ -89,6 +86,17 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
         });
         await refreshAuth();
         toast.success("Password reset! You're logged in.");
+        const u = useApp.getState().user;
+        if (u?.role === "CANDIDATE") navigate("candidate");
+        else if (u?.role === "COMPANY") navigate("company");
+        else navigate("home");
+      } else if (mode === "verify") {
+        await api("/api/auth/verify", {
+          method: "POST",
+          body: JSON.stringify({ code: form.code }),
+        });
+        await refreshAuth();
+        toast.success("Email verified! Welcome to IndiGate.");
         const u = useApp.getState().user;
         if (u?.role === "CANDIDATE") navigate("candidate");
         else if (u?.role === "COMPANY") navigate("company");
@@ -362,6 +370,17 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
                 className="text-muted-foreground hover:text-foreground"
               >
                 {t("common.back")} to login
+              </button>
+            )}
+            {mode === "verify" && (
+              <button
+                onClick={async () => {
+                  await api("/api/auth/verify", { method: "PUT" });
+                  toast.success("New code sent to your email.");
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                {t("auth.verify.resend")}
               </button>
             )}
             {mode === "reset" && (

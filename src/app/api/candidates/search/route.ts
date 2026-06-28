@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
       }),
     ]);
 
-    // Map to safe DTO (no private fields)
+    // Map to safe DTO — NEVER expose resumeUrl, phone, email, userId
     const candidates = rows.map((c) => ({
       id: c.id,
       fullName: c.fullName,
@@ -83,8 +83,8 @@ export async function GET(req: NextRequest) {
       bio: c.bio,
       location: c.location,
       photoUrl: c.photoUrl,
-      resumeUrl: c.resumeUrl,
-      education: c.education ? safeParse(c.education) : null,
+      hasResume: !!c.resumeUrl, // boolean only
+      educationCount: c.education ? safeParseArray(c.education).length : 0,
       createdAt: c.createdAt.toISOString(),
     }));
 
@@ -105,12 +105,5 @@ function safeParseArray(v: string): string[] {
     return Array.isArray(arr) ? arr : [];
   } catch {
     return [];
-  }
-}
-function safeParse(v: string): unknown {
-  try {
-    return JSON.parse(v);
-  } catch {
-    return null;
   }
 }

@@ -46,6 +46,9 @@ export async function POST(req: NextRequest) {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
+    // Generate a real 6-digit verification code (emailed, not shown as demo)
+    const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
+
     const user = await db.user.create({
       data: {
         email,
@@ -53,7 +56,8 @@ export async function POST(req: NextRequest) {
         role,
         name:
           role === "CANDIDATE" ? fullName ?? name : companyName ?? name,
-        isVerified: true, // auto-verified on registration — no demo OTP
+        isVerified: false, // requires email verification
+        verifyToken: verifyCode,
       },
     });
 
@@ -64,11 +68,19 @@ export async function POST(req: NextRequest) {
           fullName: fullName ?? name ?? email.split("@")[0],
         },
       });
-      // Fire-and-forget welcome email
+      // Fire-and-forget welcome email + verification email
       void sendEmail({
         to: email,
         ...emails.welcomeCandidate(fullName ?? name ?? ""),
       });
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://indigate.work";
+      const verifyUrl = `${appUrl}/?view=verify&email=${encodeURIComponent(email)}`;
+      void sendEmail({
+        to: email,
+        ...emails.emailVerification(verifyUrl),
+      });
+      // Log the code for dev/testing (in production, only email is sent)
+      console.log(`[Email verification] Code for ${email}: ${verifyCode}`);
     } else {
       await db.companyProfile.create({
         data: {

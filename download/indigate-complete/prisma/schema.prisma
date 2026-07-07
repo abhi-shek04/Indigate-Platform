@@ -1,0 +1,171 @@
+// IndiGate — India × Japan Talent Platform
+// Prisma schema (SQLite). Enums/arrays are stored as String/JSON and
+// validated in the application layer.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String?
+  role         String   @default("CANDIDATE") // CANDIDATE | COMPANY | ADMIN
+  name         String?
+  isVerified   Boolean  @default(false)
+  verifyToken  String?  @unique
+  resetToken   String?  @unique
+  resetTokenExp DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  candidate      CandidateProfile?
+  company        CompanyProfile?
+  notifications  Notification[]
+  contactSubmissions ContactSubmission[]
+}
+
+model CandidateProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName        String
+  phone           String?
+  bio             String?
+  location        String?
+  photoUrl        String?
+  linkedinUrl     String?
+  jlptLevel       String   @default("NONE") // N1|N2|N3|N4|N5|NONE
+  skills          String   @default("[]") // JSON string array
+  resumeUrl       String?
+  resumeName      String?
+  experienceYears Int      @default(0)
+  education       String?  // JSON string
+  savedJobIds     String   @default("[]") // JSON string array
+  resumeData      String?  // JSON: full resume builder data (EN+JP)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  applications Application[]
+}
+
+model CompanyProfile {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName   String
+  industry      String?
+  locationJapan String?
+  description   String?
+  logoUrl       String?
+  website       String?
+  employeeCount String?
+  isApproved    Boolean   @default(false)
+  approvedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  jobs Job[]
+}
+
+model Job {
+  id             String   @id @default(cuid())
+  companyId      String
+  company        CompanyProfile @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  title          String
+  titleJa        String?
+  description    String
+  descriptionJa  String?
+  location       String
+  jobType        String   @default("FULL_TIME") // FULL_TIME|PART_TIME|INTERNSHIP|CONTRACT
+  jlptRequired   String   @default("NONE") // N1|N2|N3|N4|N5|NONE
+  salaryMin      Int?
+  salaryMax      Int?
+  salaryType     String   @default("MONTHLY") // HOURLY|MONTHLY|YEARLY
+  currency       String   @default("JPY")
+  skillsRequired String   @default("[]") // JSON string array
+  isActive       Boolean  @default(true)
+  deadline       DateTime?
+  postedAt       DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  applications Application[]
+  views         JobView[]
+
+  @@index([isActive, postedAt])
+  @@index([companyId])
+}
+
+model Application {
+  id                 String   @id @default(cuid())
+  candidateId        String
+  candidate          CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobId              String
+  job                Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  status             String   @default("APPLIED") // APPLIED|SHORTLISTED|INTERVIEWED|OFFERED|REJECTED|WITHDRAWN
+  coverNote          String?
+  resumeUrlSnapshot  String?
+  notes              String?
+  interviewDate      DateTime?
+  interviewNotes     String?
+  appliedAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([candidateId, jobId])
+  @@index([jobId])
+  @@index([candidateId])
+}
+
+model JobView {
+  id        String   @id @default(cuid())
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  sessionId String   // anonymous session cookie ID
+  viewedAt  DateTime @default(now())
+
+  @@index([jobId])
+  @@index([sessionId])
+  @@index([viewedAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+}
+
+model Testimonial {
+  id        String   @id @default(cuid())
+  name      String
+  role      String
+  company   String?
+  content   String
+  contentJa String?
+  photoUrl  String?
+  isActive  Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model ContactSubmission {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String?
+  message   String
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+}

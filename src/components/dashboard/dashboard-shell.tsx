@@ -95,14 +95,14 @@ export function DashboardShell({
           <SheetTrigger asChild>
             <button
               aria-label="Open menu"
-              className="grid place-items-center h-9 w-9 rounded-lg hover:bg-accent transition-colors"
+              className="grid place-items-center h-10 w-10 rounded-lg hover:bg-accent transition-colors"
             >
               <Menu className="h-5 w-5" />
             </button>
           </SheetTrigger>
           <SheetContent
             side="left"
-            className="w-[270px] p-0 bg-sidebar text-sidebar-foreground flex flex-col"
+            className="w-[280px] p-0 bg-sidebar text-sidebar-foreground flex flex-col"
           >
             <SheetTitle className="sr-only">{brand} menu</SheetTitle>
             <SidebarHeader brand={brand} />
@@ -123,8 +123,11 @@ export function DashboardShell({
       {/* Main */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 bg-background/85 backdrop-blur border-b border-border">
+        <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-md border-b border-border">
           <div className="flex items-center gap-3 px-4 sm:px-6 lg:px-8 h-16">
+            <div className="lg:hidden">
+              {/* Spacer for mobile menu button which is rendered by each dashboard */}
+            </div>
             <div className="min-w-0 flex-1">
               <h1 className="font-display font-extrabold text-lg sm:text-xl leading-tight truncate">
                 {welcome}
@@ -133,8 +136,9 @@ export function DashboardShell({
                 <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               {topbarActions}
+              <div className="hidden sm:block h-6 w-px bg-border mx-1" />
               <NotificationsBell />
               <LocaleToggle />
               {avatar}
@@ -193,11 +197,11 @@ function NavList({
             }}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all outline-none",
+              "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all outline-none",
               "focus-visible:ring-2 focus-visible:ring-sidebar-ring",
               isActive
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+                ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
               isDisabled && "opacity-40 cursor-not-allowed hover:bg-transparent",
             )}
           >
@@ -205,17 +209,25 @@ function NavList({
               <motion.span
                 layoutId="sidebar-active"
                 aria-hidden
-                className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full bg-saffron"
+                className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full bg-brand-gradient"
                 transition={{ type: "spring", stiffness: 380, damping: 30 }}
               />
             )}
             <Icon
               className={cn(
                 "h-[1.05rem] w-[1.05rem] shrink-0 transition-colors",
-                isActive ? "text-saffron" : "text-sidebar-foreground/60 group-hover:text-sidebar-accent-foreground",
+                isActive
+                  ? "text-saffron"
+                  : "text-sidebar-foreground/50 group-hover:text-sidebar-accent-foreground",
               )}
             />
             <span className="truncate">{item.label}</span>
+            {isActive && (
+              <span
+                aria-hidden
+                className="ml-auto h-1.5 w-1.5 rounded-full bg-saffron shadow-glow-brand"
+              />
+            )}
           </button>
         );
       })}
@@ -236,16 +248,16 @@ function SidebarFooter({
     <div className="mt-auto px-3 pb-5 pt-4 border-t border-sidebar-border/60 flex flex-col gap-1">
       <button
         onClick={onGoSite}
-        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors"
+        className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-colors"
       >
-        <ArrowLeft className="h-[1.05rem] w-[1.05rem]" />
+        <ArrowLeft className="h-[1.05rem] w-[1.05rem] transition-transform group-hover:-translate-x-0.5" />
         <span>Back to site</span>
       </button>
       <button
         onClick={onLogout}
-        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/80 hover:bg-destructive/20 hover:text-sidebar-accent-foreground transition-colors"
+        className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/80 hover:bg-destructive/20 hover:text-sidebar-accent-foreground transition-colors"
       >
-        <LogOut className="h-[1.05rem] w-[1.05rem]" />
+        <LogOut className="h-[1.05rem] w-[1.05rem] transition-transform group-hover:translate-x-0.5" />
         <span>{logoutLabel}</span>
       </button>
     </div>
@@ -254,14 +266,22 @@ function SidebarFooter({
 
 function SidebarHeader({ brand }: { brand: string }) {
   return (
-    <div className="px-5 pt-5 pb-4 border-b border-sidebar-border/60">
+    <div className="relative px-5 pt-5 pb-4 border-b border-sidebar-border/60 overflow-hidden">
+      {/* Saffron corner accent */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-12 -right-12 h-32 w-32 rounded-full bg-saffron/15 blur-2xl"
+      />
       <Logo
         size={34}
         textClassName="text-sidebar-foreground text-[1.2rem]"
       />
-      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-saffron">
-        {brand} portal
-      </p>
+      <div className="mt-3 flex items-center gap-2">
+        <span className="h-1 w-6 rounded-full bg-brand-gradient" />
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-saffron">
+          {brand} portal
+        </p>
+      </div>
     </div>
   );
 }

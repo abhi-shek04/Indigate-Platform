@@ -1,0 +1,257 @@
+     1→# IndiGate Build Worklog
+     2→
+     3→Project: IndiGate — India × Japan talent platform (Next.js 16 single-page app).
+     4→Constraint: Only the `/` route is user-visible. All views are client-side
+     5→switched via a Zustand store (`useApp`). API routes live under `/api/*`.
+     6→
+     7→---
+     8→Task ID: 1-4
+     9→Agent: main (Z.ai Code)
+    10→Task: Design system, Prisma schema + seed, auth/i18n libs, all API routes, shared UI primitives, landing page, jobs view, job detail view, auth view.
+    11→
+    12→Work Log:
+    13→- Installed bcryptjs.
+    14→- Wrote premium design system in `src/app/globals.css` (saffron + crimson brand palette, mesh backgrounds, glass, premium shadows, marquee/float animations, custom scrollbar).
+    15→- Updated `src/app/layout.tsx` (Plus Jakarta Sans display font, ThemeProvider, Sonner toaster, IndiGate metadata).
+    16→- Created `src/components/theme-provider.tsx`.
+    17→- Wrote `prisma/schema.prisma` with 8 models (User, CandidateProfile, CompanyProfile, Job, Application, Notification, Testimonial, ContactSubmission) adapted for SQLite (enums as String, arrays as JSON strings).
+    18→- Ran `bun run db:push`.
+    19→- Wrote `prisma/seed.ts` with 1 admin, 6 companies (1 pending), 12 jobs, 5 candidates, ~15 applications, notifications, testimonials. Ran it.
+    20→- Auth: `src/lib/auth.ts` (HMAC-signed cookie sessions, getSession/requireSession/requireRole, createSession/destroySession).
+    21→- Types: `src/lib/types.ts` (all DTOs, enums, badge classes).
+    22→- i18n: `src/lib/i18n.ts` (EN + JA dictionaries, translate()).
+    23→- API helpers: `src/lib/api.ts` (ok/err/handleError, all to*DTO mappers, formatSalary, notify, csvEscape).
+    24→- API client: `src/lib/api-client.ts` (api() fetch wrapper, formatRelative, formatDate).
+    25→- Zustand store: `src/lib/store.ts` (useApp: user/candidate/company auth, view navigation, dashboard tabs, locale).
+    26→- React i18n hook: `src/lib/use-t.ts` (useT() returns { locale, t, pick }).
+    27→- Brand: `src/components/brand/logo.tsx` (Logo, CompanyAvatar, CandidateAvatar), `use-count-up.ts`.
+    28→- Layout: `src/components/layout/{navbar,footer,locale-toggle,notifications-bell}.tsx`.
+    29→- Jobs: `src/components/jobs/{job-card,jobs-view,job-detail-view}.tsx`.
+    30→- Auth: `src/components/auth/auth-view.tsx` (login/register/verify/forgot/reset).
+    31→- Landing: `src/components/landing/landing-page.tsx` (hero, stats count-up, featured jobs, how-it-works, value props with pipeline viz, testimonials marquee, CTA, contact form).
+    32→- API routes: auth/{register,login,logout,me,verify,reset-request,reset-confirm}, jobs (route + [id] + stats), applications (route + [id] + [id]/status), candidates/me + me/saved-jobs, companies/me, admin/stats + admin/companies/[id] + admin/list/[resource], notifications (route + [id]/read), testimonials, contact, upload.
+    33→
+    34→Stage Summary:
+    35→- Backend fully functional with seed data.
+    36→- Public-facing UI (landing, jobs, job detail, auth) complete with premium design.
+    37→- Design tokens: saffron `--saffron`, crimson `--crimson`, ink `--ink`. Use `bg-brand-gradient`, `text-gradient-brand`, `bg-mesh`, `glass`, `shadow-premium`, `shadow-glow-brand`.
+    38→- All client components use `useApp()` for nav/auth and `useT()` for i18n. `useT().pick(en, ja)` returns localized string.
+    39→- Components import from `@/components/ui/*` (shadcn). All needed shadcn components exist.
+    40→- Demo accounts: candidate `arjun@example.com`/`candidate123`, company `hr@technova.jp`/`company123`, admin `admin@indigate.work`/`admin123`.
+    41→
+    42→---
+    43→
+    44→---
+    45→Task ID: 5
+    46→Agent: dashboards (Z.ai Code)
+    47→Task: Build Candidate, Company, and Admin dashboards (premium, professional UI).
+    48→
+    49→Files created:
+    50→- `src/components/dashboard/dashboard-shell.tsx` — shared `DashboardShell` (dark sidebar w/ saffron active accent, mobile Sheet nav, sticky topbar w/ NotificationsBell + LocaleToggle + avatar slot), `MetricCard`, `EmptyState`, `SectionCard`, `RoleGuard`, `CardSkeleton`, `MetricSkeleton`, `NavItem` type. Inner sub-components (NavList, SidebarHeader, SidebarFooter) are declared at module scope to satisfy the `react-hooks/static-components` rule.
+    51→- `src/components/dashboard/widgets.tsx` — `SkillsInput` (Enter/comma to add, Backspace to remove, max-20 cap) and `FileDropZone` (drag-and-drop, accept filter, fake progress bar) reused by candidate profile/resume and company new-job/profile.
+    52→- `src/components/candidate/candidate-dashboard.tsx` — exports `CandidateDashboard`. Tabs: overview (4 metric cards by status + profile completion Progress + recent apps), applications (table w/ withdraw AlertDialog), profile (basic info + Japan readiness w/ SkillsInput + dynamic Education entries), resume (drag-drop PDF upload + remove), saved (JobCard grid). All mutations call `refreshAuth()`. Includes `authLoading`/`!candidate` loading guard.
+    53→- `src/components/company/company-dashboard.tsx` — exports `CompanyDashboard`. Tabs: overview (4 metrics, recent applicants, active jobs, quick actions), jobs (table w/ inline active/paused toggle + delete AlertDialog), new (premium form: title/desc≥50/location/jobType/jlpt/salary min-max-type/skills/deadline), applicants (filter by job Select + status Select + inline status Select + slide-over `<Sheet>` w/ candidate detail + Shortlist/Interview/Offer/Reject actions + resume download), profile (logo FileDropZone + details form). Pending-approval state gates `jobs`/`new`/`applicants` tabs (disabled in sidebar + PendingState card in main). `useCompanyJobs()` filters `/api/jobs?limit=50` by `job.company.userId === user.id` (since `CompanyProfileDTO` exposes `userId`). `useCompanyApps()` pulls from `/api/applications` (server already scopes to this company). Uses `useApp.setState({ companyApplicantsJobId: null })` to clear the job filter (the store's setCompanyTab keeps the existing jobId when `opts.jobId` is undefined).
+    54→- `src/components/admin/admin-dashboard.tsx` — exports `AdminDashboard`. Tabs: overview (6 metric cards from `/api/admin/stats` + AreaChart of `appsPerWeek` + donut PieChart of `appsByStatus` colored by `STATUS_COLORS` + pending-company approvals list w/ Approve/Reject + recent applications), jobs (searchable table, Switch toggle active, delete AlertDialog, CSV export), candidates (search + JLPT filter, table, CSV export), companies (filter All/Approved/Pending, table w/ inline Approve/Reject for pending + Revoke for approved, CSV export), applications (status filter, table, CSV export), testimonials (card grid w/ toggle active). Charts use the shadcn `ChartContainer` + `ChartTooltip` and recharts `AreaChart`/`Pie`. CSV export links to `/api/admin/list/{resource}?export=csv`.
+    55→
+    56→Conventions followed:
+    57→- All client components (`"use client"`).
+    58→- `useApp()` for state + actions, `useT()` + `t()` + `pick()` for i18n.
+    59→- `api()` from `@/lib/api-client` for JSON; raw `fetch` for `FormData` uploads.
+    60→- shadcn/ui primitives (Button, Card, Badge, Input, Label, Textarea, Select, Table, AlertDialog, Sheet, Switch, Skeleton, Progress, Chart, Separator).
+    61→- `STATUS_BADGE`, `JLPT_BADGE`, `JLPT_LEVELS`, `JOB_TYPES`, `SALARY_TYPES`, `APPLICATION_STATUSES` from `@/lib/types`.
+    62→- Brand utilities: `bg-brand-gradient`, `text-gradient-brand`, `shadow-premium`, `shadow-glow-brand`, `scroll-area`, `bg-sidebar`/`text-sidebar-foreground`/`bg-sidebar-accent`/`border-sidebar-border`.
+    63→- `MetricCard` icon in colored rounded square, large `font-display text-3xl font-extrabold` number, hover lift.
+    64→- Tables use sticky headers inside `max-h-[70vh] overflow-y-auto scroll-area` containers.
+    65→- Empty states: icon + title + description + CTA.
+    66→- All mutations: loading state on button + `sonner` toast on success/error + data refresh.
+    67→
+    68→Stage Summary:
+    69→- Three production-grade dashboards wired to the existing API surface; no API or schema changes were needed.
+    70→- `DashboardShell` is reusable — adding a fourth dashboard later is trivial.
+    71→- Lint: `bun run lint` reports ZERO issues in any Task-5 file. (Remaining 4 issues — `brand/logo.tsx`, `jobs/job-detail-view.tsx`, `layout/notifications-bell.tsx`, `lib/types.ts` — are all pre-existing from Task 1-4 and untouched per instructions.)
+    72→- TypeScript: `bunx tsc --noEmit` is clean for all Task-5 files (only pre-existing `bcryptjs` types error remains).
+    73→- Dev server: `bun run dev` auto-restarts cleanly; `dev.log` shows successful incremental compiles with no warnings or errors from the new files.
+    74→- Note for main agent: the main `page.tsx` must lazy-load these (e.g. `next/dynamic`) so the heavy `recharts` import only ships on the admin route, and must call `useApp().refreshAuth()` on mount before rendering the dashboard so `user`/`candidate`/`company` are populated. The dashboards already include their own `authLoading` guards where the role-dependent profile is required.
+    75→
+    76→---
+    77→Task ID: 6-12
+    78→Agent: main (Z.ai Code)
+    79→Task: Static pages, main page controller, lint fixes, dev server, end-to-end Agent Browser verification.
+    80→
+    81→Work Log:
+    82→- Built static pages (privacy, terms, about, for-companies, companies) in `src/components/landing/static-pages.tsx`.
+    83→- Built main page controller `src/app/page.tsx` (view switching via useApp, auth bootstrap, chrome visibility logic, full-screen loader).
+    84→- Fixed `Yen` icon (not a lucide export) → `Banknote` in job-card and job-detail-view.
+    85→- Fixed lint: empty interface `PublicUser` → type alias; removed unused eslint-disable directives; resolved `react-hooks/set-state-in-effect` in notifications-bell.
+    86→- Started dev server (port 3000), all pages compile cleanly.
+    87→- Agent Browser end-to-end verification:
+    88→  - Home page: hero, stats count-up, featured jobs (3 cards), how-it-works, value props + pipeline viz, testimonials marquee, CTA, contact form — all render.
+    89→  - Jobs view: 12 job cards with filters (location/type/JLPT/salary), search, count.
+    90→  - Job detail: full layout with apply dialog, save toggle, related jobs.
+    91→  - Candidate login (arjun@example.com) → dashboard with overview metrics, applications, profile, resume, saved jobs.
+    92→  - Company login (hr@technova.jp) → dashboard with 3 active jobs, post-job form, applicants.
+    93→  - Admin login (admin@indigate.work) → panel with 6 metrics, area+donut charts (recharts), pending-approval (Aurora Robotics) approve flow verified working.
+    94→  - Bilingual toggle EN→JA verified (titles localize to 日本語).
+    95→  - Mobile (iPhone 14) responsive verified.
+    96→  - Sticky footer CSS verified (`min-h-screen flex flex-col` + `mt-auto`).
+    97→  - Zero console/runtime errors throughout.
+    98→
+    99→Stage Summary:
+   100→- IndiGate platform is production-ready and fully interactive end-to-end.
+   101→- All 10 milestones' features are implemented and browser-verified.
+   102→- Lint passes clean. Dev server runs without errors.
+   103→- Demo accounts: candidate `arjun@example.com`/`candidate123`, company `hr@technova.jp`/`company123`, admin `admin@indigate.work`/`admin123`.
+   104→
+   105→---
+   106→Task ID: ANIM-UPGRADE
+   107→Agent: main (Z.ai Code)
+   108→Task: Premium animation + UI/UX upgrade across the entire IndiGate platform.
+   109→
+   110→Work Log:
+   111→- Created `src/lib/motion.tsx`: reusable Framer Motion variants (fadeUp, fadeIn, scaleIn, slideIn, staggerContainer, staggerItem), easing curves (easeOutExpo, springSoft), Reveal + RevealGroup scroll-reveal wrappers.
+   112→- Created `src/components/brand/motion-primitives.tsx`: MagneticButton (cursor-follow spring), SpotlightCard (radial cursor spotlight), TiltCard (3D perspective tilt), ScrollProgress (top gradient progress bar), ShimmerText.
+   113→- Upgraded `src/app/globals.css`: added keyframes (aurora drift, ping-soft, glow-pulse, shimmer-sweep, border-draw, bob, rise-in, shimmer-text), gradient-border utility, premium ::selection, :focus-visible ring, smooth scroll, prefers-reduced-motion guard.
+   114→- Upgraded `src/app/page.tsx`: AnimatePresence view transitions (fade+slide between every view), branded full-screen loader with pulsing logo + bouncing dots.
+   115→- Rebuilt `src/components/landing/landing-page.tsx`: staggered hero entrance (badge→title→subtitle→CTAs), aurora parallax blobs, RevealGroup for featured jobs + how-it-works cards, scroll-triggered PipelineBar fills, spring company-logo hover, SpotlightCard on step cards, MagneticButton on CTAs, spring success checkmark on contact form.
+   116→- Upgraded `src/components/jobs/job-card.tsx`: motion.article with spring hover lift, SpotlightCard cursor glow, wobble on company avatar hover.
+   117→- Upgraded `src/components/jobs/jobs-view.tsx`: RevealGroup staggered job card entrance, animate-bob on empty-state icon.
+   118→- Upgraded `src/components/auth/auth-view.tsx`: AnimatePresence on mode switch (login→register→verify), staggered form fields, motion title/subtitle transitions.
+   119→- Upgraded `src/components/layout/navbar.tsx`: layoutId animated active underline that springs between nav items.
+   120→- Upgraded `src/components/layout/notifications-bell.tsx`: soft ping ring on unread badge.
+   121→- Upgraded `src/components/dashboard/dashboard-shell.tsx`: layoutId sidebar active indicator (springs between tabs), AnimatePresence content transition on tab change (fade+slide), MetricCard spring-in + hover lift + icon wobble, EmptyState bob animation.
+   122→
+   123→Verification (Agent Browser):
+   124→- Home: staggered hero, aurora blobs, scroll reveals all render. HTTP 200.
+   125→- View transition home→jobs→login: smooth fade+slide, no errors.
+   126→- Candidate login → dashboard: metrics spring in, sidebar indicator slides between Overview/Profile/Saved Jobs tabs.
+   127→- Admin login → panel: recharts render, JA toggle works (管理パネル), mobile (iPhone 14) responsive.
+   128→- Zero console/runtime errors across all flows.
+   129→- `bun run lint` clean. Dev server compiles without warnings.
+   130→
+   131→Stage Summary:
+   132→- Platform now has a cohesive premium animation system: page transitions, scroll reveals, staggered lists, magnetic/spotlight/tilt micro-interactions, animated nav indicator, spring physics throughout.
+   133→- All animations respect prefers-reduced-motion for accessibility.
+   134→- No pending items — the entire 10-milestone plan is complete AND visually polished.
+   135→
+   136→---
+   137→Task ID: CONTENT-1
+   138→Agent: main (Z.ai Code)
+   139→Task: Update IndiGate website content to match real Indobox company information.
+   140→
+   141→Work Log:
+   142→- Updated `src/lib/i18n.ts` (both `en` and `ja` dictionaries):
+   143→  - Hero: new badge ("India × Japan Talent Bridge" / "インド × 日本 人材プラットフォーム"), title, subtitle (IndiGate by Indobox Inc. messaging), CTA labels ("Browse Jobs in Japan", "Hire Indian Talent").
+   144→  - Stats: replaced `candidates` ("Indian students in Japan" / "日本在住のインド人留学生") and `placements` ("India-Japan exchanges (5yr target)" / "5年間の日印人材交流目標数") labels.
+   145→  - Added new `why.*` keys (title, subtitle, 3 stat cards: IIT 1–1.6% acceptance, 70/100 unicorn founders, 29.4% Japan preference; banner + source + 4 reason cards: safety/culture, advanced tech, salary, premium brand).
+   146→  - Replaced `how.*` keys: title ("End-to-end support from both India and Japan" / "日印両国からEnd to Endのサポート"), 3 new step titles+descs (Screening & candidate matching / Onboarding & visa support / Life support & continued growth).
+   147→  - Added new `hire.*` keys (4 hiring types: Internship, New graduate conditional offer, Experienced hire, Indian residents in Japan) with tags.
+   148→  - Added new `challenges.*` keys (3 hurdles: Language barrier / Cultural differences / Internal readiness, each with problem + Indobox solution).
+   149→  - Replaced `visa.ssw.desc`, `visa.engineer.desc`, `visa.transfer.desc`, `visa.support` with Indobox-tuned content (added nursing care, food & beverage to SSW; added embedded/finance to engineer; clarified transfer intra-company requirement).
+   150→  - Replaced all `faq.q1`–`faq.q8` and `faq.a1`–`faq.a8` with Indobox hiring FAQ (Japanese communication, religious considerations, food considerations, job-hopping, internships, in-person interviews, cultural differences).
+   151→  - Updated `contact.title` to "Get in touch with Indobox" / "お問い合わせ".
+   152→
+   153→- Updated `src/components/landing/landing-page.tsx`:
+   154→  - Imports: removed `FileText` (no longer used); added `GraduationCap`, `Trophy`, `Users`, `Cpu`, `Banknote`, `UserPlus` from lucide-react.
+   155→  - Hero section already wired to `t()` keys — no JSX change needed (verified).
+   156→  - Added new "WHY INDIAN TALENT" section AFTER stats bar, BEFORE featured jobs: heading + 3 SpotlightCard stat cards (GraduationCap/Trophy/Heart icons, text-gradient-brand values) + bg-brand-gradient banner with source attribution + 4 reason cards (ShieldCheck/Cpu/Banknote/Sparkles icons).
+   157→  - Updated "HOW IT WORKS" step icons to Search → Plane → Building2 (per spec) and titles/descs now flow from new i18n keys.
+   158→  - Added new "HIRING TYPES" section AFTER How It Works, BEFORE Visa Guide: heading + 4 SpotlightCard cards (GraduationCap/UserPlus/Briefcase/Users icons) each with tag Badge + title + desc.
+   159→  - Added new "CHALLENGES" section AFTER Hiring Types, BEFORE Visa Guide: heading + 3 SpotlightCard cards with oversized 01/02/03 number, problem text, and Indobox-solution callout (bg-saffron/10 box with solution.badge).
+   160→  - FAQ and Contact sections already wired to `t("faq.q1")`…`t("faq.q8")` and `t("contact.title/subtitle")` — no JSX change needed (verified).
+   161→  - All new sections reuse existing design tokens (`bg-brand-gradient`, `text-gradient-brand`, `shadow-glow-brand`, `shadow-premium`, `text-crimson`, `bg-saffron/10`, `font-display`) and motion components (`Reveal`, `RevealGroup`, `staggerItem`, `fadeUp`, `SpotlightCard`).
+   162→  - Existing animations (stagger, spring hover lift, spotlight cursor) preserved and applied to new cards.
+   163→
+   164→Verification:
+   165→- `bun run lint` clean — zero errors/warnings.
+   166→- `dev.log`: HTTP 200 on `/`, `/api/jobs/stats`, `/api/jobs?limit=3`, `/api/testimonials?active=true`, `/api/auth/me`, `/api/notifications`. No runtime errors after edits settled.
+   167→- Transient `FileText is not defined` ReferenceError appeared briefly mid-edit (import removed before usage replaced) — resolved immediately after How-It-Works icon swap; final GET / returns 200.
+   168→
+   169→Stage Summary:
+   170→- IndiGate landing page now reflects real Indobox Inc. positioning: India→Japan talent bridge, IIT-calibre talent narrative, four hiring models, three hiring-hurdle solutions, and a Japan-focussed hiring FAQ.
+   171→- All content bilingual (EN + JA), all new sections share the same premium motion + token system as the rest of the page.
+   172→- No API routes, auth, dashboards, or admin code touched.
+   173→
+   174→---
+   175→Task ID: UI-1
+   176→Agent: main (Z.ai Code)
+   177→Task: UI/UX redesign — P2 Jobs listing, P3 Auth split-screen, P8 Landing page polish.
+   178→
+   179→Work Log:
+   180→- `src/components/jobs/jobs-view.tsx` — P2 Jobs Listing Redesign:
+   181→  - Replaced the simple header `<div className="mb-8">` with a mesh-background header (`bg-mesh border-b border-border`) holding the gradient title (`text-gradient-brand`), subtitle, and full-width search input (rounded-xl, `focus:ring-saffron/40`).
+   182→  - Re-architected the body into a two-column layout: a left sticky filter sidebar (`hidden lg:block w-[260px] sticky top-4` in a `bg-card rounded-2xl shadow-premium` container) with Location/Job-Type/JLPT/Min-salary controls (JLPT uses chip buttons with `bg-brand-gradient` active state) and a right results column with a count bar, the existing mobile filter row re-wrapped in `lg:hidden`, and the original loading/empty/grid/pagination logic preserved.
+   183→  - All state vars (`location`, `jobType`, `jlptLevel`, `salaryMin`, `search`, `debouncedSearch`, `loading`, `data`, `hasFilters`, `clearFilters`, `load`) preserved. `LOCATIONS`, `JOB_TYPES`, `JLPT_LEVELS`, `FilterSelect` helper untouched.
+   184→
+   185→- `src/components/auth/auth-view.tsx` — P3 Auth Split-Screen:
+   186→  - Every form `<Input>` got `h-11 rounded-xl text-[14px]` (verify/reset code inputs keep their `text-2xl tracking-[0.5em] font-bold text-center` styling but now also have `h-11 rounded-xl`).
+   187→  - Submit `<Button>` className set to `w-full h-11 bg-brand-gradient text-white hover:opacity-90 rounded-xl font-semibold text-[14px] shadow-glow-brand`.
+   188→  - Mode-switch links (login↔register) now use `text-saffron hover:text-crimson font-semibold transition-colors` instead of `text-crimson hover:underline`.
+   189→  - Left branded panel: added a 3-stat block (500+ / 50+ / N2) using `text-2xl font-display font-extrabold text-gradient-brand` numbers and `text-[12px] text-sidebar-foreground/60` labels.
+   190→  - All submit logic, `setMode` handlers, demo accounts, RoleCard/Field/DemoLine helpers preserved.
+   191→
+   192→- `src/components/landing/landing-page.tsx` — P8 Landing Page Polish (5 changes):
+   193→  1. Stats bar: outer `<div>` became `<section className="border-y border-border bg-card">` with inner `max-w-5xl mx-auto px-6 py-8` container; `StatCard` label class changed to `text-[12px] text-muted-foreground font-medium mt-1.5 uppercase tracking-wide`.
+   194→  2. Featured jobs: removed `<Badge>`+`<Briefcase>` eyebrow; replaced with `<p className="section-eyebrow mb-2">Live opportunities</p>` and `<h2 className="section-title text-foreground">Latest opportunities</h2>`. Subtitle + View-all button preserved.
+   195→  3. How it works: big-number watermark span updated to `absolute top-4 right-5 text-[52px] font-display font-extrabold text-muted/20 leading-none select-none`.
+   196→  4. Testimonials: removed the scrolling marquee (animate-marquee + duplicated array); replaced with a static `RevealGroup` 3-column grid iterating `testimonials.slice(0, 3)`. Each card is a flex-col `<figure>` with Quote icon, italic blockquote, and avatar+name figcaption at bottom.
+   197→  5. CTA section: replaced the rounded gradient panel with a dark `bg-sidebar` band (`py-16 md:py-20`), `bg-mesh opacity-20` overlay, centered `max-w-3xl` container, and a title that branches on `user ? t("hero.title") : t("cta.title")`. Added `const user = useApp((s) => s.user);` selector to `LandingPage`.
+   198→
+   199→Verification:
+   200→- `bun run lint` — clean (zero errors / warnings).
+   201→- `dev.log` — `✓ Compiled` repeatedly, `GET / 200`, no runtime/compile errors.
+   202→- All imports remain used (`Briefcase` still used by Hiring Models section, `Badge` still used across many sections, all icons and motion helpers still referenced).
+   203→
+   204→Stage Summary:
+   205→- Three core public-facing views (Jobs, Auth, Landing) now share a consistent premium visual language: mesh headers, gradient eyebrows, sticky filter rail, consistent input/button heights, dark CTA band, and watermark-numbered step cards.
+   206→- No backend, schema, or state-logic changes; pure UI/UX layer.
+   207→- Work record also saved to `/home/z/my-project/agent-ctx/UI-1-ui-redesign.md` for downstream agents.
+   208→
+   209→---
+   210→
+   211→## UI-2 — Dashboard Polish (Candidate / Company / Admin)
+   212→
+   213→Agent: Z.ai Code
+   214→Task ID: UI-2
+   215→Scope: Apply premium UI/UX redesign to the three role dashboards. Pure JSX/className changes — no logic, state, API calls, or functions altered.
+   216→
+   217→### Files modified
+   218→
+   219→**1. `src/components/candidate/candidate-dashboard.tsx` — P4 Candidate Dashboard**
+   220→
+   221→- **CHANGE 1 — Metric cards in Overview tab**: Replaced the four `MetricCard` components with a mapped array of colored icon cards (`bg-blue-500/10`/`text-blue-500` for Sent, amber for Shortlisted, violet for Interviews, emerald for Offers). Each card is `bg-card border border-border rounded-2xl p-5 shadow-premium hover:border-saffron/30 transition-all` with a `w-10 h-10 rounded-xl` colored icon block, `text-2xl font-display font-extrabold` value, and `text-[12px] text-muted-foreground` label. Loading state still uses `MetricSkeleton`. `FileText`, `Star`, `CalendarClock`, `Trophy` were already imported; `Send` removed (was only used by the old first card).
+   222→- **CHANGE 2 — Profile completion banner**: Replaced the `SectionCard` + `Progress` UI with a gradient banner (`bg-gradient-to-r from-saffron/10 to-crimson/10 border border-saffron/20 rounded-2xl p-5 mb-6`). Header has "Profile strength" + `t("dash.profile.complete")` subtitle on the left and a `text-2xl font-display font-extrabold text-gradient-brand` percentage on the right. Bar is `h-2 bg-muted rounded-full overflow-hidden` with a `bg-brand-gradient` fill that has `transition-all duration-700`. The two completion CTA buttons (Complete profile / Upload resume) are preserved inside the banner. `Progress` import removed.
+   223→- **CHANGE 3 — Application rows**: In the Applications tab `Table`, every `TableHead` got `bg-muted/50 text-[11px] font-bold uppercase tracking-wider text-muted-foreground` appended (preserving the existing `pl-5 sm:pl-6` / `hidden sm:table-cell` / `text-right pr-5 sm:pr-6` utilities). The main data `TableRow` got `hover:bg-muted/30 transition-colors`. The interview-info sub-row keeps its violet background.
+   224→- Imports cleaned: removed `MetricCard`, `Progress`, `Send`. Kept `ArrowRight`, `SectionCard`, `MetricSkeleton`, all icons still in use.
+   225→
+   226→**2. `src/components/company/company-dashboard.tsx` — P5 Company Dashboard**
+   227→
+   228→- **CHANGE 1 — Applicants pipeline**: Added module-scope `PIPELINE_STAGES` constant (5 entries: APPLIED/SHORTLISTED/INTERVIEWED/OFFERED/REJECTED, each with colored `color` + `badge` class strings). Replaced the existing `SectionCard`+`Table` block in `Applicants()` with a horizontal-scroll pipeline: `<div className="rounded-2xl border border-border bg-card overflow-hidden">` → `<div className="flex gap-4 overflow-x-auto scroll-area p-4">` → one column per stage. When `statusFilter === "ALL"` all 5 columns render; otherwise only the selected stage's column renders. Each column is `w-72 rounded-xl border p-3 flex flex-col` tinted with the stage color, with a header row (label + count badge) and a `max-h-[60vh] overflow-y-auto` body. Each applicant is rendered as a clickable `bg-card border border-border rounded-lg p-3 hover:shadow-premium hover:border-saffron/30` mini-card containing avatar, name, JLPT badge, applied date, and job title. Clicking calls the existing `setSelectedId(a.id)` so the existing Sheet opens unchanged. The existing top filter bar (job `Select` + status `Select`) is preserved verbatim.
+   229→- **CHANGE 2 — My Jobs tab cards**: Replaced the `SectionCard`+`Table` block in `Jobs()` with `<div className="grid grid-cols-1 md:grid-cols-2 gap-4">` of cards. Each job is `bg-card border border-border rounded-2xl p-5 hover:border-saffron/30 hover:shadow-premium transition-all`. Top row: title + `<MapPin/>`-prefixed location (left), the existing toggle button repurposed as a shrink-0 status pill (right). Middle row: `<Badge variant="outline">` for `t(\`jobtype.${j.jobType}\`)` and `<Badge>` with `JLPT_BADGE[j.jlptRequired]` for the JLPT level. Bottom row (border-top separator): `{j.applicationCount ?? 0} applicants` (left) and the existing View Applicants button + Delete `AlertDialog` (right). `toggleActive`, `remove`, `deleteId`, `busyId`, `setTab("applicants", { jobId })` handlers preserved.
+   230→- Imports: added `MapPin`. Removed `Table`, `TableBody`, `TableCell`, `TableHead`, `TableHeader`, `TableRow` (no longer used). `formatRelative`, `Eye`, `Search`, `SectionCard`, `MetricCard` still used elsewhere.
+   231→
+   232→**3. `src/components/admin/admin-dashboard.tsx` — P6 Admin Polish**
+   233→
+   234→- **CHANGE 1 — Overview stat cards**: Replaced the six `MetricCard` components with a mapped array of colored-icon stat cards. Grid is now `grid-cols-2 lg:grid-cols-3 gap-4 mb-8`. Each card is `bg-card border border-border rounded-2xl p-5 shadow-premium hover:border-saffron/20 transition-all` with a `w-10 h-10 rounded-xl` icon block (accent branches on `saffron`/`crimson`/`blue`/`violet`/`emerald`/`amber`), `text-3xl font-display font-extrabold` value, `text-[12px] font-medium` label, and a `text-[11px] text-muted-foreground` trend line. Values still pulled from `stats?.metrics.*` with `?? 0` fallbacks; loading state still uses `MetricSkeleton`.
+   235→- **CHANGE 2 — Table styling**: For every `Table` in the admin panel (JobsTab, CandidatesTab, CompaniesTab, ApplicationsTab, ContactsTab):
+   236→  - Replaced the wrapping `<SectionCard bodyClassName="p-0">` with `<div className="rounded-2xl border border-border overflow-hidden shadow-premium">` (and the matching `</SectionCard>` → `</div>`).
+   237→  - Every `<TableHead>` got `bg-muted/50 text-[11px] font-bold uppercase tracking-wider text-muted-foreground` appended (existing `pl-5 sm:pl-6` / `hidden md:table-cell` / `text-right pr-5 sm:pr-6` preserved).
+   238→  - Every data `<TableRow>` got `hover:bg-muted/30 transition-colors`.
+   239→  - The inner `<div className="max-h-[70vh] overflow-y-auto scroll-area">` and the sticky `<TableHeader className="sticky top-0 bg-card z-10">` are preserved so vertical scroll + sticky header still work inside the new outer rounded container.
+   240→- **CHANGE 3 — Pending company approval cards**: Replaced the `<ul className="divide-y">` of pending companies with a `<div className="p-5 space-y-3">` containing one card per company. Each card is `flex items-center justify-between gap-4 bg-amber-500/5 border border-amber-500/20 rounded-xl p-4` with: (left) a `w-9 h-9 rounded-xl bg-amber-500/15` icon block holding `<Building2 className="h-4 w-4 text-amber-600" />`, then `companyName` (`text-[13px] font-semibold`) + `email` (`text-[11px] text-muted-foreground`); (right) the Approve button restyled as `h-8 px-3 text-[12px] bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors` and the Reject button as `h-8 px-3 text-[12px] border border-rose-500/40 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors`. `approve(c.id, true|false)`, `busyId` gating, and the `CheckCircle2`/`XCircle` icons are preserved.
+   241→- Imports cleaned: removed `MetricCard`, `Send`. `formatRelative` still used by Recent applications + Jobs table; `CompanyAvatar` still used by Companies table.
+   242→
+   243→### Verification
+   244→
+   245→- `bun run lint` — passed (zero errors / warnings).
+   246→- `npx tsc --noEmit` — only the pre-existing `bcryptjs` type-definition error (Task 1-4 era); zero TS errors in any of the three modified files.
+   247→- `dev.log` — `✓ Compiled` repeatedly, `GET / 200`, no runtime/compile errors after the edits.
+   248→
+   249→### Notes for downstream agents
+   250→
+   251→- `MetricCard` is still exported by `dashboard-shell.tsx` and still used by `CompanyDashboard` Overview + Analytics tabs, so do NOT remove the export.
+   252→- The admin panel's `<div className="rounded-2xl border border-border overflow-hidden shadow-premium">` table wrapper relies on the inner `max-h-[70vh] overflow-y-auto scroll-area` div for vertical scroll + sticky header. If you change one, change both.
+   253→- The pipeline mini-cards in `Applicants()` call `setSelectedId(a.id)` — the same setter the old table's Eye button used — so the existing `Sheet` + `ApplicantDetail` slide-over works unchanged.
+   254→- The `PIPELINE_STAGES` constant is typed (`{ status: ApplicationStatus; label: string; color: string; badge: string }[]`) and lives at module scope just above `function Applicants()` to satisfy the `react-hooks/static-components` rule.
+   255→
+   256→Work record also saved to `/home/z/my-project/agent-ctx/UI-2-dashboard-polish.md`.
+   257→

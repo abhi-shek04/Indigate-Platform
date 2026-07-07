@@ -38,6 +38,9 @@ import {
   Wrench,
   ArrowLeftRight,
   HelpCircle,
+  Users,
+  Award,
+  TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { JobDTO, TestimonialDTO } from "@/lib/types";
@@ -60,11 +63,13 @@ function StatCard({
   suffix,
   label,
   delay,
+  icon: Icon,
 }: {
   value: number;
   suffix?: string;
   label: string;
   delay: number;
+  icon: React.ComponentType<{ className?: string }>;
 }) {
   const count = useCountUp(value, 1800);
   const ref = useRef<HTMLDivElement>(null);
@@ -89,18 +94,32 @@ function StatCard({
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 24 }}
       animate={visible ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.6, ease: easeOutExpo, delay }}
-      className="text-center"
+      whileHover={{ y: -4 }}
+      className="group relative rounded-2xl border border-border bg-card/80 glass px-5 py-6 text-center transition-all hover:border-saffron/40 hover:shadow-premium"
     >
-      <div className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight">
-        <span className="text-gradient-brand">
-          {count.toLocaleString()}
-          {suffix}
-        </span>
+      {/* Saffron accent line on top */}
+      <span className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-saffron/60 to-transparent opacity-70 group-hover:opacity-100 transition-opacity" />
+      <div className="relative flex flex-col items-center">
+        <motion.div
+          whileHover={{ rotate: [0, -8, 8, 0], scale: 1.08 }}
+          transition={{ duration: 0.5 }}
+          className="mb-3 grid place-items-center h-11 w-11 rounded-xl bg-saffron/10 text-saffron ring-1 ring-inset ring-saffron/20"
+        >
+          <Icon className="h-5 w-5" />
+        </motion.div>
+        <div className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight leading-none">
+          <span className="text-gradient-brand">
+            {count.toLocaleString()}
+            {suffix}
+          </span>
+        </div>
+        <p className="mt-2 text-xs sm:text-sm font-medium text-muted-foreground uppercase tracking-wide">
+          {label}
+        </p>
       </div>
-      <p className="mt-1.5 text-sm font-medium text-muted-foreground">{label}</p>
     </motion.div>
   );
 }
@@ -182,6 +201,16 @@ export function LandingPage() {
     <main>
       {/* HERO */}
       <section className="relative overflow-hidden bg-mesh">
+        {/* Fine grid pattern overlay */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 opacity-[0.18] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, color-mix(in oklch, var(--foreground) 12%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in oklch, var(--foreground) 12%, transparent) 1px, transparent 1px)",
+            backgroundSize: "56px 56px",
+          }}
+        />
         {/* Animated aurora blobs */}
         <div className="absolute inset-0 -z-10">
           <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-saffron/25 blur-3xl animate-aurora" />
@@ -194,17 +223,22 @@ export function LandingPage() {
             style={{ animationDelay: "5s" }}
           />
         </div>
+        {/* Bottom fade into the page */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-background"
+        />
 
         {/* Parallax mouse-follow handled via CSS only for perf */}
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-16 pb-20 sm:pt-24 sm:pb-28">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-20 pb-24 sm:pt-28 sm:pb-32">
           <RevealGroup className="mx-auto max-w-3xl text-center" stagger={0.12} delayChildren={0.1}>
-            <motion.div variants={staggerItem} className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/10 px-4 py-1.5 text-sm font-medium text-crimson">
+            <motion.div variants={staggerItem} className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/10 px-4 py-1.5 text-sm font-medium text-crimson shadow-premium">
               <Sparkles className="h-3.5 w-3.5" />
               {t("hero.badge")}
             </motion.div>
             <motion.h1
               variants={staggerItem}
-              className="mt-6 font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05]"
+              className="mt-7 font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05]"
             >
               {t("hero.title")}
             </motion.h1>
@@ -216,7 +250,7 @@ export function LandingPage() {
             </motion.p>
             <motion.div
               variants={staggerItem}
-              className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3"
+              className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3"
             >
               <MagneticButton
                 onClick={() => navigate("jobs")}
@@ -233,13 +267,13 @@ export function LandingPage() {
                 {t("hero.cta.hire")}
               </MagneticButton>
             </motion.div>
-            <motion.p variants={staggerItem} className="mt-6 text-xs text-muted-foreground">
+            <motion.p variants={staggerItem} className="mt-7 text-xs text-muted-foreground">
               {t("hero.trusted")}
             </motion.p>
           </RevealGroup>
 
           {/* Hero company strip */}
-          <Reveal variants={fadeUp} delay={0.5} className="mt-14">
+          <Reveal variants={fadeUp} delay={0.5} className="mt-16">
             <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 opacity-70">
               {["TechNova", "SakuraSoft", "Mitsui Eng.", "Hikari", "Kintaro"].map(
                 (name, i) => (
@@ -265,11 +299,11 @@ export function LandingPage() {
         {/* Stats bar */}
         <div className="border-y border-border bg-card/60 glass">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              <StatCard value={stats?.jobCount ?? 12} suffix="+" label={t("stats.jobs")} delay={0} />
-              <StatCard value={stats?.candidateCount ?? 1900} suffix="+" label={t("stats.candidates")} delay={120} />
-              <StatCard value={stats?.companyCount ?? 5} suffix="+" label={t("stats.companies")} delay={240} />
-              <StatCard value={stats?.placementCount ?? 312} suffix="+" label={t("stats.placements")} delay={360} />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+              <StatCard value={stats?.jobCount ?? 12} suffix="+" label={t("stats.jobs")} delay={0} icon={Briefcase} />
+              <StatCard value={stats?.candidateCount ?? 1900} suffix="+" label={t("stats.candidates")} delay={120} icon={Users} />
+              <StatCard value={stats?.companyCount ?? 5} suffix="+" label={t("stats.companies")} delay={240} icon={Building2} />
+              <StatCard value={stats?.placementCount ?? 312} suffix="+" label={t("stats.placements")} delay={360} icon={Award} />
             </div>
           </div>
         </div>
@@ -281,8 +315,8 @@ export function LandingPage() {
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <Reveal variants={fadeUp}>
               <div className="flex items-end justify-between flex-wrap gap-4 mb-10">
-                <div>
-                  <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
+                <div className="max-w-2xl">
+                  <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson bg-saffron/5">
                     <Briefcase className="mr-1 h-3 w-3" />
                     {t("jobs.title")}
                   </Badge>
@@ -294,14 +328,14 @@ export function LandingPage() {
                 <Button
                   variant="outline"
                   onClick={() => navigate("jobs")}
-                  className="font-semibold group"
+                  className="font-semibold group h-11 px-5 rounded-xl border-saffron/30 hover:border-saffron/60 hover:bg-saffron/5"
                 >
                   {t("jobs.viewall")}
                   <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </div>
             </Reveal>
-            <RevealGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" stagger={0.1}>
+            <RevealGroup className="grid gap-5 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3" stagger={0.1}>
               {featured.map((job) => (
                 <motion.div key={job.id} variants={staggerItem}>
                   <JobCard job={job} />
@@ -326,25 +360,36 @@ export function LandingPage() {
             <p className="mt-2 text-muted-foreground">{t("how.subtitle")}</p>
           </Reveal>
 
-          <RevealGroup className="mt-14 grid gap-6 md:grid-cols-3" stagger={0.14}>
+          <RevealGroup className="mt-14 grid gap-6 md:grid-cols-3 relative" stagger={0.14}>
+            {/* Timeline connector line on md+ */}
+            <div
+              aria-hidden
+              className="hidden md:block absolute top-[3.25rem] left-[16.667%] right-[16.667%] h-px bg-gradient-to-r from-saffron/10 via-saffron/40 to-crimson/10"
+            />
             {[
               { icon: FileText, title: t("how.1.title"), desc: t("how.1.desc"), step: "01" },
               { icon: Search, title: t("how.2.title"), desc: t("how.2.desc"), step: "02" },
               { icon: Plane, title: t("how.3.title"), desc: t("how.3.desc"), step: "03" },
             ].map((s, i) => (
-              <motion.div key={i} variants={staggerItem} whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
-                <SpotlightCard className="h-full rounded-2xl border border-border bg-background p-7 hover:shadow-premium transition-shadow">
-                  <span className="absolute top-5 right-6 font-display text-5xl font-extrabold text-saffron/15">
+              <motion.div key={i} variants={staggerItem} whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 300, damping: 20 }} className="relative">
+                <SpotlightCard className="relative h-full rounded-2xl border border-border bg-background p-7 hover:shadow-premium transition-shadow overflow-hidden">
+                  <span className="absolute top-5 right-6 font-display text-5xl font-extrabold text-saffron/10 select-none">
                     {s.step}
                   </span>
-                  <motion.div
-                    whileHover={{ rotate: [0, -8, 8, 0], scale: 1.05 }}
-                    transition={{ duration: 0.5 }}
-                    className="grid place-items-center h-12 w-12 rounded-xl bg-brand-gradient text-white shadow-glow-brand"
-                  >
-                    <s.icon className="h-5 w-5" />
-                  </motion.div>
-                  <h3 className="mt-5 font-display text-xl font-bold">{s.title}</h3>
+                  {/* Numbered badge — sits on the timeline */}
+                  <div className="relative z-10 mb-5 flex items-center gap-3">
+                    <motion.div
+                      whileHover={{ rotate: [0, -8, 8, 0], scale: 1.06 }}
+                      transition={{ duration: 0.5 }}
+                      className="grid place-items-center h-12 w-12 rounded-full bg-brand-gradient text-white shadow-glow-brand ring-4 ring-background"
+                    >
+                      <s.icon className="h-5 w-5" />
+                    </motion.div>
+                    <span className="text-xs font-bold uppercase tracking-[0.18em] text-saffron">
+                      Step {s.step}
+                    </span>
+                  </div>
+                  <h3 className="font-display text-xl font-bold">{s.title}</h3>
                   <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
                 </SpotlightCard>
               </motion.div>
@@ -428,7 +473,7 @@ export function LandingPage() {
                 From Bengaluru to Tokyo, Hyderabad to Osaka — we handle the
                 friction so you can focus on what you do best: great work.
               </p>
-              <ul className="mt-6 space-y-4">
+              <ul className="mt-6 space-y-3">
                 {[
                   { icon: ShieldCheck, title: "Visa & relocation support", desc: "Every listed job comes with visa sponsorship. Our partners handle paperwork, housing, and onboarding." },
                   { icon: Globe2, title: "Bilingual by design", desc: "Browse jobs in English or Japanese. Companies can post in both languages." },
@@ -441,9 +486,10 @@ export function LandingPage() {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.5, ease: easeOutExpo, delay: i * 0.08 }}
-                    className="flex gap-4"
+                    whileHover={{ x: 4 }}
+                    className="group flex gap-4 rounded-xl border border-transparent hover:border-border hover:bg-card/60 p-3 -m-3 transition-all"
                   >
-                    <div className="shrink-0 grid place-items-center h-10 w-10 rounded-lg bg-saffron/10 text-saffron">
+                    <div className="shrink-0 grid place-items-center h-10 w-10 rounded-lg bg-saffron/10 text-saffron ring-1 ring-inset ring-saffron/15 group-hover:bg-brand-gradient group-hover:text-white group-hover:ring-transparent transition-all">
                       <item.icon className="h-5 w-5" />
                     </div>
                     <div>
@@ -507,17 +553,33 @@ export function LandingPage() {
           </div>
 
           <div className="mt-14 relative">
+            {/* Edge fade masks */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 sm:w-32 bg-gradient-to-r from-background to-transparent"
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 sm:w-32 bg-gradient-to-l from-background to-transparent"
+            />
             <div className="flex gap-5 w-max animate-marquee">
               {[...testimonials, ...testimonials].map((te, i) => (
                 <figure
                   key={i}
-                  className="w-[340px] sm:w-[400px] shrink-0 rounded-2xl border border-border bg-background p-6 shadow-premium transition-transform hover:scale-[1.02]"
+                  className="w-[340px] sm:w-[400px] shrink-0 rounded-2xl border border-border bg-background p-6 shadow-premium transition-all hover:shadow-glow-brand hover:border-saffron/40 hover:-translate-y-1"
                 >
-                  <Quote className="h-7 w-7 text-saffron/40" />
+                  <div className="flex items-start justify-between">
+                    <Quote className="h-8 w-8 text-saffron/50" />
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: 5 }).map((_, s) => (
+                        <Star key={s} className="h-3.5 w-3.5 fill-saffron text-saffron" />
+                      ))}
+                    </div>
+                  </div>
                   <blockquote className="mt-3 text-sm leading-relaxed text-foreground/90">
                     {pick(te.content, te.contentJa)}
                   </blockquote>
-                  <figcaption className="mt-5 flex items-center gap-3">
+                  <figcaption className="mt-5 flex items-center gap-3 border-t border-border/60 pt-4">
                     <CompanyAvatar name={te.name} size={40} />
                     <div>
                       <p className="font-semibold text-sm">{te.name}</p>
@@ -756,29 +818,31 @@ function VisaAccordionItem({
   return (
     <AccordionItem
       value={value}
-      className="rounded-xl border border-border bg-background px-5 overflow-hidden data-[state=open]:shadow-premium transition-shadow"
+      className="group rounded-xl border border-border bg-background px-5 overflow-hidden data-[state=open]:shadow-premium data-[state=open]:border-saffron/40 transition-all"
     >
       <AccordionTrigger className="hover:no-underline py-5">
-        <div className="flex items-center gap-3 text-left">
-          <div className="grid place-items-center h-10 w-10 rounded-lg bg-saffron/10 text-saffron shrink-0">
+        <div className="flex items-center gap-4 text-left">
+          <div className="grid place-items-center h-11 w-11 rounded-xl bg-saffron/10 text-saffron shrink-0 ring-1 ring-inset ring-saffron/15 group-data-[state=open]:bg-brand-gradient group-data-[state=open]:text-white group-data-[state=open]:ring-transparent transition-all">
             <Icon className="h-5 w-5" />
           </div>
           <span className="font-display font-bold text-base">{title}</span>
         </div>
       </AccordionTrigger>
       <AccordionContent className="pb-5 pt-1">
-        <p className="text-sm text-muted-foreground leading-relaxed mb-4">{desc}</p>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-          {t("visa.requirements")}
-        </p>
-        <ul className="space-y-1.5">
-          {requirements.map((r) => (
-            <li key={r} className="flex items-start gap-2 text-sm">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-              <span>{r}</span>
-            </li>
-          ))}
-        </ul>
+        <div className="sm:pl-[3.75rem]">
+          <p className="text-sm text-muted-foreground leading-relaxed mb-4">{desc}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2.5">
+            {t("visa.requirements")}
+          </p>
+          <ul className="grid sm:grid-cols-2 gap-y-1.5 gap-x-4">
+            {requirements.map((r) => (
+              <li key={r} className="flex items-start gap-2 text-sm">
+                <CheckCircle2 className="h-4 w-4 text-saffron shrink-0 mt-0.5" />
+                <span>{r}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </AccordionContent>
     </AccordionItem>
   );

@@ -48,9 +48,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { JobCard } from "@/components/jobs/job-card";
 import { CandidateAvatar } from "@/components/brand/logo";
 import { ResumeBuilder } from "@/components/candidate/resume-builder";
+import { JobAlerts } from "@/components/candidate/tabs/alerts";
 import { toast } from "sonner";
 import {
   LayoutDashboard,
@@ -70,6 +72,8 @@ import {
   AlertCircle,
   ArrowRight,
   FileEdit,
+  Bell,
+  CircleDot,
 } from "lucide-react";
 import type {
   ApplicationDTO,
@@ -92,6 +96,7 @@ const NAV: NavItem[] = [
   { key: "builder", label: "Resume Builder", icon: FileEdit },
   { key: "resume", label: "Upload Resume", icon: Upload },
   { key: "saved", label: "Saved Jobs", icon: Bookmark },
+  { key: "alerts", label: "Job Alerts", icon: Bell },
 ];
 
 export function CandidateDashboard() {
@@ -161,6 +166,7 @@ export function CandidateDashboard() {
       {tab === "builder" && <ResumeBuilder />}
       {tab === "resume" && <Resume />}
       {tab === "saved" && <Saved />}
+      {tab === "alerts" && <JobAlerts />}
     </DashboardShell>
   );
 }
@@ -591,6 +597,10 @@ function Profile() {
     education: (candidate?.education ?? []) as EducationEntry[],
   });
   const [saving, setSaving] = useState(false);
+  const [openToWork, setOpenToWork] = useState<boolean>(
+    candidate?.openToWork ?? true,
+  );
+  const [toggling, setToggling] = useState(false);
 
   // re-sync when store candidate changes (e.g. after refreshAuth)
   useEffect(() => {
@@ -607,6 +617,7 @@ function Profile() {
       skills: candidate.skills,
       education: candidate.education ?? [],
     }));
+    setOpenToWork(candidate.openToWork);
   }, [candidate?.updatedAt]);
 
   function set<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
@@ -659,8 +670,72 @@ function Profile() {
     }
   }
 
+  async function toggleOpenToWork(next: boolean) {
+    setToggling(true);
+    const prev = openToWork;
+    setOpenToWork(next); // optimistic
+    try {
+      await api("/api/candidates/me/open-to-work", {
+        method: "PATCH",
+        body: JSON.stringify({ openToWork: next }),
+      });
+      await refreshAuth();
+      toast.success(
+        next
+          ? "You're now visible as Open to Work."
+          : "Open to Work turned off.",
+      );
+    } catch (err) {
+      setOpenToWork(prev); // rollback
+      toast.error(err instanceof Error ? err.message : "Failed to update.");
+    } finally {
+      setToggling(false);
+    }
+  }
+
   return (
     <form onSubmit={save} className="space-y-6">
+      {/* Open to Work toggle */}
+      <section className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-premium">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-start gap-3 min-w-0">
+            <div
+              className={cn(
+                "grid place-items-center h-11 w-11 rounded-xl shrink-0 transition-colors",
+                openToWork
+                  ? "bg-saffron/15 text-saffron"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              <CircleDot className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="font-display text-lg font-bold">Open to Work</h2>
+                {openToWork && (
+                  <Badge
+                    variant="outline"
+                    className="bg-saffron/10 text-saffron border-saffron/30"
+                  >
+                    Active
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Companies searching for talent will see you're available.
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={openToWork}
+            onCheckedChange={(v) => toggleOpenToWork(v)}
+            disabled={toggling}
+            aria-label="Open to Work"
+            className="data-[state=checked]:bg-saffron"
+          />
+        </div>
+      </section>
+
       {/* Basic info */}
       <SectionCard title={t("dash.profile.basic")}>
         <div className="grid sm:grid-cols-2 gap-4">

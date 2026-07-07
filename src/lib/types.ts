@@ -20,6 +20,8 @@ export interface SessionUser {
   name: string | null;
   role: Role;
   isVerified: boolean;
+  totpEnabled?: boolean;
+  googleId?: string | null;
 }
 
 export type PublicUser = SessionUser;
@@ -40,6 +42,7 @@ export interface CandidateProfileDTO {
   experienceYears: number;
   education: EducationEntry[] | null;
   savedJobIds: string[];
+  openToWork: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -57,6 +60,7 @@ export interface CandidateTalentDTO {
   photoUrl: string | null;
   hasResume: boolean; // boolean only — never the actual URL
   educationCount: number; // count only — no details exposed
+  openToWork: boolean; // LinkedIn-style "Open to Work" badge
   createdAt: string;
 }
 

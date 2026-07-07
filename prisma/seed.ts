@@ -81,7 +81,7 @@ async function main() {
     },
   ];
 
-  const companies = [];
+  const companies: any[] = [];
   for (const cu of companyUsers) {
     const hash = await bcrypt.hash("company123", 10);
     const user = await prisma.user.upsert({
@@ -352,7 +352,7 @@ async function main() {
     },
   ];
 
-  const jobs = [];
+  const jobs: any[] = [];
   for (const jd of jobsData) {
     const company = companies[jd.companyIdx];
     const job = await prisma.job.create({
@@ -439,7 +439,7 @@ async function main() {
     },
   ];
 
-  const candidates = [];
+  const candidates: any[] = [];
   for (const cd of candidatesData) {
     const hash = await bcrypt.hash("candidate123", 10);
     const user = await prisma.user.upsert({

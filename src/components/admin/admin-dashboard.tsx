@@ -1873,7 +1873,7 @@ function TestimonialEditorSheet({
         contentJa: item.contentJa ?? "",
         photoUrl: item.photoUrl ?? "",
         order: String(item.order),
-        isActive: item.isActive,
+        isActive: item.isActive ?? false,
       });
     }
   }, [item]);

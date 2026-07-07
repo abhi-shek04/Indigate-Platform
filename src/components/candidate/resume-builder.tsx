@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -57,6 +58,38 @@ import { ResumePreview } from "./resume-preview";
 
 type Tab = "edit" | "preview-ja" | "preview-en";
 
+/** Sidebar navigation entries — id MUST match the `id` on each <Section>. */
+const SECTIONS: {
+  id: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+}[] = [
+  { id: "section-personal", icon: User, label: "Personal Info" },
+  { id: "section-education", icon: GraduationCap, label: "Education" },
+  { id: "section-projects", icon: Briefcase, label: "Projects" },
+  { id: "section-activities", icon: Heart, label: "Activities" },
+  { id: "section-awards", icon: Award, label: "Awards" },
+  { id: "section-selfpr", icon: Sparkles, label: "Self-PR" },
+];
+
+/**
+ * Returns a 0–100 percentage of how many resume sections have at least some
+ * data filled. Pure function — used to render the sidebar progress bar.
+ */
+function computeProgress(data: ResumeData): number {
+  const filled: boolean[] = [
+    !!(data.name?.trim() || data.email?.trim() || data.phone?.trim()),
+    data.education.length > 0,
+    data.projects.length > 0,
+    data.activities.length > 0,
+    data.awards.length > 0,
+    !!(data.selfPr?.trim() || data.selfPrJa?.trim() || data.hobbies?.trim()),
+  ];
+  return Math.round(
+    (filled.filter(Boolean).length / filled.length) * 100,
+  );
+}
+
 export function ResumeBuilder() {
   const { t } = useT();
   const navigate = useApp((s) => s.navigate);
@@ -67,6 +100,38 @@ export function ResumeBuilder() {
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<Tab>("edit");
   const [langInput, setLangInput] = useState("");
+  const [activeSection, setActiveSection] = useState<string>(
+    "section-personal",
+  );
+
+  // Keep the sidebar active-section indicator in sync with the scroll position.
+  // Only runs in the Edit tab (sidebar is hidden in previews / print).
+  useEffect(() => {
+    if (tab !== "edit") return;
+    if (typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible[0]) setActiveSection(visible[0].target.id);
+      },
+      { rootMargin: "-15% 0px -70% 0px", threshold: [0, 0.25, 0.5, 1] },
+    );
+    SECTIONS.forEach((s) => {
+      const el = document.getElementById(s.id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [tab]);
+
+  function scrollToSection(id: string) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      setActiveSection(id);
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -205,6 +270,8 @@ export function ResumeBuilder() {
     );
   }
 
+  const progress = computeProgress(data);
+
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8 print:max-w-none print:p-0">
       {/* Header */}
@@ -289,8 +356,67 @@ export function ResumeBuilder() {
           animate={{ opacity: 1, y: 0 }}
           className="print:hidden space-y-6"
         >
+          <div className="lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-6 xl:gap-8 items-start">
+            {/* Sidebar — sticky nav (lg+ only; mobile keeps single column) */}
+            <aside className="hidden lg:block print:hidden">
+              <div className="sticky top-6 space-y-3">
+                {/* Progress card */}
+                <div className="rounded-2xl border border-border bg-card p-4 shadow-premium">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Progress
+                    </span>
+                    <span className="font-display text-sm font-bold text-gradient-brand">
+                      {progress}%
+                    </span>
+                  </div>
+                  <Progress value={progress} className="h-2 bg-muted" />
+                  <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+                    {progress === 100
+                      ? "Looking great — resume is complete!"
+                      : "Fill in each section to complete your resume."}
+                  </p>
+                </div>
+                {/* Section nav */}
+                <nav
+                  aria-label="Resume sections"
+                  className="rounded-2xl border border-border bg-card p-2 shadow-premium"
+                >
+                  <ul className="space-y-0.5">
+                    {SECTIONS.map((s) => {
+                      const active = activeSection === s.id;
+                      const Icon = s.icon;
+                      return (
+                        <li key={s.id}>
+                          <button
+                            type="button"
+                            onClick={() => scrollToSection(s.id)}
+                            aria-current={active ? "true" : undefined}
+                            className={cn(
+                              "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left",
+                              active
+                                ? "bg-saffron/10 text-saffron shadow-sm"
+                                : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
+                            )}
+                          >
+                            <Icon className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{s.label}</span>
+                            {active && (
+                              <span className="ml-auto h-1.5 w-1.5 rounded-full bg-saffron shadow-glow-brand" />
+                            )}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </nav>
+              </div>
+            </aside>
+
+            {/* Content — existing form sections */}
+            <div className="space-y-6 lg:min-w-0">
           {/* Personal Info */}
-          <Section icon={User} title="Personal Information" desc="Your basic details — selectable fields make it faster">
+          <Section id="section-personal" icon={User} title="Personal Information" desc="Your basic details — selectable fields make it faster">
             <div className="grid sm:grid-cols-2 gap-4">
               <Field label="Full name (English)">
                 <Input value={data.name} onChange={(e) => update("name", e.target.value)} placeholder="Abhishek" />
@@ -397,7 +523,7 @@ export function ResumeBuilder() {
           </Section>
 
           {/* Education */}
-          <Section icon={GraduationCap} title="Education" desc="Academic history" action={<AddButton onClick={addEducation} />}>
+          <Section id="section-education" icon={GraduationCap} title="Education" desc="Academic history" action={<AddButton onClick={addEducation} />}>
             <div className="space-y-4">
               {data.education.length === 0 && <EmptyHint text="No education entries yet. Click Add to start." />}
               {data.education.map((edu, i) => (
@@ -431,7 +557,7 @@ export function ResumeBuilder() {
           </Section>
 
           {/* Projects */}
-          <Section icon={Briefcase} title="Projects" desc="Your technical projects" action={<AddButton onClick={addProject} />}>
+          <Section id="section-projects" icon={Briefcase} title="Projects" desc="Your technical projects" action={<AddButton onClick={addProject} />}>
             <div className="space-y-4">
               {data.projects.length === 0 && <EmptyHint text="No projects yet. Click Add to start." />}
               {data.projects.map((proj, i) => (
@@ -462,7 +588,7 @@ export function ResumeBuilder() {
           </Section>
 
           {/* Activities */}
-          <Section icon={Heart} title="Activities / Clubs" desc="Extracurricular and volunteer work" action={<AddButton onClick={addActivity} />}>
+          <Section id="section-activities" icon={Heart} title="Activities / Clubs" desc="Extracurricular and volunteer work" action={<AddButton onClick={addActivity} />}>
             <div className="space-y-4">
               {data.activities.length === 0 && <EmptyHint text="No activities yet. Click Add to start." />}
               {data.activities.map((act, i) => (
@@ -499,7 +625,7 @@ export function ResumeBuilder() {
           </Section>
 
           {/* Awards */}
-          <Section icon={Award} title="Awards / Achievements" desc="Honors and accomplishments" action={<AddButton onClick={addAward} />}>
+          <Section id="section-awards" icon={Award} title="Awards / Achievements" desc="Honors and accomplishments" action={<AddButton onClick={addAward} />}>
             <div className="space-y-4">
               {data.awards.length === 0 && <EmptyHint text="No awards yet. Click Add to start." />}
               {data.awards.map((aw, i) => (
@@ -533,7 +659,7 @@ export function ResumeBuilder() {
           </Section>
 
           {/* Self-PR */}
-          <Section icon={Sparkles} title="Self-PR & Hobbies" desc="Your personal statement and interests">
+          <Section id="section-selfpr" icon={Sparkles} title="Self-PR & Hobbies" desc="Your personal statement and interests">
             <Field label="Self-PR (English)">
               <Textarea rows={5} value={data.selfPr ?? ""} onChange={(e) => update("selfPr", e.target.value)} placeholder="I am a Computer Science student passionate about full-stack development and AI..." />
             </Field>
@@ -548,7 +674,10 @@ export function ResumeBuilder() {
             </Field>
           </Section>
 
-          {/* Save bar */}
+            </div>
+          </div>
+
+          {/* Save bar (full width across sidebar + content) */}
           <div className="sticky bottom-4 flex justify-end gap-2 print:hidden">
             <Button onClick={save} disabled={saving} className="bg-brand-gradient text-white hover:opacity-90 font-semibold shadow-glow-brand">
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -566,12 +695,14 @@ export function ResumeBuilder() {
 }
 
 function Section({
+  id,
   icon: Icon,
   title,
   desc,
   action,
   children,
 }: {
+  id?: string;
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   desc?: string;
@@ -579,7 +710,10 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-premium">
+    <section
+      id={id}
+      className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-premium scroll-mt-6"
+    >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-start gap-3">
           <div className="grid place-items-center h-10 w-10 rounded-lg bg-saffron/10 text-saffron shrink-0">

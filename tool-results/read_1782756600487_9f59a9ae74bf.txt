@@ -1,0 +1,731 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useRef, useState } from "react";
+     4→import { useApp } from "@/lib/store";
+     5→import { useT } from "@/lib/use-t";
+     6→import { cn } from "@/lib/utils";
+     7→import { api, formatRelative } from "@/lib/api-client";
+     8→import { Button } from "@/components/ui/button";
+     9→import { Badge } from "@/components/ui/badge";
+    10→import { CompanyAvatar } from "@/components/brand/logo";
+    11→import { JobCard } from "@/components/jobs/job-card";
+    12→import { useCountUp } from "@/components/brand/use-count-up";
+    13→import {
+    14→  Reveal,
+    15→  RevealGroup,
+    16→  staggerItem,
+    17→  fadeUp,
+    18→  fadeUp as fadeUpVariant,
+    19→  motion,
+    20→  easeOutExpo,
+    21→} from "@/lib/motion";
+    22→import { MagneticButton, SpotlightCard } from "@/components/brand/motion-primitives";
+    23→import {
+    24→  ArrowRight,
+    25→  Search,
+    26→  Plane,
+    27→  Sparkles,
+    28→  CheckCircle2,
+    29→  Quote,
+    30→  Mail,
+    31→  MapPin,
+    32→  Briefcase,
+    33→  Globe2,
+    34→  ShieldCheck,
+    35→  Heart,
+    36→  Star,
+    37→  Building2,
+    38→  Wrench,
+    39→  ArrowLeftRight,
+    40→  HelpCircle,
+    41→  GraduationCap,
+    42→  Trophy,
+    43→  Users,
+    44→  Cpu,
+    45→  Banknote,
+    46→  UserPlus,
+    47→  Phone,
+    48→} from "lucide-react";
+    49→import { toast } from "sonner";
+    50→import type { JobDTO, TestimonialDTO } from "@/lib/types";
+    51→import {
+    52→  Accordion,
+    53→  AccordionContent,
+    54→  AccordionItem,
+    55→  AccordionTrigger,
+    56→} from "@/components/ui/accordion";
+    57→
+    58→interface Stats {
+    59→  jobCount: number;
+    60→  candidateCount: number;
+    61→  companyCount: number;
+    62→  placementCount: number;
+    63→}
+    64→
+    65→function StatCard({
+    66→  value,
+    67→  suffix,
+    68→  label,
+    69→  delay,
+    70→}: {
+    71→  value: number;
+    72→  suffix?: string;
+    73→  label: string;
+    74→  delay: number;
+    75→}) {
+    76→  const count = useCountUp(value, 1800);
+    77→  const ref = useRef<HTMLDivElement>(null);
+    78→  const [visible, setVisible] = useState(false);
+    79→
+    80→  useEffect(() => {
+    81→    const el = ref.current;
+    82→    if (!el) return;
+    83→    const obs = new IntersectionObserver(
+    84→      ([e]) => {
+    85→        if (e.isIntersecting) {
+    86→          setVisible(true);
+    87→          obs.disconnect();
+    88→        }
+    89→      },
+    90→      { threshold: 0.3 },
+    91→    );
+    92→    obs.observe(el);
+    93→    return () => obs.disconnect();
+    94→  }, []);
+    95→
+    96→  return (
+    97→    <motion.div
+    98→      ref={ref}
+    99→      initial={{ opacity: 0, y: 20 }}
+   100→      animate={visible ? { opacity: 1, y: 0 } : {}}
+   101→      transition={{ duration: 0.6, ease: easeOutExpo, delay }}
+   102→      className="text-center"
+   103→    >
+   104→      <div className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight">
+   105→        <span className="text-gradient-brand">
+   106→          {count.toLocaleString()}
+   107→          {suffix}
+   108→        </span>
+   109→      </div>
+   110→      <p className="text-[12px] text-muted-foreground font-medium mt-1.5 uppercase tracking-wide">{label}</p>
+   111→    </motion.div>
+   112→  );
+   113→}
+   114→
+   115→// Animated pipeline bar that fills when scrolled into view
+   116→export function LandingPage() {
+   117→  const { t, pick } = useT();
+   118→  const navigate = useApp((s) => s.navigate);
+   119→  const user = useApp((s) => s.user);
+   120→  const [stats, setStats] = useState<Stats | null>(null);
+   121→  const [featured, setFeatured] = useState<JobDTO[]>([]);
+   122→  const [testimonials, setTestimonials] = useState<TestimonialDTO[]>([]);
+   123→
+   124→  useEffect(() => {
+   125→    Promise.all([
+   126→      api<{ jobCount: number; candidateCount: number; companyCount: number; placementCount: number }>(
+   127→        "/api/jobs/stats",
+   128→      ),
+   129→      api<{ jobs: JobDTO[] }>("/api/jobs?limit=3"),
+   130→      api<{ testimonials: TestimonialDTO[] }>("/api/testimonials?active=true"),
+   131→    ])
+   132→      .then(([s, f, te]) => {
+   133→        setStats(s);
+   134→        setFeatured(f.jobs);
+   135→        setTestimonials(te.testimonials);
+   136→      })
+   137→      .catch(() => {});
+   138→  }, []);
+   139→
+   140→  const companyColors = ["#0ea5e9", "#ec4899", "#16a34a", "#f59e0b", "#8b5cf6", "#14b8a6"];
+   141→
+   142→  return (
+   143→    <main>
+   144→      {/* HERO */}
+   145→      <section className="relative overflow-hidden bg-mesh">
+   146→        {/* Animated aurora blobs */}
+   147→        <div className="absolute inset-0 -z-10">
+   148→          <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-saffron/25 blur-3xl animate-aurora" />
+   149→          <div
+   150→            className="absolute top-40 -right-24 h-[28rem] w-[28rem] rounded-full bg-crimson/18 blur-3xl animate-aurora"
+   151→            style={{ animationDelay: "2.5s" }}
+   152→          />
+   153→          <div
+   154→            className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-saffron/12 blur-3xl animate-aurora"
+   155→            style={{ animationDelay: "5s" }}
+   156→          />
+   157→        </div>
+   158→
+   159→        {/* Parallax mouse-follow handled via CSS only for perf */}
+   160→        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-16 pb-20 sm:pt-24 sm:pb-28">
+   161→          <RevealGroup className="mx-auto max-w-3xl text-center" stagger={0.12} delayChildren={0.1}>
+   162→            <motion.div variants={staggerItem} className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/10 px-4 py-1.5 text-sm font-medium text-crimson">
+   163→              <Sparkles className="h-3.5 w-3.5" />
+   164→              {t("hero.badge")}
+   165→            </motion.div>
+   166→            <motion.h1
+   167→              variants={staggerItem}
+   168→              className="mt-6 font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05]"
+   169→            >
+   170→              {t("hero.title")}
+   171→            </motion.h1>
+   172→            <motion.p
+   173→              variants={staggerItem}
+   174→              className="mt-6 text-lg sm:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto"
+   175→            >
+   176→              {t("hero.subtitle")}
+   177→            </motion.p>
+   178→            <motion.div
+   179→              variants={staggerItem}
+   180→              className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3"
+   181→            >
+   182→              <MagneticButton
+   183→                onClick={() => navigate("jobs")}
+   184→                className="bg-brand-gradient text-white hover:brightness-110 font-bold text-[15px] h-12 px-8 rounded-xl shadow-glow-brand inline-flex items-center gap-2 cursor-pointer border-0"
+   185→              >
+   186→                <Search className="h-4 w-4" />
+   187→                {t("hero.cta.find")}
+   188→                <ArrowRight className="h-4 w-4" />
+   189→              </MagneticButton>
+   190→              <MagneticButton
+   191→                onClick={() => navigate("register")}
+   192→                className="bg-card border-2 border-saffron/40 text-foreground hover:border-saffron hover:bg-saffron/5 font-bold text-[15px] h-12 px-8 rounded-xl inline-flex items-center gap-2 cursor-pointer shadow-premium"
+   193→              >
+   194→                {t("hero.cta.hire")}
+   195→              </MagneticButton>
+   196→            </motion.div>
+   197→            <motion.p variants={staggerItem} className="mt-6 text-xs text-muted-foreground">
+   198→              {t("hero.trusted")}
+   199→            </motion.p>
+   200→          </RevealGroup>
+   201→
+   202→          {/* Hero company strip */}
+   203→          <Reveal variants={fadeUp} delay={0.5} className="mt-14">
+   204→            <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 opacity-70">
+   205→              {["TechNova", "SakuraSoft", "Mitsui Eng.", "Hikari", "Kintaro"].map(
+   206→                (name, i) => (
+   207→                  <motion.div
+   208→                    key={name}
+   209→                    whileHover={{ scale: 1.08, y: -2 }}
+   210→                    transition={{ type: "spring", stiffness: 400, damping: 20 }}
+   211→                    className="flex items-center gap-2 cursor-default"
+   212→                  >
+   213→                    <CompanyAvatar
+   214→                      name={name}
+   215→                      color={companyColors[i % companyColors.length]}
+   216→                      size={28}
+   217→                    />
+   218→                    <span className="font-display font-bold text-sm">{name}</span>
+   219→                  </motion.div>
+   220→                ),
+   221→              )}
+   222→            </div>
+   223→          </Reveal>
+   224→        </div>
+   225→
+   226→        {/* Stats bar */}
+   227→        <section className="border-y border-border bg-card">
+   228→          <div className="max-w-5xl mx-auto px-6 py-8">
+   229→            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+   230→              <StatCard value={stats?.jobCount ?? 0} suffix="+" label={t("stats.jobs")} delay={0} />
+   231→              <StatCard value={stats?.candidateCount ?? 0} suffix="+" label={t("stats.candidates")} delay={120} />
+   232→              <StatCard value={stats?.companyCount ?? 0} suffix="+" label={t("stats.companies")} delay={240} />
+   233→              <StatCard value={stats?.placementCount ?? 0} suffix="+" label={t("stats.placements")} delay={360} />
+   234→            </div>
+   235→          </div>
+   236→        </section>
+   237→      </section>
+   238→
+   239→      {/* WHY INDIAN TALENT */}
+   240→      <section className="py-16 sm:py-20 bg-stone-50 dark:bg-stone-950/50">
+   241→        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   242→          <Reveal variants={fadeUp} className="text-center max-w-2xl mx-auto">
+   243→            <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
+   244→              <GraduationCap className="mr-1 h-3 w-3" />
+   245→              Why India
+   246→            </Badge>
+   247→            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+   248→              {t("why.title")}
+   249→            </h2>
+   250→            <p className="mt-2 text-muted-foreground">{t("why.subtitle")}</p>
+   251→          </Reveal>
+   252→
+   253→          {/* Stat cards */}
+   254→          <RevealGroup className="mt-12 grid gap-6 md:grid-cols-3" stagger={0.12}>
+   255→            {[
+   256→              { icon: GraduationCap, title: t("why.stat1.title"), value: t("why.stat1.value"), label: t("why.stat1.label") },
+   257→              { icon: Trophy, title: t("why.stat2.title"), value: t("why.stat2.value"), label: t("why.stat2.label") },
+   258→              { icon: Heart, title: t("why.stat3.title"), value: t("why.stat3.value"), label: t("why.stat3.label") },
+   259→            ].map((s, i) => (
+   260→              <motion.div key={i} variants={staggerItem} whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
+   261→                <SpotlightCard className="h-full rounded-2xl border border-border bg-background p-6 hover:shadow-premium transition-shadow text-center">
+   262→                  <motion.div
+   263→                    whileHover={{ scale: 1.08 }}
+   264→                    className="mx-auto grid place-items-center h-12 w-12 rounded-xl bg-saffron/10 text-saffron"
+   265→                  >
+   266→                    <s.icon className="h-6 w-6" />
+   267→                  </motion.div>
+   268→                  <p className="mt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+   269→                    {s.title}
+   270→                  </p>
+   271→                  <p className="mt-2 font-display text-4xl font-extrabold text-gradient-brand">
+   272→                    {s.value}
+   273→                  </p>
+   274→                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+   275→                    {s.label}
+   276→                  </p>
+   277→                </SpotlightCard>
+   278→              </motion.div>
+   279→            ))}
+   280→          </RevealGroup>
+   281→
+   282→          {/* Highlight banner */}
+   283→          <Reveal variants={fadeUp} delay={0.15}>
+   284→            <div className="mt-10 rounded-2xl bg-brand-gradient p-6 sm:p-8 text-center shadow-glow-brand">
+   285→              <p className="text-white font-semibold text-lg leading-relaxed max-w-3xl mx-auto">
+   286→                {t("why.banner")}
+   287→              </p>
+   288→              <p className="mt-3 text-white/70 text-xs">
+   289→                {t("why.source")}
+   290→              </p>
+   291→            </div>
+   292→          </Reveal>
+   293→
+   294→          {/* Reason cards */}
+   295→          <RevealGroup className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" stagger={0.08}>
+   296→            {[
+   297→              { icon: ShieldCheck, title: t("why.reason1.title"), desc: t("why.reason1.desc") },
+   298→              { icon: Cpu, title: t("why.reason2.title"), desc: t("why.reason2.desc") },
+   299→              { icon: Banknote, title: t("why.reason3.title"), desc: t("why.reason3.desc") },
+   300→              { icon: Sparkles, title: t("why.reason4.title"), desc: t("why.reason4.desc") },
+   301→            ].map((r, i) => (
+   302→              <motion.div key={i} variants={staggerItem} whileHover={{ y: -4 }} transition={{ type: "spring", stiffness: 300, damping: 22 }}>
+   303→                <SpotlightCard className="h-full rounded-2xl border border-border bg-background p-5 hover:shadow-premium transition-shadow">
+   304→                  <div className="grid place-items-center h-10 w-10 rounded-lg bg-brand-gradient text-white shadow-glow-brand">
+   305→                    <r.icon className="h-5 w-5" />
+   306→                  </div>
+   307→                  <h3 className="mt-4 font-display font-bold text-base">{r.title}</h3>
+   308→                  <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{r.desc}</p>
+   309→                </SpotlightCard>
+   310→              </motion.div>
+   311→            ))}
+   312→          </RevealGroup>
+   313→        </div>
+   314→      </section>
+   315→
+   316→      {/* FEATURED JOBS */}
+   317→      {featured.length > 0 && (
+   318→        <section className="py-16 sm:py-20 bg-background">
+   319→          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   320→            <Reveal variants={fadeUp}>
+   321→              <div className="flex items-end justify-between flex-wrap gap-4 mb-10">
+   322→                <div>
+   323→                  <p className="section-eyebrow mb-2">Live opportunities</p>
+   324→                  <h2 className="section-title text-foreground">
+   325→                    Latest opportunities
+   326→                  </h2>
+   327→                  <p className="mt-2 text-muted-foreground">{t("jobs.subtitle")}</p>
+   328→                </div>
+   329→                <Button
+   330→                  variant="outline"
+   331→                  onClick={() => navigate("jobs")}
+   332→                  className="font-bold text-[14px] h-10 px-5 border-saffron/40 text-crimson hover:bg-saffron/5 hover:border-saffron group"
+   333→                >
+   334→                  {t("jobs.viewall")}
+   335→                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+   336→                </Button>
+   337→              </div>
+   338→            </Reveal>
+   339→            <RevealGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" stagger={0.1}>
+   340→              {featured.map((job) => (
+   341→                <motion.div key={job.id} variants={staggerItem}>
+   342→                  <JobCard job={job} />
+   343→                </motion.div>
+   344→              ))}
+   345→            </RevealGroup>
+   346→          </div>
+   347→        </section>
+   348→      )}
+   349→
+   350→      {/* HOW IT WORKS */}
+   351→      <section className="py-16 sm:py-20 bg-mesh">
+   352→        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   353→          <Reveal variants={fadeUp} className="text-center max-w-2xl mx-auto">
+   354→            <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
+   355→              <Sparkles className="mr-1 h-3 w-3" />
+   356→              Process
+   357→            </Badge>
+   358→            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+   359→              {t("how.title")}
+   360→            </h2>
+   361→            <p className="mt-2 text-muted-foreground">{t("how.subtitle")}</p>
+   362→          </Reveal>
+   363→
+   364→          <RevealGroup className="mt-14 grid gap-6 md:grid-cols-3" stagger={0.14}>
+   365→            {[
+   366→              { icon: Search, title: t("how.1.title"), desc: t("how.1.desc"), step: "01" },
+   367→              { icon: Plane, title: t("how.2.title"), desc: t("how.2.desc"), step: "02" },
+   368→              { icon: Building2, title: t("how.3.title"), desc: t("how.3.desc"), step: "03" },
+   369→            ].map((s, i) => (
+   370→              <motion.div key={i} variants={staggerItem} whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
+   371→                <SpotlightCard className="h-full rounded-2xl border border-border bg-background p-7 hover:shadow-premium transition-shadow">
+   372→                  <span className="absolute top-4 right-5 text-[52px] font-display font-extrabold text-muted/20 leading-none select-none">
+   373→                    {s.step}
+   374→                  </span>
+   375→                  <motion.div
+   376→                    whileHover={{ rotate: [0, -8, 8, 0], scale: 1.05 }}
+   377→                    transition={{ duration: 0.5 }}
+   378→                    className="grid place-items-center h-12 w-12 rounded-xl bg-brand-gradient text-white shadow-glow-brand"
+   379→                  >
+   380→                    <s.icon className="h-5 w-5" />
+   381→                  </motion.div>
+   382→                  <h3 className="mt-5 font-display text-xl font-bold">{s.title}</h3>
+   383→                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
+   384→                </SpotlightCard>
+   385→              </motion.div>
+   386→            ))}
+   387→          </RevealGroup>
+   388→        </div>
+   389→      </section>
+   390→
+   391→      {/* HIRING TYPES */}
+   392→      <section className="py-16 sm:py-20 bg-stone-50 dark:bg-stone-950/50">
+   393→        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   394→          <Reveal variants={fadeUp} className="text-center max-w-2xl mx-auto">
+   395→            <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
+   396→              <Briefcase className="mr-1 h-3 w-3" />
+   397→              Hiring Models
+   398→            </Badge>
+   399→            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+   400→              {t("hire.title")}
+   401→            </h2>
+   402→            <p className="mt-2 text-muted-foreground">{t("hire.subtitle")}</p>
+   403→          </Reveal>
+   404→
+   405→          <RevealGroup className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4" stagger={0.1}>
+   406→            {[
+   407→              { icon: GraduationCap, tag: t("hire.1.tag"), title: t("hire.1.title"), desc: t("hire.1.desc") },
+   408→              { icon: UserPlus, tag: t("hire.2.tag"), title: t("hire.2.title"), desc: t("hire.2.desc") },
+   409→              { icon: Briefcase, tag: t("hire.3.tag"), title: t("hire.3.title"), desc: t("hire.3.desc") },
+   410→              { icon: Users, tag: t("hire.4.tag"), title: t("hire.4.title"), desc: t("hire.4.desc") },
+   411→            ].map((h, i) => (
+   412→              <motion.div key={i} variants={staggerItem} whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
+   413→                <SpotlightCard className="h-full rounded-2xl border border-border bg-background p-6 hover:shadow-premium transition-shadow">
+   414→                  <div className="flex items-center justify-between gap-2">
+   415→                    <div className="grid place-items-center h-10 w-10 rounded-lg bg-brand-gradient text-white shadow-glow-brand shrink-0">
+   416→                      <h.icon className="h-5 w-5" />
+   417→                    </div>
+   418→                    <Badge variant="outline" className="border-saffron/40 text-crimson text-xs">
+   419→                      {h.tag}
+   420→                    </Badge>
+   421→                  </div>
+   422→                  <h3 className="mt-4 font-display font-bold text-lg">{h.title}</h3>
+   423→                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{h.desc}</p>
+   424→                </SpotlightCard>
+   425→              </motion.div>
+   426→            ))}
+   427→          </RevealGroup>
+   428→        </div>
+   429→      </section>
+   430→
+   431→      {/* CHALLENGES */}
+   432→      <section className="py-16 sm:py-20 bg-background">
+   433→        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   434→          <Reveal variants={fadeUp} className="text-center max-w-2xl mx-auto">
+   435→            <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
+   436→              <ShieldCheck className="mr-1 h-3 w-3" />
+   437→              Solutions
+   438→            </Badge>
+   439→            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+   440→              {t("challenges.title")}
+   441→            </h2>
+   442→          </Reveal>
+   443→
+   444→          <RevealGroup className="mt-12 grid gap-6 md:grid-cols-3" stagger={0.12}>
+   445→            {[
+   446→              { num: t("challenges.1.num"), title: t("challenges.1.title"), problem: t("challenges.1.problem"), solution: t("challenges.1.solution") },
+   447→              { num: t("challenges.2.num"), title: t("challenges.2.title"), problem: t("challenges.2.problem"), solution: t("challenges.2.solution") },
+   448→              { num: t("challenges.3.num"), title: t("challenges.3.title"), problem: t("challenges.3.problem"), solution: t("challenges.3.solution") },
+   449→            ].map((c, i) => (
+   450→              <motion.div key={i} variants={staggerItem} whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
+   451→                <SpotlightCard className="h-full rounded-2xl border border-border bg-background p-7 hover:shadow-premium transition-shadow relative overflow-hidden">
+   452→                  <span className="absolute top-5 right-6 font-display text-5xl font-extrabold text-saffron/15">
+   453→                    {c.num}
+   454→                  </span>
+   455→                  <h3 className="font-display text-xl font-bold">{c.title}</h3>
+   456→                  <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+   457→                    {c.problem}
+   458→                  </p>
+   459→                  <div className="mt-5 rounded-xl bg-saffron/10 border border-saffron/20 p-4">
+   460→                    <Badge variant="outline" className="mb-2 border-saffron/40 text-crimson text-xs">
+   461→                      <Sparkles className="mr-1 h-3 w-3" />
+   462→                      {t("challenges.solution.badge")}
+   463→                    </Badge>
+   464→                    <p className="text-sm font-medium text-foreground leading-relaxed">
+   465→                      {c.solution}
+   466→                    </p>
+   467→                  </div>
+   468→                </SpotlightCard>
+   469→              </motion.div>
+   470→            ))}
+   471→          </RevealGroup>
+   472→        </div>
+   473→      </section>
+   474→
+   475→      {/* VISA GUIDE */}
+   476→      <section className="py-20 sm:py-24 bg-card/40 border-y border-border">
+   477→        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+   478→          <Reveal variants={fadeUp} className="text-center max-w-2xl mx-auto">
+   479→            <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
+   480→              <Plane className="mr-1 h-3 w-3" />
+   481→              Visa Guide
+   482→            </Badge>
+   483→            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+   484→              {t("visa.title")}
+   485→            </h2>
+   486→            <p className="mt-2 text-muted-foreground">{t("visa.subtitle")}</p>
+   487→          </Reveal>
+   488→
+   489→          <Reveal variants={fadeUp} delay={0.15}>
+   490→            <Accordion type="single" collapsible className="mt-10 space-y-3">
+   491→              <VisaAccordionItem
+   492→                value="ssw"
+   493→                icon={Wrench}
+   494→                title={t("visa.ssw.title")}
+   495→                desc={t("visa.ssw.desc")}
+   496→                requirements={["JLPT N4 or higher", "Industry skills test", "Valid passport", "Health certificate"]}
+   497→              />
+   498→              <VisaAccordionItem
+   499→                value="engineer"
+   500→                icon={Building2}
+   501→                title={t("visa.engineer.title")}
+   502→                desc={t("visa.engineer.desc")}
+   503→                requirements={["Bachelor's degree OR 10 years experience", "Job offer from Japanese company", "Relevant field experience", "Valid passport"]}
+   504→              />
+   505→              <VisaAccordionItem
+   506→                value="transfer"
+   507→                icon={ArrowLeftRight}
+   508→                title={t("visa.transfer.title")}
+   509→                desc={t("visa.transfer.desc")}
+   510→                requirements={["1+ year at same company", "Transfer to Japan office", "Valid passport", "Employment contract"]}
+   511→              />
+   512→            </Accordion>
+   513→          </Reveal>
+   514→
+   515→          {/* Support callout */}
+   516→          <Reveal variants={fadeUp} delay={0.3}>
+   517→            <div className="mt-8 rounded-2xl bg-brand-gradient p-6 sm:p-8 text-center shadow-glow-brand">
+   518→              <ShieldCheck className="h-8 w-8 text-white mx-auto mb-3" />
+   519→              <p className="text-white font-semibold text-lg leading-relaxed max-w-2xl mx-auto">
+   520→                {t("visa.support")}
+   521→              </p>
+   522→              <MagneticButton
+   523→                onClick={() => navigate("contact")}
+   524→                className="mt-5 bg-white text-crimson hover:brightness-95 font-bold h-11 px-6 rounded-xl inline-flex items-center gap-2 cursor-pointer shadow-lg border-0"
+   525→              >
+   526→                {t("visa.cta")}
+   527→                <ArrowRight className="h-4 w-4" />
+   528→              </MagneticButton>
+   529→            </div>
+   530→          </Reveal>
+   531→        </div>
+   532→      </section>
+   533→
+   534→      {/* WHY INDIGATE / VALUE PROPS */}
+   535→      <section className="py-16 sm:py-20 bg-stone-50 dark:bg-stone-950/50">
+   536→        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   537→          <Reveal variants={fadeUp} className="text-center max-w-2xl mx-auto mb-12">
+   538→            <p className="section-eyebrow text-saffron mb-2">Why IndiGate</p>
+   539→            <h2 className="section-title text-foreground">
+   540→              Built for the cross-border journey
+   541→            </h2>
+   542→            <p className="mt-3 text-muted-foreground text-[15px]">
+   543→              From Bengaluru to Tokyo, Hyderabad to Osaka — we handle the
+   544→              friction so you can focus on what you do best: great work.
+   545→            </p>
+   546→          </Reveal>
+   547→
+   548→          <RevealGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" stagger={0.08}>
+   549→            {[
+   550→              { icon: ShieldCheck, title: "Visa & relocation", desc: "Every job comes with visa sponsorship. We handle paperwork, housing, and onboarding." },
+   551→              { icon: Globe2, title: "Bilingual platform", desc: "Browse jobs in English or Japanese. Companies post in both languages." },
+   552→              { icon: Heart, title: "Vetted employers", desc: "Every company is reviewed by the Indobox team before posting a single role." },
+   553→              { icon: Star, title: "End-to-end support", desc: "From screening to visa, relocation, and post-arrival life support." },
+   554→            ].map((item, i) => (
+   555→              <motion.div key={i} variants={staggerItem} whileHover={{ y: -4 }} transition={{ type: "spring", stiffness: 300, damping: 22 }}>
+   556→                <SpotlightCard className="h-full rounded-2xl border border-border bg-card p-5 hover:shadow-premium transition-shadow">
+   557→                  <div className="grid place-items-center h-10 w-10 rounded-lg bg-brand-gradient text-white shadow-glow-brand">
+   558→                    <item.icon className="h-5 w-5" />
+   559→                  </div>
+   560→                  <h3 className="mt-4 font-display font-bold text-[15px]">{item.title}</h3>
+   561→                  <p className="mt-1.5 text-[13px] text-muted-foreground leading-relaxed">{item.desc}</p>
+   562→                </SpotlightCard>
+   563→              </motion.div>
+   564→            ))}
+   565→          </RevealGroup>
+   566→        </div>
+   567→      </section>
+   568→
+   569→      {/* TESTIMONIALS */}
+   570→      {testimonials.length > 0 && (
+   571→        <section className="py-20 sm:py-24 bg-card/40 border-y border-border">
+   572→          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   573→            <Reveal variants={fadeUp} className="text-center max-w-2xl mx-auto">
+   574→              <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
+   575→                <Quote className="mr-1 h-3 w-3" />
+   576→                Testimonials
+   577→              </Badge>
+   578→              <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+   579→                {t("testimonials.title")}
+   580→              </h2>
+   581→              <p className="mt-2 text-muted-foreground">{t("testimonials.subtitle")}</p>
+   582→            </Reveal>
+   583→
+   584→            <RevealGroup className="mt-14 grid gap-6 md:grid-cols-3" stagger={0.12}>
+   585→              {testimonials.slice(0, 3).map((te, i) => (
+   586→                <motion.div key={i} variants={staggerItem} whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
+   587→                  <figure className="h-full rounded-2xl border border-border bg-background p-6 shadow-premium flex flex-col">
+   588→                    <Quote className="h-7 w-7 text-saffron/40" />
+   589→                    <blockquote className="mt-3 italic text-sm leading-relaxed text-foreground/90 flex-1">
+   590→                      {pick(te.content, te.contentJa)}
+   591→                    </blockquote>
+   592→                    <figcaption className="mt-5 flex items-center gap-3">
+   593→                      <CompanyAvatar name={te.name} size={40} />
+   594→                      <div>
+   595→                        <p className="font-semibold text-sm">{te.name}</p>
+   596→                        <p className="text-xs text-muted-foreground">
+   597→                          {te.role}
+   598→                          {te.company ? ` · ${te.company}` : ""}
+   599→                        </p>
+   600→                      </div>
+   601→                    </figcaption>
+   602→                  </figure>
+   603→                </motion.div>
+   604→              ))}
+   605→            </RevealGroup>
+   606→          </div>
+   607→        </section>
+   608→      )}
+   609→
+   610→      {/* FAQ */}
+   611→      <section className="py-16 sm:py-20 bg-stone-50 dark:bg-stone-950/50">
+   612→        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+   613→          <Reveal variants={fadeUp} className="text-center mb-12">
+   614→            <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
+   615→              <HelpCircle className="mr-1 h-3 w-3" />
+   616→              {t("faq.badge")}
+   617→            </Badge>
+   618→            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+   619→              {t("faq.title")}
+   620→            </h2>
+   621→            <p className="mt-2 text-muted-foreground">{t("faq.subtitle")}</p>
+   622→          </Reveal>
+   623→          <Reveal variants={fadeUp} delay={0.1}>
+   624→            <Accordion type="single" collapsible className="space-y-2">
+   625→              {[
+   626→                { q: t("faq.q1"), a: t("faq.a1") },
+   627→                { q: t("faq.q2"), a: t("faq.a2") },
+   628→                { q: t("faq.q3"), a: t("faq.a3") },
+   629→                { q: t("faq.q4"), a: t("faq.a4") },
+   630→                { q: t("faq.q5"), a: t("faq.a5") },
+   631→                { q: t("faq.q6"), a: t("faq.a6") },
+   632→                { q: t("faq.q7"), a: t("faq.a7") },
+   633→                { q: t("faq.q8"), a: t("faq.a8") },
+   634→              ].map((item, i) => (
+   635→                <AccordionItem
+   636→                  key={i}
+   637→                  value={`faq-${i}`}
+   638→                  className="border border-border rounded-xl px-6 bg-background"
+   639→                >
+   640→                  <AccordionTrigger className="font-display font-semibold text-left hover:no-underline py-5 text-base">
+   641→                    {item.q}
+   642→                  </AccordionTrigger>
+   643→                  <AccordionContent className="text-muted-foreground leading-relaxed pb-5">
+   644→                    {item.a}
+   645→                  </AccordionContent>
+   646→                </AccordionItem>
+   647→              ))}
+   648→            </Accordion>
+   649→          </Reveal>
+   650→        </div>
+   651→      </section>
+   652→
+   653→      {/* CTA */}
+   654→      <section className="py-20 sm:py-24 bg-sidebar relative overflow-hidden">
+   655→        <div className="absolute inset-0 bg-mesh opacity-20 pointer-events-none" />
+   656→        <div className="relative max-w-3xl mx-auto px-4 sm:px-6 text-center">
+   657→          <h2 className="font-display text-3xl md:text-4xl font-extrabold text-sidebar-foreground mb-4 leading-tight">
+   658→            {user ? t("hero.title") : t("cta.title")}
+   659→          </h2>
+   660→          <p className="text-sidebar-foreground/60 text-[15px] mb-8 leading-relaxed">{t("cta.subtitle")}</p>
+   661→          <MagneticButton
+   662→            onClick={() => navigate(user ? "candidate" : "register")}
+   663→            className="bg-white text-crimson hover:brightness-95 font-bold text-base h-12 px-8 rounded-xl inline-flex items-center gap-2 cursor-pointer shadow-lg border-0"
+   664→          >
+   665→            {user ? t("nav.dashboard") : t("cta.button")}
+   666→            <ArrowRight className="h-4 w-4" />
+   667→          </MagneticButton>
+   668→        </div>
+   669→      </section>
+   670→
+   671→      {/* CONTACT removed — now a separate page */}
+   672→    </main>
+   673→  );
+   674→}
+   675→
+   676→// ContactSection moved to src/components/landing/static-pages.tsx as ContactPage
+   677→
+   678→function Field({ label, children }: { label: string; children: React.ReactNode }) {
+   679→  return (
+   680→    <label className="block">
+   681→      <span className="text-[13px] font-medium mb-1.5 block text-sidebar-foreground/70">{label}</span>
+   682→      {children}
+   683→    </label>
+   684→  );
+   685→}
+   686→
+   687→function VisaAccordionItem({
+   688→  value,
+   689→  icon: Icon,
+   690→  title,
+   691→  desc,
+   692→  requirements,
+   693→}: {
+   694→  value: string;
+   695→  icon: React.ComponentType<{ className?: string }>;
+   696→  title: string;
+   697→  desc: string;
+   698→  requirements: string[];
+   699→}) {
+   700→  const { t } = useT();
+   701→  return (
+   702→    <AccordionItem
+   703→      value={value}
+   704→      className="rounded-xl border border-border bg-background px-5 overflow-hidden data-[state=open]:shadow-premium transition-shadow"
+   705→    >
+   706→      <AccordionTrigger className="hover:no-underline py-5">
+   707→        <div className="flex items-center gap-3 text-left">
+   708→          <div className="grid place-items-center h-10 w-10 rounded-lg bg-saffron/10 text-saffron shrink-0">
+   709→            <Icon className="h-5 w-5" />
+   710→          </div>
+   711→          <span className="font-display font-bold text-base">{title}</span>
+   712→        </div>
+   713→      </AccordionTrigger>
+   714→      <AccordionContent className="pb-5 pt-1">
+   715→        <p className="text-sm text-muted-foreground leading-relaxed mb-4">{desc}</p>
+   716→        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+   717→          {t("visa.requirements")}
+   718→        </p>
+   719→        <ul className="space-y-1.5">
+   720→          {requirements.map((r) => (
+   721→            <li key={r} className="flex items-start gap-2 text-sm">
+   722→              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+   723→              <span>{r}</span>
+   724→            </li>
+   725→          ))}
+   726→        </ul>
+   727→      </AccordionContent>
+   728→    </AccordionItem>
+   729→  );
+   730→}
+   731→

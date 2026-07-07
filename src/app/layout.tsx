@@ -57,6 +57,10 @@ export const metadata: Metadata = {
   },
   robots: { index: true, follow: true },
   metadataBase: new URL(APP_URL),
+  icons: {
+    icon: "/indobox-logo.png",
+    apple: "/indobox-logo.png",
+  },
 };
 
 export default function RootLayout({

@@ -1,0 +1,882 @@
+     1→"use client";
+     2→
+     3→import { useApp } from "@/lib/store";
+     4→import { useT } from "@/lib/use-t";
+     5→import { Button } from "@/components/ui/button";
+     6→import { Badge } from "@/components/ui/badge";
+     7→import { CompanyAvatar } from "@/components/brand/logo";
+     8→import { useEffect, useState } from "react";
+     9→import { api } from "@/lib/api-client";
+    10→import { JobCard } from "@/components/jobs/job-card";
+    11→import type { JobDTO } from "@/lib/types";
+    12→import { cn } from "@/lib/utils";
+    13→import { toast } from "sonner";
+    14→import { motion } from "framer-motion";
+    15→import {
+    16→  ArrowRight,
+    17→  CheckCircle2,
+    18→  Plane,
+    19→  ShieldCheck,
+    20→  Globe2,
+    21→  Briefcase,
+    22→  Users,
+    23→  TrendingUp,
+    24→  Heart,
+    25→  Building2,
+    26→  GraduationCap,
+    27→  Mail,
+    28→  MapPin,
+    29→  Phone,
+    30→} from "lucide-react";
+    31→
+    32→export function StaticPage({ kind }: { kind: "privacy" | "terms" | "about" | "for-companies" | "companies" | "contact" }) {
+    33→  if (kind === "privacy") return <Privacy />;
+    34→  if (kind === "terms") return <Terms />;
+    35→  if (kind === "about") return <About />;
+    36→  if (kind === "for-companies") return <ForCompanies />;
+    37→  if (kind === "contact") return <ContactPage />;
+    38→  return <Companies />;
+    39→}
+    40→
+    41→function PageShell({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+    42→  return (
+    43→    <main className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+    44→      <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+    45→        {title}
+    46→      </h1>
+    47→      {subtitle && <p className="mt-2 text-muted-foreground">{subtitle}</p>}
+    48→      <div className="mt-8 space-y-6">{children}</div>
+    49→    </main>
+    50→  );
+    51→}
+    52→
+    53→function H2({ children }: { children: React.ReactNode }) {
+    54→  return <h2 className="font-display text-xl font-bold mt-2">{children}</h2>;
+    55→}
+    56→function P({ children }: { children: React.ReactNode }) {
+    57→  return <p className="text-foreground/80 leading-relaxed">{children}</p>;
+    58→}
+    59→
+    60→function Privacy() {
+    61→  const { t } = useT();
+    62→  return (
+    63→    <PageShell title={t("footer.privacy")} subtitle="Last updated: January 2025">
+    64→      <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 space-y-4">
+    65→        <P>
+    66→          IndiGate (&quot;we&quot;, &quot;us&quot;) operates the platform at indigate.work,
+    67→          connecting Indian professionals with Japanese employers. This policy
+    68→          explains what data we collect and how we use it.
+    69→        </P>
+    70→        <H2>1. Data we collect</H2>
+    71→        <P>
+    72→          Account data (name, email, password hash), candidate profile data
+    73→          (resume, skills, JLPT level, education, location), company profile
+    74→          data (company name, industry, logo), and application records.
+    75→        </P>
+    76→        <H2>2. How we use data</H2>
+    77→        <P>
+    78→          To match candidates with jobs, facilitate applications, communicate
+    79→          status updates, and comply with Japanese visa sponsorship
+    80→          requirements. We never sell your data.
+    81→        </P>
+    82→        <H2>3. Data sharing</H2>
+    83→        <P>
+    84→          We share candidate profiles with companies you apply to. We do not
+    85→          share data with third parties for advertising.
+    86→        </P>
+    87→        <H2>4. Data retention</H2>
+    88→        <P>
+    89→          We retain your data while your account is active. You may request
+    90→          deletion at any time by emailing privacy@indigate.work.
+    91→        </P>
+    92→        <H2>5. Contact</H2>
+    93→        <P>
+    94→          Questions? Email privacy@indigate.work or write to Indobox Inc,
+    95→          Hyderabad, India.
+    96→        </P>
+    97→      </div>
+    98→    </PageShell>
+    99→  );
+   100→}
+   101→
+   102→function Terms() {
+   103→  const { t } = useT();
+   104→  return (
+   105→    <PageShell title={t("footer.terms")} subtitle="Last updated: January 2025">
+   106→      <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 space-y-4">
+   107→        <P>
+   108→          These terms govern your use of IndiGate. By creating an account you
+   109→          agree to them.
+   110→        </P>
+   111→        <H2>1. Accounts</H2>
+   112→        <P>
+   113→          You must provide accurate information. Companies require admin
+   114→          approval before posting jobs. Candidates must be truthful about
+   115→          qualifications and JLPT levels.
+   116→        </P>
+   117→        <H2>2. Acceptable use</H2>
+   118→        <P>
+   119→          No spam, fraud, discrimination, or scraping. Violations result in
+   120→          account termination.
+   121→        </P>
+   122→        <H2>3. Jobs & applications</H2>
+   123→        <P>
+   124→          IndiGate is a platform, not an employer. Hiring decisions are made
+   125→          solely by companies. We are not liable for outcomes of applications.
+   126→        </P>
+   127→        <H2>4. Visa & relocation</H2>
+   128→        <P>
+   129→          Visa sponsorship is offered by companies, not IndiGate. IndiGate
+   130→          provides guidance but cannot guarantee visa approval.
+   131→        </P>
+   132→        <H2>5. Liability</H2>
+   133→        <P>
+   134→          IndiGate is provided &quot;as is&quot;. We are not liable for indirect or
+   135→          consequential damages.
+   136→        </P>
+   137→        <H2>6. Contact</H2>
+   138→        <P>Questions? Email legal@indigate.work.</P>
+   139→      </div>
+   140→    </PageShell>
+   141→  );
+   142→}
+   143→
+   144→function About() {
+   145→  const navigate = useApp((s) => s.navigate);
+   146→  const user = useApp((s) => s.user);
+   147→  const dashView = user
+   148→    ? user.role === "CANDIDATE"
+   149→      ? "candidate"
+   150→      : user.role === "COMPANY"
+   151→        ? "company"
+   152→        : "admin"
+   153→    : "register";
+   154→
+   155→  const values = [
+   156→    { title: "Be energetic in both Japan and India", icon: Briefcase },
+   157→    { title: "Be a creator", icon: Users },
+   158→    { title: "Pursue fusion", icon: Globe2 },
+   159→    { title: "Read ahead and act", icon: TrendingUp },
+   160→    { title: "Embrace change", icon: Heart },
+   161→  ];
+   162→
+   163→  const networkCities = [
+   164→    "Jammu", "Dehradun", "New Delhi", "Varanasi", "Assam",
+   165→    "Ahmedabad", "Mumbai", "Nagpur", "Kolkata", "Goa",
+   166→    "Hyderabad (HQ)", "Bengaluru", "Chennai", "Coimbatore",
+   167→  ];
+   168→
+   169→  return (
+   170→    <main className="pb-20">
+   171→      {/* Hero banner */}
+   172→      <section className="bg-sidebar relative overflow-hidden">
+   173→        <div className="absolute inset-0 bg-mesh opacity-15 pointer-events-none" />
+   174→        <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20 text-center">
+   175→          <div className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/10 px-4 py-1.5 text-sm font-medium text-saffron mb-5">
+   176→            <Globe2 className="h-3.5 w-3.5" />
+   177→            India × Japan Talent Platform
+   178→          </div>
+   179→          <h1 className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight text-sidebar-foreground leading-tight">
+   180→            Making the impossible possible<br />through the fusion of <span className="text-gradient-brand">India and Japan</span>
+   181→          </h1>
+   182→          <p className="mt-5 text-[15px] text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+   183→            Indobox Inc. (インドボックス株式会社) is a licensed employment agency
+   184→            connecting Indian talent with Japanese companies. Founded in May 2023
+   185→            in Nagoya, Japan, and with an India office in Hyderabad since
+   186→            December 2024.
+   187→          </p>
+   188→        </div>
+   189→      </section>
+   190→
+   191→      {/* Mission & Vision */}
+   192→      <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 -mt-8 relative z-10">
+   193→        <div className="grid sm:grid-cols-2 gap-5">
+   194→          <div className="rounded-2xl border border-border bg-card p-6 shadow-premium">
+   195→            <div className="grid place-items-center h-11 w-11 rounded-xl bg-brand-gradient text-white mb-4 shadow-glow-brand">
+   196→              <Briefcase className="h-5 w-5" />
+   197→            </div>
+   198→            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Mission</p>
+   199→            <p className="text-[16px] font-display font-semibold text-foreground leading-snug">
+   200→              To make India&apos;s diversity an essential element of business
+   201→            </p>
+   202→          </div>
+   203→          <div className="rounded-2xl border border-border bg-card p-6 shadow-premium">
+   204→            <div className="grid place-items-center h-11 w-11 rounded-xl bg-brand-gradient text-white mb-4 shadow-glow-brand">
+   205→              <Globe2 className="h-5 w-5" />
+   206→            </div>
+   207→            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Vision</p>
+   208→            <p className="text-[16px] font-display font-semibold text-foreground leading-snug">
+   209→              Through the fusion of Japan and India, turn what does not yet exist into reality
+   210→            </p>
+   211→          </div>
+   212→        </div>
+   213→      </section>
+   214→
+   215→      {/* About description */}
+   216→      <section className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-14 text-center">
+   217→        <p className="text-[15px] text-muted-foreground leading-relaxed">
+   218→          With staff experienced in India business and partners spread throughout
+   219→          India, we provide thorough support from both Japan and India — from
+   220→          candidate screening to visa, relocation, and post-arrival life support.
+   221→          Our end-to-end approach ensures that both companies and candidates
+   222→          have a seamless experience across borders.
+   223→        </p>
+   224→      </section>
+   225→
+   226→      {/* Values */}
+   227→      <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
+   228→        <div className="text-center mb-10">
+   229→          <p className="text-[11px] font-bold uppercase tracking-wider text-saffron mb-2">What we believe</p>
+   230→          <h2 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight">Our Values</h2>
+   231→        </div>
+   232→        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   233→          {values.map((v, i) => (
+   234→            <div key={i} className="rounded-2xl border border-border bg-card p-5 shadow-premium hover:border-saffron/30 transition-all flex items-start gap-4">
+   235→              <div className="grid place-items-center h-10 w-10 rounded-xl bg-saffron/10 text-saffron shrink-0">
+   236→                <v.icon className="h-5 w-5" />
+   237→              </div>
+   238→              <div>
+   239→                <p className="font-semibold text-[14px] text-foreground leading-snug">{v.title}</p>
+   240→              </div>
+   241→            </div>
+   242→          ))}
+   243→          {/* Additional value */}
+   244→          <div className="rounded-2xl border border-saffron/30 bg-saffron/5 p-5 flex items-start gap-4">
+   245→            <div className="grid place-items-center h-10 w-10 rounded-xl bg-brand-gradient text-white shrink-0">
+   246→              <ShieldCheck className="h-5 w-5" />
+   247→            </div>
+   248→            <div>
+   249→              <p className="font-semibold text-[14px] text-foreground leading-snug">
+   250→                Drive through challenge and benefit
+   251→              </p>
+   252→              <p className="text-[12px] text-muted-foreground mt-0.5">
+   253→                Become a pioneer of diversity.
+   254→              </p>
+   255→            </div>
+   256→          </div>
+   257→        </div>
+   258→      </section>
+   259→
+   260→      {/* Offices */}
+   261→      <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
+   262→        <div className="text-center mb-10">
+   263→          <p className="text-[11px] font-bold uppercase tracking-wider text-saffron mb-2">Our presence</p>
+   264→          <h2 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight">Offices</h2>
+   265→        </div>
+   266→        <div className="grid md:grid-cols-2 gap-5">
+   267→          {/* Japan */}
+   268→          <div className="rounded-2xl border border-border bg-card p-6 shadow-premium">
+   269→            <div className="flex items-center gap-3 mb-4">
+   270→              <span className="text-3xl">🇯🇵</span>
+   271→              <div>
+   272→                <p className="font-display font-bold text-[16px]">Japan Office</p>
+   273→                <p className="text-[12px] text-muted-foreground">Indobox Inc. (株式会社)</p>
+   274→              </div>
+   275→            </div>
+   276→            <div className="space-y-2 text-[13px] text-muted-foreground leading-relaxed">
+   277→              <div className="flex items-start gap-2">
+   278→                <MapPin className="h-4 w-4 text-saffron shrink-0 mt-0.5" />
+   279→                <span>Station Ai, 1-2-32 Tsuruma, Showa-ku,<br />Nagoya, Aichi 466-0064, Japan</span>
+   280→              </div>
+   281→              <div className="flex items-center gap-2">
+   282→                <Briefcase className="h-4 w-4 text-saffron shrink-0" />
+   283→                <span>Founded: May 2023</span>
+   284→              </div>
+   285→              <div className="rounded-lg bg-saffron/5 border border-saffron/20 px-3 py-2 mt-3">
+   286→                <p className="text-[12px] text-saffron/80 font-medium">
+   287→                  Licensed employment agency: 23-ユ-303072
+   288→                </p>
+   289→              </div>
+   290→              <p className="text-[11px] text-muted-foreground/70 pt-1">
+   291→                Station Ai — Japan&apos;s largest startup support / open innovation hub
+   292→              </p>
+   293→            </div>
+   294→          </div>
+   295→          {/* India */}
+   296→          <div className="rounded-2xl border border-border bg-card p-6 shadow-premium">
+   297→            <div className="flex items-center gap-3 mb-4">
+   298→              <span className="text-3xl">🇮🇳</span>
+   299→              <div>
+   300→                <p className="font-display font-bold text-[16px]">India Office</p>
+   301→                <p className="text-[12px] text-muted-foreground">Indobox India Private Limited</p>
+   302→              </div>
+   303→            </div>
+   304→            <div className="space-y-2 text-[13px] text-muted-foreground leading-relaxed">
+   305→              <div className="flex items-start gap-2">
+   306→                <MapPin className="h-4 w-4 text-saffron shrink-0 mt-0.5" />
+   307→                <span>1/C, 83/1, Raidurg, Panmaktha Near HiTec City,<br />Cyberabad, Shaikpet, Hyderabad, 500081<br />Telangana, India</span>
+   308→              </div>
+   309→              <div className="flex items-center gap-2">
+   310→                <Briefcase className="h-4 w-4 text-saffron shrink-0" />
+   311→                <span>Founded: December 2024</span>
+   312→              </div>
+   313→              <p className="text-[11px] text-muted-foreground/70 pt-1">
+   314→                T-Hub — India&apos;s largest startup support &amp; innovation hub
+   315→              </p>
+   316→            </div>
+   317→          </div>
+   318→        </div>
+   319→      </section>
+   320→
+   321→      {/* India Network */}
+   322→      <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
+   323→        <div className="rounded-2xl border border-border bg-mesh p-8 text-center">
+   324→          <p className="text-[11px] font-bold uppercase tracking-wider text-saffron mb-2">Pan-India network</p>
+   325→          <h2 className="font-display text-2xl font-extrabold tracking-tight mb-4">
+   326→            Staff &amp; partners across 14 cities
+   327→          </h2>
+   328→          <p className="text-[14px] text-muted-foreground mb-6 max-w-xl mx-auto">
+   329→            With experienced staff and partners spread throughout India, we
+   330→            provide thorough support from both Japan and India.
+   331→          </p>
+   332→          <div className="flex flex-wrap gap-2 justify-center max-w-2xl mx-auto">
+   333→            {networkCities.map((city) => (
+   334→              <Badge
+   335→                key={city}
+   336→                variant={city.includes("HQ") ? "default" : "secondary"}
+   337→                className={cn(
+   338→                  "text-[12px] px-3 py-1",
+   339→                  city.includes("HQ") && "bg-brand-gradient text-white",
+   340→                )}
+   341→              >
+   342→                {city}
+   343→              </Badge>
+   344→            ))}
+   345→          </div>
+   346→        </div>
+   347→      </section>
+   348→
+   349→      {/* Contact */}
+   350→      <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
+   351→        <div className="text-center mb-8">
+   352→          <p className="text-[11px] font-bold uppercase tracking-wider text-saffron mb-2">Get in touch</p>
+   353→          <h2 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight">Contact</h2>
+   354→        </div>
+   355→        <div className="grid sm:grid-cols-3 gap-4">
+   356→          <div className="rounded-2xl border border-border bg-card p-5 text-center shadow-premium">
+   357→            <div className="grid place-items-center h-10 w-10 rounded-xl bg-saffron/10 text-saffron mx-auto mb-3">
+   358→              <Users className="h-5 w-5" />
+   359→            </div>
+   360→            <p className="font-semibold text-[14px]">Skanda</p>
+   361→            <p className="text-[12px] text-muted-foreground mt-1">Japan-based contact</p>
+   362→            <p className="text-[12px] text-muted-foreground">日本語対応可</p>
+   363→          </div>
+   364→          <div className="rounded-2xl border border-border bg-card p-5 text-center shadow-premium">
+   365→            <div className="grid place-items-center h-10 w-10 rounded-xl bg-saffron/10 text-saffron mx-auto mb-3">
+   366→              <Mail className="h-5 w-5" />
+   367→            </div>
+   368→            <p className="font-semibold text-[14px]">Email</p>
+   369→            <a href="mailto:skanda@indobox.co.jp" className="text-[12px] text-saffron hover:text-crimson transition-colors block mt-1">
+   370→              skanda@indobox.co.jp
+   371→            </a>
+   372→            <a href="mailto:contact@indigate.work" className="text-[12px] text-saffron hover:text-crimson transition-colors block">
+   373→              contact@indigate.work
+   374→            </a>
+   375→          </div>
+   376→          <div className="rounded-2xl border border-border bg-card p-5 text-center shadow-premium">
+   377→            <div className="grid place-items-center h-10 w-10 rounded-xl bg-saffron/10 text-saffron mx-auto mb-3">
+   378→              <Phone className="h-5 w-5" />
+   379→            </div>
+   380→            <p className="font-semibold text-[14px]">Phone</p>
+   381→            <a href="tel:090-4251-7331" className="text-[12px] text-saffron hover:text-crimson transition-colors block mt-1">
+   382→              090-4251-7331
+   383→            </a>
+   384→          </div>
+   385→        </div>
+   386→      </section>
+   387→
+   388→      {/* CTA */}
+   389→      <section className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-10 text-center">
+   390→        <div className="rounded-3xl bg-brand-gradient p-8 sm:p-10 shadow-glow-brand">
+   391→          <h2 className="font-display text-2xl font-extrabold text-white mb-3">
+   392→            Ready to bridge India and Japan?
+   393→          </h2>
+   394→          <p className="text-white/80 text-[14px] mb-6 max-w-md mx-auto">
+   395→            Whether you&apos;re hiring or looking for a career in Japan, we&apos;re here to help.
+   396→          </p>
+   397→          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+   398→            <Button
+   399→              size="lg"
+   400→              onClick={() => navigate(dashView as never)}
+   401→              className="bg-white text-crimson hover:brightness-95 font-bold text-[15px] h-12 px-8 border-0 shadow-lg"
+   402→            >
+   403→              {user ? "Go to dashboard" : "Join IndiGate"}
+   404→              <ArrowRight className="ml-2 h-4 w-4" />
+   405→            </Button>
+   406→            <Button
+   407→              size="lg"
+   408→              variant="outline"
+   409→              onClick={() => navigate("contact")}
+   410→              className="border-2 border-white/60 text-white hover:bg-white/15 hover:border-white font-bold text-[15px] h-12 px-8"
+   411→            >
+   412→              Contact us
+   413→            </Button>
+   414→          </div>
+   415→        </div>
+   416→      </section>
+   417→    </main>
+   418→  );
+   419→}
+   420→
+   421→function ForCompanies() {
+   422→  const navigate = useApp((s) => s.navigate);
+   423→  const user = useApp((s) => s.user);
+   424→  const dashView = user
+   425→    ? user.role === "CANDIDATE"
+   426→      ? "candidate"
+   427→      : user.role === "COMPANY"
+   428→        ? "company"
+   429→        : "admin"
+   430→    : "register";
+   431→  return (
+   432→    <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+   433→      <div className="text-center max-w-3xl mx-auto">
+   434→        <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
+   435→          <Building2 className="mr-1 h-3 w-3" />
+   436→          For Companies
+   437→        </Badge>
+   438→        <h1 className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight">
+   439→          Hiring Indian talent — end to end
+   440→        </h1>
+   441→        <p className="mt-4 text-lg text-muted-foreground">
+   442→          Indobox provides comprehensive support from candidate screening to
+   443→          visa, relocation, and post-arrival life support.
+   444→        </p>
+   445→        <div className="mt-7 flex flex-col sm:flex-row items-center justify-center gap-3">
+   446→          <Button
+   447→            size="lg"
+   448→            onClick={() => navigate(dashView as never)}
+   449→            className="bg-brand-gradient text-white hover:brightness-110 font-bold text-[15px] h-12 px-8 shadow-glow-brand border-0"
+   450→          >
+   451→            {user ? "Go to dashboard" : "Post your first job"}
+   452→            <ArrowRight className="ml-2 h-4 w-4" />
+   453→          </Button>
+   454→          <Button
+   455→            size="lg"
+   456→            variant="outline"
+   457→            onClick={() => navigate("contact")}
+   458→            className="font-bold text-[15px] h-12 px-8 border-saffron/40 text-crimson hover:bg-saffron/5 hover:border-saffron"
+   459→          >
+   460→            Talk to our team
+   461→          </Button>
+   462→        </div>
+   463→      </div>
+   464→
+   465→      {/* 3 Services */}
+   466→      <div className="mt-16">
+   467→        <h2 className="font-display text-2xl font-bold text-center mb-8">Our Services</h2>
+   468→        <div className="grid md:grid-cols-3 gap-6">
+   469→          {[
+   470→            {
+   471→              num: "01",
+   472→              icon: Users,
+   473→              title: "India Talent Utilization Seminar",
+   474→              desc: "A seminar to deepen understanding of India — covering India basics, the differences in business customs between Japan and India, and the advantages of hiring Indian talent.",
+   475→            },
+   476→            {
+   477→              num: "02",
+   478→              icon: GraduationCap,
+   479→              title: "Japanese Language Education & Business Manner Training",
+   480→              desc: "Japanese language classes at partner universities, customized Japanese education services, and professional Japanese business manner training.",
+   481→            },
+   482→            {
+   483→              num: "03",
+   484→              icon: Heart,
+   485→              title: '"Working with Indians" Support Training',
+   486→              desc: "An 18–24 month accompaniment program walking through the phases: Conflict → Behavioral Change → Culture Reform → Talent Activation. Leadership mindset consulting and organizational restructuring.",
+   487→            },
+   488→          ].map((s, i) => (
+   489→            <div
+   490→              key={i}
+   491→              className="rounded-2xl border border-border bg-card p-6 hover:shadow-premium transition-all"
+   492→            >
+   493→              <div className="flex items-start justify-between mb-4">
+   494→                <div className="grid place-items-center h-11 w-11 rounded-xl bg-brand-gradient text-white shadow-glow-brand">
+   495→                  <s.icon className="h-5 w-5" />
+   496→                </div>
+   497→                <span className="font-display text-3xl font-extrabold text-saffron/15">{s.num}</span>
+   498→              </div>
+   499→              <h3 className="font-display text-lg font-bold">{s.title}</h3>
+   500→              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+   501→                {s.desc}
+   502→              </p>
+   503→            </div>
+   504→          ))}
+   505→        </div>
+   506→      </div>
+   507→
+   508→      {/* Hybrid Success Model */}
+   509→      <div className="mt-16">
+   510→        <h2 className="font-display text-2xl font-bold text-center mb-8">The Hybrid Success Model</h2>
+   511→        <div className="grid md:grid-cols-2 gap-6">
+   512→          <div className="rounded-2xl border border-border bg-card p-6">
+   513→            <div className="flex items-center gap-2 mb-4">
+   514→              <span className="text-2xl">🇯🇵</span>
+   515→              <h3 className="font-display font-bold">Japanese Companies</h3>
+   516→            </div>
+   517→            <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Current Situation</p>
+   518→            <p className="text-sm text-muted-foreground mb-3">
+   519→              Stagnant Japan market · China risk · Want to expand unique technology and services to a huge market
+   520→            </p>
+   521→            <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Challenge</p>
+   522→            <p className="text-sm text-muted-foreground">
+   523→              Don&apos;t understand India at all (complex, diverse, language barrier) · No one internally with India experience
+   524→            </p>
+   525→          </div>
+   526→          <div className="rounded-2xl border border-border bg-card p-6">
+   527→            <div className="flex items-center gap-2 mb-4">
+   528→              <span className="text-2xl">🇮🇳</span>
+   529→              <h3 className="font-display font-bold">India Market</h3>
+   530→            </div>
+   531→            <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Current Situation</p>
+   532→            <p className="text-sm text-muted-foreground mb-3">
+   533→              1.4 billion market · Growing middle class · IT &amp; digital powerhouse · Japan is premium (friendly nation, anime) · Want to connect
+   534→            </p>
+   535→            <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Challenge</p>
+   536→            <p className="text-sm text-muted-foreground">
+   537→              Want technology · Inefficient management · Lack of employment opportunities · Don&apos;t understand Japan at all
+   538→            </p>
+   539→          </div>
+   540→        </div>
+   541→
+   542→        {/* 4 Effects */}
+   543→        <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+   544→          {[
+   545→            { title: "Deeper India understanding", desc: "More India-aware internally" },
+   546→            { title: "Solve labor shortages", desc: "Securing talented people" },
+   547→            { title: "Expand global business", desc: "English ability, negotiation skills" },
+   548→            { title: "Strengthen IT & systems", desc: "Offshore development, innovation talent" },
+   549→          ].map((e, i) => (
+   550→            <div key={i} className="rounded-xl border border-border bg-card p-4 text-center">
+   551→              <div className="grid place-items-center h-8 w-8 rounded-lg bg-saffron/10 text-saffron mx-auto mb-2 text-sm font-bold">
+   552→                {i + 1}
+   553→              </div>
+   554→              <p className="font-semibold text-sm">{e.title}</p>
+   555→              <p className="text-xs text-muted-foreground mt-1">{e.desc}</p>
+   556→            </div>
+   557→          ))}
+   558→        </div>
+   559→      </div>
+   560→
+   561→      <div className="mt-16 rounded-3xl bg-brand-gradient p-8 sm:p-12 text-center shadow-glow-brand">
+   562→        <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-white">
+   563→          Ready to hire?
+   564→        </h2>
+   565→        <p className="mt-2 text-white/90">
+   566→          Create a company account — our team reviews and
+   567→          approves within 1 business day.
+   568→        </p>
+   569→        <Button
+   570→          size="lg"
+   571→          onClick={() => navigate(dashView as never)}
+   572→          className="mt-6 bg-white text-crimson hover:brightness-95 font-bold text-[15px] h-12 px-8 border-0 shadow-lg"
+   573→        >
+   574→          {user ? "Go to dashboard" : "Get started"}
+   575→          <ArrowRight className="ml-2 h-4 w-4" />
+   576→        </Button>
+   577→      </div>
+   578→    </main>
+   579→  );
+   580→}
+   581→
+   582→function Companies() {
+   583→  const { t, locale } = useT();
+   584→  const navigate = useApp((s) => s.navigate);
+   585→  const [jobs, setJobs] = useState<JobDTO[]>([]);
+   586→  useEffect(() => {
+   587→    api<{ jobs: JobDTO[] }>("/api/jobs?limit=50").then((r) => setJobs(r.jobs)).catch(() => {});
+   588→  }, []);
+   589→
+   590→  // group by company
+   591→  const companies = Array.from(
+   592→    new Map(jobs.map((j) => [j.company.id, j.company])).values(),
+   593→  );
+   594→
+   595→  return (
+   596→    <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+   597→      <div className="text-center max-w-2xl mx-auto">
+   598→        <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
+   599→          <Building2 className="mr-1 h-3 w-3" />
+   600→          {locale === "ja" ? "提携企業" : "Partner Companies"}
+   601→        </Badge>
+   602→        <h1 className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight">
+   603→          {t("companies.title")}
+   604→        </h1>
+   605→        <p className="mt-3 text-muted-foreground">{t("companies.subtitle")}</p>
+   606→      </div>
+   607→
+   608→      <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+   609→        {companies.map((c) => {
+   610→          const count = jobs.filter((j) => j.companyId === c.id).length;
+   611→          return (
+   612→            <div
+   613→              key={c.id}
+   614→              className="rounded-2xl border border-border bg-card p-6 hover:shadow-premium hover:-translate-y-0.5 transition-all"
+   615→            >
+   616→              <div className="flex items-center gap-3">
+   617→                <CompanyAvatar name={c.companyName} color={c.logoUrl} size={52} />
+   618→                <div className="min-w-0">
+   619→                  <h3 className="font-display font-bold truncate">{c.companyName}</h3>
+   620→                  <p className="text-xs text-muted-foreground truncate">
+   621→                    {c.industry}
+   622→                    {c.locationJapan ? ` · ${c.locationJapan}` : ""}
+   623→                  </p>
+   624→                </div>
+   625→              </div>
+   626→              {c.description && (
+   627→                <p className="mt-3 text-sm text-muted-foreground line-clamp-3 leading-relaxed">
+   628→                  {c.description}
+   629→                </p>
+   630→              )}
+   631→              <div className="mt-4 flex items-center justify-between">
+   632→                <Badge variant="secondary" className="font-medium">
+   633→                  <Briefcase className="mr-1 h-3 w-3" />
+   634→                  {count} {count === 1 ? "job" : "jobs"}
+   635→                </Badge>
+   636→                <button
+   637→                  onClick={() => navigate("jobs")}
+   638→                  className="text-sm font-medium text-crimson hover:underline"
+   639→                >
+   640→                  {t("common.viewall")} →
+   641→                </button>
+   642→              </div>
+   643→            </div>
+   644→          );
+   645→        })}
+   646→      </div>
+   647→
+   648→      {companies.length === 0 && (
+   649→        <div className="mt-10 rounded-2xl border border-dashed py-16 text-center text-muted-foreground">
+   650→          No companies yet.
+   651→        </div>
+   652→      )}
+   653→    </main>
+   654→  );
+   655→}
+   656→
+   657→/* ============== Contact Page (separate) ============== */
+   658→
+   659→function ContactPage() {
+   660→  const { t } = useT();
+   661→  const [loading, setLoading] = useState(false);
+   662→  const [sent, setSent] = useState(false);
+   663→  const [form, setForm] = useState({
+   664→    name: "",
+   665→    email: "",
+   666→    phone: "",
+   667→    company: "",
+   668→    enquiryType: "hire",
+   669→    subject: "",
+   670→    message: "",
+   671→  });
+   672→
+   673→  async function submit(e: React.FormEvent) {
+   674→    e.preventDefault();
+   675→    setLoading(true);
+   676→    try {
+   677→      await api("/api/contact", {
+   678→        method: "POST",
+   679→        body: JSON.stringify(form),
+   680→      });
+   681→      setSent(true);
+   682→      setForm({ name: "", email: "", phone: "", company: "", enquiryType: "hire", subject: "", message: "" });
+   683→      toast.success("Message sent!");
+   684→    } catch (e) {
+   685→      toast.error(e instanceof Error ? e.message : "Failed to send.");
+   686→    } finally {
+   687→      setLoading(false);
+   688→    }
+   689→  }
+   690→
+   691→  const inputCls = "w-full rounded-xl border border-border bg-background px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-saffron/40 focus:border-saffron/40 transition-all";
+   692→  const labelCls = "text-[13px] font-medium mb-1.5 block text-muted-foreground";
+   693→
+   694→  const enquiryTypes = [
+   695→    { value: "hire", label: "I want to hire Indian talent" },
+   696→    { value: "candidate", label: "I am looking for work in Japan" },
+   697→    { value: "internship", label: "Internship enquiry" },
+   698→    { value: "training", label: "Japanese language education / training" },
+   699→    { value: "general", label: "General enquiry" },
+   700→  ];
+   701→
+   702→  return (
+   703→    <main className="min-h-[calc(100vh-4rem)] bg-muted/30">
+   704→      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+   705→
+   706→        {/* Header */}
+   707→        <div className="text-center mb-10">
+   708→          <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson bg-saffron/5">
+   709→            <Mail className="mr-1 h-3 w-3" />
+   710→            Contact
+   711→          </Badge>
+   712→          <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
+   713→            Get in touch with Indobox
+   714→          </h1>
+   715→          <p className="mt-2 text-muted-foreground text-[15px]">
+   716→            Our team responds within 24 hours
+   717→          </p>
+   718→        </div>
+   719→
+   720→        <div className="grid lg:grid-cols-5 gap-8">
+   721→
+   722→          {/* LEFT — Contact info */}
+   723→          <div className="lg:col-span-2 space-y-5">
+   724→
+   725→            {/* Japan office */}
+   726→            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+   727→              <div className="flex items-center gap-3 mb-3">
+   728→                <span className="text-2xl">🇯🇵</span>
+   729→                <div>
+   730→                  <p className="font-display font-bold text-[15px] text-foreground">Japan Office</p>
+   731→                  <p className="text-[11px] text-muted-foreground">Indobox Inc.</p>
+   732→                </div>
+   733→              </div>
+   734→              <div className="text-[13px] text-muted-foreground leading-relaxed space-y-2">
+   735→                <p className="flex items-start gap-2">
+   736→                  <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5 text-saffron" />
+   737→                  <span>1-2-32 Tsurumai, Showa-ku,<br />Nagoya, Aichi 466-0064, Japan</span>
+   738→                </p>
+   739→                <p className="flex items-center gap-2">
+   740→                  <Phone className="h-3.5 w-3.5 text-saffron" />
+   741→                  090-4251-7331
+   742→                </p>
+   743→                <p className="flex items-center gap-2">
+   744→                  <Mail className="h-3.5 w-3.5 text-saffron" />
+   745→                  skanda@indobox.co.jp
+   746→                </p>
+   747→                <p className="text-[11px] text-muted-foreground/60 pt-1">
+   748→                  Contact: Skanda (日本語対応可)
+   749→                </p>
+   750→              </div>
+   751→            </div>
+   752→
+   753→            {/* India office */}
+   754→            <div className="rounded-2xl border bg-border bg-muted/30 p-5">
+   755→              <div className="flex items-center gap-3 mb-3">
+   756→                <span className="text-2xl">🇮🇳</span>
+   757→                <div>
+   758→                  <p className="font-display font-bold text-[15px] text-foreground">India Office</p>
+   759→                  <p className="text-[11px] text-muted-foreground/60">Indobox India Pvt. Ltd.</p>
+   760→                </div>
+   761→              </div>
+   762→              <div className="text-[13px] text-muted-foreground leading-relaxed space-y-2">
+   763→                <p className="flex items-start gap-2">
+   764→                  <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5 text-saffron" />
+   765→                  <span>1/C, 83/1, Raidurg, Panmaktha<br />Near HiTec City, Cyberabad,<br />Shaikpet, Hyderabad, 500081<br />Telangana, India</span>
+   766→                </p>
+   767→                <p className="flex items-center gap-2">
+   768→                  <Mail className="h-3.5 w-3.5 text-saffron" />
+   769→                  contact@indigate.work
+   770→                </p>
+   771→              </div>
+   772→            </div>
+   773→
+   774→            {/* License */}
+   775→            <div className="rounded-xl border border-saffron/20 bg-saffron/5 p-4">
+   776→              <p className="text-[12px] text-saffron/80 font-medium">
+   777→                Employment Placement License No.: 23-ユ-303072
+   778→              </p>
+   779→            </div>
+   780→          </div>
+   781→
+   782→          {/* RIGHT — Form */}
+   783→          <div className="lg:col-span-3">
+   784→            {sent ? (
+   785→              <motion.div
+   786→                initial={{ opacity: 0, scale: 0.9 }}
+   787→                animate={{ opacity: 1, scale: 1 }}
+   788→                transition={{ type: "spring", stiffness: 300, damping: 22 }}
+   789→                className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-10 text-center"
+   790→              >
+   791→                <CheckCircle2 className="h-14 w-14 text-emerald-400 mx-auto mb-4" />
+   792→                <p className="font-display font-bold text-lg text-sidebar-foreground mb-2">
+   793→                  Message sent!
+   794→                </p>
+   795→                <p className="text-[14px] text-muted-foreground max-w-sm mx-auto">
+   796→                  Thank you for reaching out. Our team will get back to you within 24 hours.
+   797→                </p>
+   798→                <button
+   799→                  onClick={() => setSent(false)}
+   800→                  className="mt-6 text-[13px] text-saffron hover:text-crimson font-semibold transition-colors"
+   801→                >
+   802→                  Send another message
+   803→                </button>
+   804→              </motion.div>
+   805→            ) : (
+   806→              <form onSubmit={submit} className="rounded-2xl border bg-border bg-muted/30 p-6 sm:p-8 space-y-5">
+   807→
+   808→                {/* Enquiry type */}
+   809→                <div>
+   810→                  <label className={labelCls}>Enquiry type</label>
+   811→                  <div className="grid sm:grid-cols-2 gap-2">
+   812→                    {enquiryTypes.map((opt) => (
+   813→                      <button
+   814→                        key={opt.value}
+   815→                        type="button"
+   816→                        onClick={() => setForm({ ...form, enquiryType: opt.value })}
+   817→                        className={cn(
+   818→                          "text-left px-3 py-2.5 rounded-xl border text-[12px] font-medium transition-all",
+   819→                          form.enquiryType === opt.value
+   820→                            ? "border-saffron/50 bg-saffron/10 text-saffron"
+   821→                            : "border-border bg-background text-muted-foreground hover:border-saffron/30"
+   822→                        )}
+   823→                      >
+   824→                        {opt.label}
+   825→                      </button>
+   826→                    ))}
+   827→                  </div>
+   828→                </div>
+   829→
+   830→                {/* Name + Email */}
+   831→                <div className="grid sm:grid-cols-2 gap-4">
+   832→                  <div>
+   833→                    <label className={labelCls}>Full name *</label>
+   834→                    <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputCls} placeholder="Arjun Sharma" />
+   835→                  </div>
+   836→                  <div>
+   837→                    <label className={labelCls}>Email *</label>
+   838→                    <input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputCls} placeholder="you@example.com" />
+   839→                  </div>
+   840→                </div>
+   841→
+   842→                {/* Phone + Company */}
+   843→                <div className="grid sm:grid-cols-2 gap-4">
+   844→                  <div>
+   845→                    <label className={labelCls}>Phone</label>
+   846→                    <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inputCls} placeholder="+81 90-1234-5678" />
+   847→                  </div>
+   848→                  <div>
+   849→                    <label className={labelCls}>Company</label>
+   850→                    <input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} className={inputCls} placeholder="Company name (optional)" />
+   851→                  </div>
+   852→                </div>
+   853→
+   854→                {/* Subject */}
+   855→                <div>
+   856→                  <label className={labelCls}>Subject</label>
+   857→                  <input value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} className={inputCls} placeholder="Brief subject of your enquiry" />
+   858→                </div>
+   859→
+   860→                {/* Message */}
+   861→                <div>
+   862→                  <label className={labelCls}>Message *</label>
+   863→                  <textarea required minLength={10} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={5} className={cn(inputCls, "resize-none")} placeholder="Tell us about your hiring needs, candidate requirements, or any questions..." />
+   864→                </div>
+   865→
+   866→                {/* Submit */}
+   867→                <Button type="submit" disabled={loading} className="w-full h-12 bg-brand-gradient text-white hover:brightness-110 font-bold text-[15px] rounded-xl shadow-glow-brand border-0 transition-all">
+   868→                  {loading ? "Sending..." : "Send Message"}
+   869→                </Button>
+   870→
+   871→                <p className="text-[11px] text-muted-foreground text-center">
+   872→                  We respect your privacy. Your information is only used to respond to your enquiry.
+   873→                </p>
+   874→              </form>
+   875→            )}
+   876→          </div>
+   877→        </div>
+   878→      </div>
+   879→    </main>
+   880→  );
+   881→}
+   882→

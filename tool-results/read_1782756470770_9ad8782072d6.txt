@@ -1,0 +1,1107 @@
+     1→"use client";
+     2→
+     3→import { Fragment, useEffect, useState, useCallback } from "react";
+     4→import { useApp } from "@/lib/store";
+     5→import { useT } from "@/lib/use-t";
+     6→import { api, formatRelative, formatDate } from "@/lib/api-client";
+     7→import {
+     8→  DashboardShell,
+     9→  EmptyState,
+    10→  SectionCard,
+    11→  RoleGuard,
+    12→  CardSkeleton,
+    13→  MetricSkeleton,
+    14→  type NavItem,
+    15→} from "@/components/dashboard/dashboard-shell";
+    16→import { SkillsInput, FileDropZone } from "@/components/dashboard/widgets";
+    17→import { Button } from "@/components/ui/button";
+    18→import { Input } from "@/components/ui/input";
+    19→import { Label } from "@/components/ui/label";
+    20→import { Textarea } from "@/components/ui/textarea";
+    21→import { Badge } from "@/components/ui/badge";
+    22→import {
+    23→  Select,
+    24→  SelectContent,
+    25→  SelectItem,
+    26→  SelectTrigger,
+    27→  SelectValue,
+    28→} from "@/components/ui/select";
+    29→import {
+    30→  Table,
+    31→  TableBody,
+    32→  TableCell,
+    33→  TableHead,
+    34→  TableHeader,
+    35→  TableRow,
+    36→} from "@/components/ui/table";
+    37→import {
+    38→  AlertDialog,
+    39→  AlertDialogAction,
+    40→  AlertDialogCancel,
+    41→  AlertDialogContent,
+    42→  AlertDialogDescription,
+    43→  AlertDialogFooter,
+    44→  AlertDialogHeader,
+    45→  AlertDialogTitle,
+    46→  AlertDialogTrigger,
+    47→} from "@/components/ui/alert-dialog";
+    48→import { Skeleton } from "@/components/ui/skeleton";
+    49→import { JobCard } from "@/components/jobs/job-card";
+    50→import { CandidateAvatar } from "@/components/brand/logo";
+    51→import { ResumeBuilder } from "@/components/candidate/resume-builder";
+    52→import { toast } from "sonner";
+    53→import {
+    54→  LayoutDashboard,
+    55→  FileText,
+    56→  User,
+    57→  Upload,
+    58→  Bookmark,
+    59→  Briefcase,
+    60→  Star,
+    61→  CalendarClock,
+    62→  Trophy,
+    63→  Plus,
+    64→  Trash2,
+    65→  FileUp,
+    66→  FileCheck2,
+    67→  AlertCircle,
+    68→  ArrowRight,
+    69→  FileEdit,
+    70→} from "lucide-react";
+    71→import type {
+    72→  ApplicationDTO,
+    73→  CandidateProfileDTO,
+    74→  EducationEntry,
+    75→  JobDTO,
+    76→  JLPTLevel,
+    77→} from "@/lib/types";
+    78→import {
+    79→  JLPT_LEVELS,
+    80→  JLPT_BADGE,
+    81→  STATUS_BADGE,
+    82→} from "@/lib/types";
+    83→import { cn } from "@/lib/utils";
+    84→
+    85→const NAV: NavItem[] = [
+    86→  { key: "overview", label: "Overview", icon: LayoutDashboard },
+    87→  { key: "applications", label: "My Applications", icon: FileText },
+    88→  { key: "profile", label: "Profile", icon: User },
+    89→  { key: "builder", label: "Resume Builder", icon: FileEdit },
+    90→  { key: "resume", label: "Upload Resume", icon: Upload },
+    91→  { key: "saved", label: "Saved Jobs", icon: Bookmark },
+    92→];
+    93→
+    94→export function CandidateDashboard() {
+    95→  const user = useApp((s) => s.user);
+    96→  const candidate = useApp((s) => s.candidate);
+    97→  const authLoading = useApp((s) => s.authLoading);
+    98→  const tab = useApp((s) => s.candidateTab);
+    99→  const setTab = useApp((s) => s.setCandidateTab);
+   100→  const navigate = useApp((s) => s.navigate);
+   101→  const { t } = useT();
+   102→
+   103→  if (!user || user.role !== "CANDIDATE") {
+   104→    return <RoleGuard expected="CANDIDATE" />;
+   105→  }
+   106→
+   107→  // Wait for the candidate profile to load.
+   108→  if (authLoading || !candidate) {
+   109→    return (
+   110→      <div className="min-h-screen grid place-items-center bg-background">
+   111→        <div className="flex flex-col items-center gap-3">
+   112→          <div className="h-8 w-8 rounded-full border-2 border-saffron border-t-transparent animate-spin" />
+   113→          <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+   114→        </div>
+   115→      </div>
+   116→    );
+   117→  }
+   118→
+   119→  const welcome = t("dash.candidate.welcome", {
+   120→    name: candidate?.fullName?.split(" ")[0] || user.name || user.email,
+   121→  });
+   122→  const subtitle = candidate?.location
+   123→    ? `${candidate.location} · JLPT ${candidate.jlptLevel}`
+   124→    : `JLPT ${candidate?.jlptLevel ?? "—"}`;
+   125→
+   126→  return (
+   127→    <DashboardShell
+   128→      brand="Candidate"
+   129→      nav={NAV}
+   130→      active={tab}
+   131→      onSelect={(k) => setTab(k as typeof tab)}
+   132→      welcome={welcome}
+   133→      subtitle={subtitle}
+   134→      avatar={
+   135→        <div className="hidden sm:flex items-center gap-2 pl-2 ml-1 border-l border-border">
+   136→          <CandidateAvatar
+   137→            name={candidate?.fullName || user.name || user.email}
+   138→            photoUrl={candidate?.photoUrl}
+   139→            size={32}
+   140→          />
+   141→        </div>
+   142→      }
+   143→      topbarActions={
+   144→        <Button
+   145→          size="sm"
+   146→          variant="outline"
+   147→          className="hidden sm:inline-flex"
+   148→          onClick={() => navigate("jobs")}
+   149→        >
+   150→          <Briefcase className="h-4 w-4" />
+   151→          {t("dash.candidate.browse")}
+   152→        </Button>
+   153→      }
+   154→    >
+   155→      {tab === "overview" && <Overview />}
+   156→      {tab === "applications" && <Applications />}
+   157→      {tab === "profile" && <Profile />}
+   158→      {tab === "builder" && <ResumeBuilder />}
+   159→      {tab === "resume" && <Resume />}
+   160→      {tab === "saved" && <Saved />}
+   161→    </DashboardShell>
+   162→  );
+   163→}
+   164→
+   165→/* ============== Overview ============== */
+   166→
+   167→function computeCompletion(c: CandidateProfileDTO | null): number {
+   168→  if (!c) return 0;
+   169→  const checks: boolean[] = [
+   170→    !!c.fullName?.trim(),
+   171→    !!c.phone?.trim(),
+   172→    !!c.bio?.trim(),
+   173→    !!c.location?.trim(),
+   174→    c.jlptLevel !== "NONE",
+   175→    (c.skills?.length ?? 0) >= 3,
+   176→    !!c.resumeUrl,
+   177→    c.experienceYears > 0,
+   178→    !!c.education && c.education.length > 0,
+   179→    !!c.linkedinUrl?.trim(),
+   180→  ];
+   181→  const filled = checks.filter(Boolean).length;
+   182→  return Math.round((filled / checks.length) * 100);
+   183→}
+   184→
+   185→function Overview() {
+   186→  const candidate = useApp((s) => s.candidate);
+   187→  const setTab = useApp((s) => s.setCandidateTab);
+   188→  const navigate = useApp((s) => s.navigate);
+   189→  const { t, locale } = useT();
+   190→  const [apps, setApps] = useState<ApplicationDTO[] | null>(null);
+   191→  const [loading, setLoading] = useState(true);
+   192→
+   193→  const load = useCallback(async () => {
+   194→    setLoading(true);
+   195→    try {
+   196→      const res = await api<{ applications: ApplicationDTO[] }>(
+   197→        "/api/applications",
+   198→      );
+   199→      setApps(res.applications);
+   200→    } catch {
+   201→      setApps([]);
+   202→    } finally {
+   203→      setLoading(false);
+   204→    }
+   205→  }, []);
+   206→
+   207→  useEffect(() => {
+   208→    load();
+   209→  }, [load]);
+   210→
+   211→  const completion = computeCompletion(candidate);
+   212→  const counts = {
+   213→    sent: apps?.length ?? 0,
+   214→    shortlisted: apps?.filter((a) => a.status === "SHORTLISTED").length ?? 0,
+   215→    interviews: apps?.filter((a) => a.status === "INTERVIEWED").length ?? 0,
+   216→    offers: apps?.filter((a) => a.status === "OFFERED").length ?? 0,
+   217→  };
+   218→  const recent = (apps ?? []).slice(0, 5);
+   219→
+   220→  return (
+   221→    <div className="space-y-6">
+   222→      {/* Metrics */}
+   223→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+   224→        {loading ? (
+   225→          <>
+   226→            <MetricSkeleton />
+   227→            <MetricSkeleton />
+   228→            <MetricSkeleton />
+   229→            <MetricSkeleton />
+   230→          </>
+   231→        ) : (
+   232→          [
+   233→            { label: t("dash.apps.sent"), value: counts.sent, icon: FileText, color: "text-blue-500", bg: "bg-blue-500/10" },
+   234→            { label: t("dash.apps.shortlisted"), value: counts.shortlisted, icon: Star, color: "text-amber-500", bg: "bg-amber-500/10" },
+   235→            { label: t("dash.apps.interviews"), value: counts.interviews, icon: CalendarClock, color: "text-violet-500", bg: "bg-violet-500/10" },
+   236→            { label: t("dash.apps.offers"), value: counts.offers, icon: Trophy, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+   237→          ].map((m) => (
+   238→            <div key={m.label} className="bg-card border border-border rounded-2xl p-5 shadow-premium hover:border-saffron/30 transition-all">
+   239→              <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-3", m.bg)}>
+   240→                <m.icon className={cn("h-5 w-5", m.color)} />
+   241→              </div>
+   242→              <div className="text-2xl font-display font-extrabold text-foreground">{m.value}</div>
+   243→              <div className="text-[12px] text-muted-foreground mt-0.5">{m.label}</div>
+   244→            </div>
+   245→          ))
+   246→        )}
+   247→      </div>
+   248→
+   249→      {/* Profile completion */}
+   250→      <div className="bg-gradient-to-r from-saffron/10 to-crimson/10 border border-saffron/20 rounded-2xl p-5 mb-6">
+   251→        <div className="flex items-center justify-between mb-3">
+   252→          <div>
+   253→            <p className="font-semibold text-[14px] text-foreground">Profile strength</p>
+   254→            <p className="text-[12px] text-muted-foreground mt-0.5">{t("dash.profile.complete")}</p>
+   255→          </div>
+   256→          <span className="text-2xl font-display font-extrabold text-gradient-brand">{completion}%</span>
+   257→        </div>
+   258→        <div className="h-2 bg-muted rounded-full overflow-hidden">
+   259→          <div className="h-full bg-brand-gradient rounded-full transition-all duration-700" style={{ width: `${completion}%` }} />
+   260→        </div>
+   261→        {completion < 100 && (
+   262→          <div className="flex flex-wrap gap-2 pt-3">
+   263→            {completion < 50 && (
+   264→              <Button
+   265→                size="sm"
+   266→                className="bg-brand-gradient text-white hover:opacity-90"
+   267→                onClick={() => setTab("profile")}
+   268→              >
+   269→                Complete profile
+   270→              </Button>
+   271→            )}
+   272→            {!candidate?.resumeUrl && (
+   273→              <Button
+   274→                size="sm"
+   275→                variant="outline"
+   276→                onClick={() => setTab("resume")}
+   277→              >
+   278→                <Upload className="h-3.5 w-3.5" />
+   279→                Upload resume
+   280→              </Button>
+   281→            )}
+   282→          </div>
+   283→        )}
+   284→      </div>
+   285→
+   286→      {/* Recent applications */}
+   287→      <SectionCard
+   288→        title={t("dash.recent.apps")}
+   289→        action={
+   290→          <Button
+   291→            variant="ghost"
+   292→            size="sm"
+   293→            onClick={() => setTab("applications")}
+   294→          >
+   295→            {t("common.viewall")}
+   296→            <ArrowRight className="h-3.5 w-3.5" />
+   297→          </Button>
+   298→        }
+   299→        bodyClassName="p-0"
+   300→      >
+   301→        {loading ? (
+   302→          <div className="p-5 space-y-3">
+   303→            {Array.from({ length: 4 }).map((_, i) => (
+   304→              <Skeleton key={i} className="h-12 w-full" />
+   305→            ))}
+   306→          </div>
+   307→        ) : recent.length === 0 ? (
+   308→          <div className="p-6">
+   309→            <EmptyState
+   310→              icon={FileText}
+   311→              title={t("dash.apps.empty")}
+   312→              description="Apply to jobs and track your progress here."
+   313→              action={
+   314→                <Button
+   315→                  className="bg-brand-gradient text-white hover:opacity-90"
+   316→                  onClick={() => useApp.getState().navigate("jobs")}
+   317→                >
+   318→                  <Briefcase className="h-4 w-4" />
+   319→                  {t("dash.apps.apply")}
+   320→                </Button>
+   321→              }
+   322→            />
+   323→          </div>
+   324→        ) : (
+   325→          <ul className="divide-y">
+   326→            {recent.map((a) => (
+   327→              <li
+   328→                key={a.id}
+   329→                className="flex items-center gap-3 px-5 sm:px-6 py-3 hover:bg-accent/40 transition-colors"
+   330→              >
+   331→                <CandidateAvatar
+   332→                  name={a.job?.company?.companyName || "?"}
+   333→                  size={36}
+   334→                />
+   335→                <div className="min-w-0 flex-1">
+   336→                  <p className="font-semibold text-sm truncate">
+   337→                    {a.job ? a.job.title : "Job removed"}
+   338→                  </p>
+   339→                  <p className="text-xs text-muted-foreground truncate">
+   340→                    {a.job?.company?.companyName} ·{" "}
+   341→                    {formatRelative(a.appliedAt, locale)}
+   342→                  </p>
+   343→                </div>
+   344→                <Badge
+   345→                  variant="outline"
+   346→                  className={cn("font-semibold", STATUS_BADGE[a.status])}
+   347→                >
+   348→                  {t(`status.${a.status}`)}
+   349→                </Badge>
+   350→              </li>
+   351→            ))}
+   352→          </ul>
+   353→        )}
+   354→      </SectionCard>
+   355→    </div>
+   356→  );
+   357→}
+   358→
+   359→/* ============== Applications ============== */
+   360→
+   361→function Applications() {
+   362→  const { t, locale } = useT();
+   363→  const navigate = useApp((s) => s.navigate);
+   364→  const refreshAuth = useApp((s) => s.refreshAuth);
+   365→  const [apps, setApps] = useState<ApplicationDTO[] | null>(null);
+   366→  const [loading, setLoading] = useState(true);
+   367→  const [busyId, setBusyId] = useState<string | null>(null);
+   368→
+   369→  const load = useCallback(async () => {
+   370→    setLoading(true);
+   371→    try {
+   372→      const res = await api<{ applications: ApplicationDTO[] }>(
+   373→        "/api/applications",
+   374→      );
+   375→      setApps(res.applications);
+   376→    } catch {
+   377→      setApps([]);
+   378→    } finally {
+   379→      setLoading(false);
+   380→    }
+   381→  }, []);
+   382→
+   383→  useEffect(() => {
+   384→    load();
+   385→  }, [load]);
+   386→
+   387→  async function withdraw(a: ApplicationDTO) {
+   388→    setBusyId(a.id);
+   389→    try {
+   390→      await api(`/api/applications/${a.id}/status`, {
+   391→        method: "PATCH",
+   392→        body: JSON.stringify({ status: "WITHDRAWN" }),
+   393→      });
+   394→      toast.success("Application withdrawn.");
+   395→      await load();
+   396→      await refreshAuth();
+   397→    } catch (e) {
+   398→      toast.error(e instanceof Error ? e.message : "Failed to withdraw.");
+   399→    } finally {
+   400→      setBusyId(null);
+   401→    }
+   402→  }
+   403→
+   404→  if (loading) {
+   405→    return (
+   406→      <div className="space-y-4">
+   407→        <CardSkeleton lines={6} />
+   408→      </div>
+   409→    );
+   410→  }
+   411→
+   412→  if (!apps || apps.length === 0) {
+   413→    return (
+   414→      <EmptyState
+   415→        icon={FileText}
+   416→        title={t("dash.apps.empty")}
+   417→        description="Browse curated roles in Japan and apply with one click."
+   418→        action={
+   419→          <Button
+   420→            className="bg-brand-gradient text-white hover:opacity-90"
+   421→            onClick={() => navigate("jobs")}
+   422→          >
+   423→            <Briefcase className="h-4 w-4" />
+   424→            {t("dash.apps.apply")}
+   425→          </Button>
+   426→        }
+   427→      />
+   428→    );
+   429→  }
+   430→
+   431→  return (
+   432→    <div className="space-y-4">
+   433→      <SectionCard
+   434→        title={`${apps.length} application${apps.length === 1 ? "" : "s"}`}
+   435→        bodyClassName="p-0"
+   436→      >
+   437→        <div className="max-h-[70vh] overflow-y-auto scroll-area">
+   438→          <Table>
+   439→            <TableHeader className="sticky top-0 bg-card z-10">
+   440→              <TableRow>
+   441→                <TableHead className="pl-5 sm:pl-6 bg-muted/50 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Role</TableHead>
+   442→                <TableHead className="hidden sm:table-cell bg-muted/50 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Applied</TableHead>
+   443→                <TableHead className="bg-muted/50 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Status</TableHead>
+   444→                <TableHead className="text-right pr-5 sm:pr-6 bg-muted/50 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Action</TableHead>
+   445→              </TableRow>
+   446→            </TableHeader>
+   447→            <TableBody>
+   448→              {apps.map((a) => (
+   449→                <Fragment key={a.id}>
+   450→                <TableRow className="hover:bg-muted/30 transition-colors">
+   451→                  <TableCell className="pl-5 sm:pl-6">
+   452→                    <button
+   453→                      onClick={() =>
+   454→                        a.job && navigate("job-detail", { jobId: a.job.id })
+   455→                      }
+   456→                      className="text-left"
+   457→                    >
+   458→                      <p className="font-semibold text-sm hover:text-crimson transition-colors">
+   459→                        {a.job?.title ?? "Job removed"}
+   460→                      </p>
+   461→                      <p className="text-xs text-muted-foreground">
+   462→                        {a.job?.company?.companyName} ·{" "}
+   463→                        {a.job?.location}
+   464→                      </p>
+   465→                    </button>
+   466→                  </TableCell>
+   467→                  <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+   468→                    {formatDate(a.appliedAt, locale)}
+   469→                  </TableCell>
+   470→                  <TableCell>
+   471→                    <Badge
+   472→                      variant="outline"
+   473→                      className={cn("font-semibold", STATUS_BADGE[a.status])}
+   474→                    >
+   475→                      {t(`status.${a.status}`)}
+   476→                    </Badge>
+   477→                  </TableCell>
+   478→                  <TableCell className="text-right pr-5 sm:pr-6">
+   479→                    {a.status !== "WITHDRAWN" && (
+   480→                      <AlertDialog>
+   481→                        <AlertDialogTrigger asChild>
+   482→                          <Button
+   483→                            variant="ghost"
+   484→                            size="sm"
+   485→                            disabled={busyId === a.id}
+   486→                            className="text-muted-foreground hover:text-destructive"
+   487→                          >
+   488→                            Withdraw
+   489→                          </Button>
+   490→                        </AlertDialogTrigger>
+   491→                        <AlertDialogContent>
+   492→                          <AlertDialogHeader>
+   493→                            <AlertDialogTitle>
+   494→                              Withdraw this application?
+   495→                            </AlertDialogTitle>
+   496→                            <AlertDialogDescription>
+   497→                              You're about to withdraw your application for{" "}
+   498→                              <span className="font-medium text-foreground">
+   499→                                {a.job?.title}
+   500→                              </span>{" "}
+   501→                              at{" "}
+   502→                              <span className="font-medium text-foreground">
+   503→                                {a.job?.company?.companyName}
+   504→                              </span>
+   505→                              . This action cannot be undone.
+   506→                            </AlertDialogDescription>
+   507→                          </AlertDialogHeader>
+   508→                          <AlertDialogFooter>
+   509→                            <AlertDialogCancel>
+   510→                              {t("common.cancel")}
+   511→                            </AlertDialogCancel>
+   512→                            <AlertDialogAction
+   513→                              className="bg-destructive text-white hover:bg-destructive/90"
+   514→                              onClick={() => withdraw(a)}
+   515→                            >
+   516→                              Withdraw
+   517→                            </AlertDialogAction>
+   518→                          </AlertDialogFooter>
+   519→                        </AlertDialogContent>
+   520→                      </AlertDialog>
+   521→                    )}
+   522→                  </TableCell>
+   523→                </TableRow>
+   524→                {a.status === "INTERVIEWED" && a.interviewDate && (
+   525→                  <TableRow className="bg-violet-50/50 dark:bg-violet-950/20">
+   526→                    <TableCell colSpan={4} className="px-5 sm:px-6 py-3">
+   527→                      <InterviewInfo app={a} />
+   528→                    </TableCell>
+   529→                  </TableRow>
+   530→                )}
+   531→                </Fragment>
+   532→              ))}
+   533→            </TableBody>
+   534→          </Table>
+   535→        </div>
+   536→      </SectionCard>
+   537→    </div>
+   538→  );
+   539→}
+   540→
+   541→/* ============== Profile ============== */
+   542→
+   543→function Profile() {
+   544→  const candidate = useApp((s) => s.candidate);
+   545→  const refreshAuth = useApp((s) => s.refreshAuth);
+   546→  const { t } = useT();
+   547→
+   548→  const [form, setForm] = useState({
+   549→    fullName: candidate?.fullName ?? "",
+   550→    phone: candidate?.phone ?? "",
+   551→    location: candidate?.location ?? "",
+   552→    bio: candidate?.bio ?? "",
+   553→    linkedinUrl: candidate?.linkedinUrl ?? "",
+   554→    experienceYears: candidate?.experienceYears ?? 0,
+   555→    jlptLevel: (candidate?.jlptLevel ?? "NONE") as JLPTLevel,
+   556→    skills: candidate?.skills ?? [],
+   557→    education: (candidate?.education ?? []) as EducationEntry[],
+   558→  });
+   559→  const [saving, setSaving] = useState(false);
+   560→
+   561→  // re-sync when store candidate changes (e.g. after refreshAuth)
+   562→  useEffect(() => {
+   563→    if (!candidate) return;
+   564→    setForm((prev) => ({
+   565→      ...prev,
+   566→      fullName: candidate.fullName,
+   567→      phone: candidate.phone ?? "",
+   568→      location: candidate.location ?? "",
+   569→      bio: candidate.bio ?? "",
+   570→      linkedinUrl: candidate.linkedinUrl ?? "",
+   571→      experienceYears: candidate.experienceYears,
+   572→      jlptLevel: candidate.jlptLevel,
+   573→      skills: candidate.skills,
+   574→      education: candidate.education ?? [],
+   575→    }));
+   576→  }, [candidate?.updatedAt]);
+   577→
+   578→  function set<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
+   579→    setForm((f) => ({ ...f, [k]: v }));
+   580→  }
+   581→
+   582→  function addEducation() {
+   583→    set("education", [
+   584→      ...form.education,
+   585→      { degree: "", field: "", institution: "", year: "" },
+   586→    ]);
+   587→  }
+   588→  function removeEducation(idx: number) {
+   589→    set(
+   590→      "education",
+   591→      form.education.filter((_, i) => i !== idx),
+   592→    );
+   593→  }
+   594→  function setEducation(idx: number, patch: Partial<EducationEntry>) {
+   595→    set(
+   596→      "education",
+   597→      form.education.map((e, i) => (i === idx ? { ...e, ...patch } : e)),
+   598→    );
+   599→  }
+   600→
+   601→  async function save(e: React.FormEvent) {
+   602→    e.preventDefault();
+   603→    setSaving(true);
+   604→    try {
+   605→      await api("/api/candidates/me", {
+   606→        method: "PUT",
+   607→        body: JSON.stringify({
+   608→          fullName: form.fullName.trim(),
+   609→          phone: form.phone.trim() || null,
+   610→          location: form.location.trim() || null,
+   611→          bio: form.bio.trim() || null,
+   612→          linkedinUrl: form.linkedinUrl.trim() || null,
+   613→          experienceYears: Number(form.experienceYears) || 0,
+   614→          jlptLevel: form.jlptLevel,
+   615→          skills: form.skills,
+   616→          education: form.education.length ? form.education : null,
+   617→        }),
+   618→      });
+   619→      await refreshAuth();
+   620→      toast.success(t("dash.profile.saved"));
+   621→    } catch (err) {
+   622→      toast.error(err instanceof Error ? err.message : "Failed to save.");
+   623→    } finally {
+   624→      setSaving(false);
+   625→    }
+   626→  }
+   627→
+   628→  return (
+   629→    <form onSubmit={save} className="space-y-6">
+   630→      {/* Basic info */}
+   631→      <SectionCard title={t("dash.profile.basic")}>
+   632→        <div className="grid sm:grid-cols-2 gap-4">
+   633→          <div className="space-y-1.5">
+   634→            <Label htmlFor="fullName">Full name</Label>
+   635→            <Input
+   636→              id="fullName"
+   637→              value={form.fullName}
+   638→              onChange={(e) => set("fullName", e.target.value)}
+   639→              required
+   640→              minLength={2}
+   641→            />
+   642→          </div>
+   643→          <div className="space-y-1.5">
+   644→            <Label htmlFor="phone">Phone</Label>
+   645→            <Input
+   646→              id="phone"
+   647→              value={form.phone}
+   648→              onChange={(e) => set("phone", e.target.value)}
+   649→              placeholder="+91 ..."
+   650→            />
+   651→          </div>
+   652→          <div className="space-y-1.5">
+   653→            <Label htmlFor="location">Location</Label>
+   654→            <Input
+   655→              id="location"
+   656→              value={form.location}
+   657→              onChange={(e) => set("location", e.target.value)}
+   658→              placeholder="e.g. Bengaluru, India"
+   659→            />
+   660→          </div>
+   661→          <div className="space-y-1.5">
+   662→            <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
+   663→            <Input
+   664→              id="linkedinUrl"
+   665→              value={form.linkedinUrl}
+   666→              onChange={(e) => set("linkedinUrl", e.target.value)}
+   667→              placeholder="https://linkedin.com/in/..."
+   668→            />
+   669→          </div>
+   670→          <div className="space-y-1.5">
+   671→            <Label htmlFor="experienceYears">Experience (years)</Label>
+   672→            <Input
+   673→              id="experienceYears"
+   674→              type="number"
+   675→              min={0}
+   676→              max={50}
+   677→              value={form.experienceYears}
+   678→              onChange={(e) =>
+   679→                set("experienceYears", Number(e.target.value) || 0)
+   680→              }
+   681→            />
+   682→          </div>
+   683→          <div className="sm:col-span-2 space-y-1.5">
+   684→            <Label htmlFor="bio">Bio</Label>
+   685→            <Textarea
+   686→              id="bio"
+   687→              rows={4}
+   688→              value={form.bio}
+   689→              onChange={(e) => set("bio", e.target.value)}
+   690→              placeholder="A short professional summary..."
+   691→              maxLength={2000}
+   692→            />
+   693→          </div>
+   694→        </div>
+   695→      </SectionCard>
+   696→
+   697→      {/* Japan readiness */}
+   698→      <SectionCard title={t("dash.profile.japan")}>
+   699→        <div className="grid sm:grid-cols-2 gap-4">
+   700→          <div className="space-y-1.5">
+   701→            <Label>JLPT level</Label>
+   702→            <Select
+   703→              value={form.jlptLevel}
+   704→              onValueChange={(v) => set("jlptLevel", v as JLPTLevel)}
+   705→            >
+   706→              <SelectTrigger className="w-full">
+   707→                <SelectValue />
+   708→              </SelectTrigger>
+   709→              <SelectContent>
+   710→                {JLPT_LEVELS.map((lvl) => (
+   711→                  <SelectItem key={lvl} value={lvl}>
+   712→                    {lvl === "NONE" ? "No certification yet" : `JLPT ${lvl}`}
+   713→                  </SelectItem>
+   714→                ))}
+   715→              </SelectContent>
+   716→            </Select>
+   717→          </div>
+   718→          <div className="space-y-1.5">
+   719→            <Label>Current badge</Label>
+   720→            <div className="flex items-center h-9">
+   721→              <Badge
+   722→                variant="outline"
+   723→                className={cn("font-semibold", JLPT_BADGE[form.jlptLevel])}
+   724→              >
+   725→                {form.jlptLevel}
+   726→              </Badge>
+   727→            </div>
+   728→          </div>
+   729→          <div className="sm:col-span-2 space-y-1.5">
+   730→            <Label>Skills</Label>
+   731→            <SkillsInput
+   732→              value={form.skills}
+   733→              onChange={(next) => set("skills", next)}
+   734→              placeholder="Type a skill and press Enter"
+   735→            />
+   736→            <p className="text-xs text-muted-foreground">
+   737→              Add at least 3 skills for the best visibility.
+   738→            </p>
+   739→          </div>
+   740→        </div>
+   741→      </SectionCard>
+   742→
+   743→      {/* Education */}
+   744→      <SectionCard
+   745→        title={t("dash.profile.education")}
+   746→        action={
+   747→          <Button type="button" size="sm" variant="outline" onClick={addEducation}>
+   748→            <Plus className="h-3.5 w-3.5" />
+   749→            Add entry
+   750→          </Button>
+   751→        }
+   752→        bodyClassName="space-y-4"
+   753→      >
+   754→        {form.education.length === 0 ? (
+   755→          <p className="text-sm text-muted-foreground py-6 text-center">
+   756→            No education entries yet. Click "Add entry" to add one.
+   757→          </p>
+   758→        ) : (
+   759→          form.education.map((ed, i) => (
+   760→            <div
+   761→              key={i}
+   762→              className="rounded-xl border border-border bg-background/60 p-4"
+   763→            >
+   764→              <div className="flex items-center justify-between mb-3">
+   765→                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+   766→                  Entry #{i + 1}
+   767→                </p>
+   768→                <Button
+   769→                  type="button"
+   770→                  variant="ghost"
+   771→                  size="icon"
+   772→                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
+   773→                  onClick={() => removeEducation(i)}
+   774→                  aria-label="Remove entry"
+   775→                >
+   776→                  <Trash2 className="h-3.5 w-3.5" />
+   777→                </Button>
+   778→              </div>
+   779→              <div className="grid sm:grid-cols-2 gap-3">
+   780→                <div className="space-y-1">
+   781→                  <Label className="text-xs">Degree</Label>
+   782→                  <Input
+   783→                    value={ed.degree}
+   784→                    onChange={(e) =>
+   785→                      setEducation(i, { degree: e.target.value })
+   786→                    }
+   787→                    placeholder="B.Tech"
+   788→                  />
+   789→                </div>
+   790→                <div className="space-y-1">
+   791→                  <Label className="text-xs">Field</Label>
+   792→                  <Input
+   793→                    value={ed.field}
+   794→                    onChange={(e) => setEducation(i, { field: e.target.value })}
+   795→                    placeholder="Computer Science"
+   796→                  />
+   797→                </div>
+   798→                <div className="space-y-1">
+   799→                  <Label className="text-xs">Institution</Label>
+   800→                  <Input
+   801→                    value={ed.institution}
+   802→                    onChange={(e) =>
+   803→                      setEducation(i, { institution: e.target.value })
+   804→                    }
+   805→                    placeholder="IIT Madras"
+   806→                  />
+   807→                </div>
+   808→                <div className="space-y-1">
+   809→                  <Label className="text-xs">Year</Label>
+   810→                  <Input
+   811→                    value={ed.year}
+   812→                    onChange={(e) => setEducation(i, { year: e.target.value })}
+   813→                    placeholder="2022"
+   814→                  />
+   815→                </div>
+   816→              </div>
+   817→            </div>
+   818→          ))
+   819→        )}
+   820→      </SectionCard>
+   821→
+   822→      <div className="flex items-center justify-end gap-3 sticky bottom-4">
+   823→        <Button
+   824→          type="submit"
+   825→          disabled={saving}
+   826→          className="bg-brand-gradient text-white shadow-premium hover:opacity-90 px-6"
+   827→        >
+   828→          {saving ? t("common.loading") : t("dash.profile.save")}
+   829→        </Button>
+   830→      </div>
+   831→    </form>
+   832→  );
+   833→}
+   834→
+   835→/* ============== Resume ============== */
+   836→
+   837→function Resume() {
+   838→  const candidate = useApp((s) => s.candidate);
+   839→  const refreshAuth = useApp((s) => s.refreshAuth);
+   840→  const { t, locale } = useT();
+   841→  const [busy, setBusy] = useState(false);
+   842→  const [progress, setProgress] = useState<number | null>(null);
+   843→
+   844→  async function uploadFile(file: File) {
+   845→    if (file.type !== "application/pdf" && !file.name.endsWith(".pdf")) {
+   846→      toast.error("Resume must be a PDF.");
+   847→      return;
+   848→    }
+   849→    if (file.size > 5 * 1024 * 1024) {
+   850→      toast.error("Max file size is 5MB.");
+   851→      return;
+   852→    }
+   853→    setBusy(true);
+   854→    setProgress(0);
+   855→    try {
+   856→      const fd = new FormData();
+   857→      fd.append("file", file);
+   858→      fd.append("kind", "resume");
+   859→      // simulate upload progress (fetch doesn't give us easy progress)
+   860→      const fakeTimer = setInterval(() => {
+   861→        setProgress((p) => Math.min(90, (p ?? 0) + 10));
+   862→      }, 80);
+   863→      const res = await fetch("/api/upload", { method: "POST", body: fd });
+   864→      clearInterval(fakeTimer);
+   865→      setProgress(100);
+   866→      if (!res.ok) {
+   867→        const data = await res.json().catch(() => null);
+   868→        throw new Error(data?.error || "Upload failed.");
+   869→      }
+   870→      toast.success("Resume uploaded.");
+   871→      await refreshAuth();
+   872→    } catch (e) {
+   873→      toast.error(e instanceof Error ? e.message : "Upload failed.");
+   874→    } finally {
+   875→      setBusy(false);
+   876→      setTimeout(() => setProgress(null), 600);
+   877→    }
+   878→  }
+   879→
+   880→  async function removeResume() {
+   881→    setBusy(true);
+   882→    try {
+   883→      // The candidate PUT schema accepts `resumeUrl: null`. (The upload route
+   884→      // sets resumeName separately — we only null the URL here, which is what
+   885→      // applicants see.)
+   886→      await api("/api/candidates/me", {
+   887→        method: "PUT",
+   888→        body: JSON.stringify({ resumeUrl: null }),
+   889→      });
+   890→      toast.success("Resume removed.");
+   891→      await refreshAuth();
+   892→    } catch (e) {
+   893→      toast.error(e instanceof Error ? e.message : "Failed to remove.");
+   894→    } finally {
+   895→      setBusy(false);
+   896→    }
+   897→  }
+   898→
+   899→  return (
+   900→    <div className="space-y-6 max-w-3xl">
+   901→      {candidate?.resumeUrl ? (
+   902→        <SectionCard title={t("dash.resume.current")}>
+   903→          <div className="flex items-center gap-4">
+   904→            <div className="grid place-items-center h-14 w-14 rounded-xl bg-crimson/15 text-crimson shrink-0">
+   905→              <FileCheck2 className="h-6 w-6" />
+   906→            </div>
+   907→            <div className="min-w-0 flex-1">
+   908→              <p className="font-semibold truncate">
+   909→                {candidate.resumeName || "Resume.pdf"}
+   910→              </p>
+   911→              <p className="text-xs text-muted-foreground">
+   912→                Uploaded {formatRelative(candidate.updatedAt, locale)}
+   913→              </p>
+   914→            </div>
+   915→            <div className="flex gap-2">
+   916→              <Button asChild variant="outline" size="sm">
+   917→                <a
+   918→                  href={candidate.resumeUrl}
+   919→                  target="_blank"
+   920→                  rel="noreferrer"
+   921→                  download
+   922→                >
+   923→                  Download
+   924→                </a>
+   925→              </Button>
+   926→              <AlertDialog>
+   927→                <AlertDialogTrigger asChild>
+   928→                  <Button
+   929→                    variant="ghost"
+   930→                    size="sm"
+   931→                    disabled={busy}
+   932→                    className="text-muted-foreground hover:text-destructive"
+   933→                  >
+   934→                    {t("dash.resume.remove")}
+   935→                  </Button>
+   936→                </AlertDialogTrigger>
+   937→                <AlertDialogContent>
+   938→                  <AlertDialogHeader>
+   939→                    <AlertDialogTitle>Remove resume?</AlertDialogTitle>
+   940→                    <AlertDialogDescription>
+   941→                      Your resume will be removed from your profile. You can
+   942→                      upload a new one any time.
+   943→                    </AlertDialogDescription>
+   944→                  </AlertDialogHeader>
+   945→                  <AlertDialogFooter>
+   946→                    <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+   947→                    <AlertDialogAction
+   948→                      className="bg-destructive text-white hover:bg-destructive/90"
+   949→                      onClick={removeResume}
+   950→                    >
+   951→                      Remove
+   952→                    </AlertDialogAction>
+   953→                  </AlertDialogFooter>
+   954→                </AlertDialogContent>
+   955→              </AlertDialog>
+   956→            </div>
+   957→          </div>
+   958→        </SectionCard>
+   959→      ) : (
+   960→        <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 p-4 flex items-start gap-3">
+   961→          <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+   962→          <p className="text-sm text-amber-800 dark:text-amber-200">
+   963→            You haven't uploaded a resume yet. A PDF resume is required to apply
+   964→            to most jobs.
+   965→          </p>
+   966→        </div>
+   967→      )}
+   968→
+   969→      <SectionCard title={t("dash.resume.upload")}>
+   970→        <FileDropZone
+   971→          accept="application/pdf"
+   972→          onFile={uploadFile}
+   973→          busy={busy}
+   974→          progress={progress ?? undefined}
+   975→          title={t("dash.resume.drag")}
+   976→          hint="PDF only · max 5 MB"
+   977→          icon={<FileUp className="h-5 w-5" />}
+   978→        />
+   979→        {candidate?.resumeUrl && (
+   980→          <p className="mt-4 text-xs text-muted-foreground text-center">
+   981→            Uploading a new file will replace your current resume.
+   982→          </p>
+   983→        )}
+   984→      </SectionCard>
+   985→    </div>
+   986→  );
+   987→}
+   988→
+   989→/* ============== Saved Jobs ============== */
+   990→
+   991→function Saved() {
+   992→  const { t } = useT();
+   993→  const navigate = useApp((s) => s.navigate);
+   994→  const [jobs, setJobs] = useState<JobDTO[] | null>(null);
+   995→  const [loading, setLoading] = useState(true);
+   996→
+   997→  useEffect(() => {
+   998→    let mounted = true;
+   999→    (async () => {
+  1000→      setLoading(true);
+  1001→      try {
+  1002→        const res = await api<{ jobs: JobDTO[] }>(
+  1003→          "/api/candidates/me/saved-jobs",
+  1004→        );
+  1005→        if (mounted) setJobs(res.jobs);
+  1006→      } catch {
+  1007→        if (mounted) setJobs([]);
+  1008→      } finally {
+  1009→        if (mounted) setLoading(false);
+  1010→      }
+  1011→    })();
+  1012→    return () => {
+  1013→      mounted = false;
+  1014→    };
+  1015→  }, []);
+  1016→
+  1017→  if (loading) {
+  1018→    return (
+  1019→      <div className="grid sm:grid-cols-2 gap-4">
+  1020→        <CardSkeleton />
+  1021→        <CardSkeleton />
+  1022→      </div>
+  1023→    );
+  1024→  }
+  1025→
+  1026→  if (!jobs || jobs.length === 0) {
+  1027→    return (
+  1028→      <EmptyState
+  1029→        icon={Bookmark}
+  1030→        title={t("dash.saved.empty")}
+  1031→        action={
+  1032→          <Button
+  1033→            className="bg-brand-gradient text-white hover:opacity-90"
+  1034→            onClick={() => navigate("jobs")}
+  1035→          >
+  1036→            <Briefcase className="h-4 w-4" />
+  1037→            {t("dash.candidate.browse")}
+  1038→          </Button>
+  1039→        }
+  1040→      />
+  1041→    );
+  1042→  }
+  1043→
+  1044→  return (
+  1045→    <div className="grid sm:grid-cols-2 gap-4">
+  1046→      {jobs.map((j) => (
+  1047→        <JobCard key={j.id} job={j} />
+  1048→      ))}
+  1049→    </div>
+  1050→  );
+  1051→}
+  1052→
+  1053→/* ============== Interview Info (Milestone H) ============== */
+  1054→
+  1055→function InterviewInfo({ app }: { app: ApplicationDTO }) {
+  1056→  const { locale } = useT();
+  1057→  if (!app.interviewDate) return null;
+  1058→  const d = new Date(app.interviewDate);
+  1059→  const dateStr = d.toLocaleString(locale === "ja" ? "ja-JP" : "en-US", {
+  1060→    weekday: "short",
+  1061→    year: "numeric",
+  1062→    month: "short",
+  1063→    day: "numeric",
+  1064→    hour: "2-digit",
+  1065→    minute: "2-digit",
+  1066→    timeZone: "Asia/Tokyo",
+  1067→  });
+  1068→  // Google Calendar link
+  1069→  const start = d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+  1070→  const end = new Date(d.getTime() + 60 * 60 * 1000)
+  1071→    .toISOString()
+  1072→    .replace(/[-:]/g, "")
+  1073→    .split(".")[0] + "Z";
+  1074→  const calTitle = encodeURIComponent(
+  1075→    `Interview at ${app.job?.company?.companyName ?? "Company"}`,
+  1076→  );
+  1077→  const calDetails = encodeURIComponent(app.interviewNotes || "");
+  1078→  const calUrl = `https://www.google.com/calendar/event?action=TEMPLATE&text=${calTitle}&dates=${start}/${end}&details=${calDetails}&ctz=Asia/Tokyo`;
+  1079→
+  1080→  return (
+  1081→    <div className="flex items-start gap-3 flex-wrap">
+  1082→      <div className="grid place-items-center h-9 w-9 rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 shrink-0">
+  1083→        <CalendarClock className="h-4 w-4" />
+  1084→      </div>
+  1085→      <div className="flex-1 min-w-0">
+  1086→        <p className="text-sm font-semibold text-violet-800 dark:text-violet-300">
+  1087→          {locale === "ja" ? "面接日程" : "Interview scheduled"}
+  1088→        </p>
+  1089→        <p className="text-sm text-foreground">
+  1090→          {dateStr} JST
+  1091→        </p>
+  1092→        {app.interviewNotes && (
+  1093→          <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">
+  1094→            {app.interviewNotes}
+  1095→          </p>
+  1096→        )}
+  1097→      </div>
+  1098→      <a href={calUrl} target="_blank" rel="noreferrer">
+  1099→        <Button size="sm" variant="outline" className="shrink-0">
+  1100→          <CalendarClock className="mr-1.5 h-3.5 w-3.5" />
+  1101→          {locale === "ja" ? "カレンダーに追加" : "Add to Calendar"}
+  1102→        </Button>
+  1103→      </a>
+  1104→    </div>
+  1105→  );
+  1106→}
+  1107→

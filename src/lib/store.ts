@@ -23,7 +23,8 @@ export type View =
   | "terms"
   | "about"
   | "companies"
-  | "for-companies";
+  | "for-companies"
+  | "contact";
 
 export interface AppState {
   // Auth
@@ -35,7 +36,7 @@ export interface AppState {
   view: View;
   selectedJobId: string | null;
   // candidate dashboard tab
-  candidateTab: "overview" | "applications" | "profile" | "resume" | "saved" | "builder";
+  candidateTab: "overview" | "applications" | "profile" | "resume" | "saved" | "builder" | "alerts";
   // company dashboard tab
   companyTab:
     | "overview"
@@ -57,6 +58,8 @@ export interface AppState {
     | "contacts";
   // locale
   locale: Locale;
+  // TOTP 2FA
+  pendingTwoFactorEmail: string | null;
   // actions
   setAuth: (data: {
     user: SessionUser | null;
@@ -73,6 +76,7 @@ export interface AppState {
   ) => void;
   setAdminTab: (t: AppState["adminTab"]) => void;
   setLocale: (l: Locale) => void;
+  setPendingTwoFactorEmail: (email: string | null) => void;
 }
 
 export const useApp = create<AppState>((set, get) => ({
@@ -87,6 +91,7 @@ export const useApp = create<AppState>((set, get) => ({
   companyApplicantsJobId: null,
   adminTab: "overview",
   locale: "en",
+  pendingTwoFactorEmail: null,
 
   setAuth: ({ user, candidate, company }) =>
     set({
@@ -136,4 +141,5 @@ export const useApp = create<AppState>((set, get) => ({
     }),
   setAdminTab: (t) => set({ adminTab: t }),
   setLocale: (l) => set({ locale: l }),
+  setPendingTwoFactorEmail: (email) => set({ pendingTwoFactorEmail: email }),
 }));

@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
     const skillsParam = searchParams.get("skills") || "";
     const minExp = Number(searchParams.get("minExp") || 0);
     const search = searchParams.get("search")?.trim() || "";
+    const openToWorkOnly = searchParams.get("openToWork") === "true";
     const page = Math.max(1, Number(searchParams.get("page") ?? 1));
     const limit = Math.min(50, Math.max(1, Number(searchParams.get("limit") ?? 12)));
 
@@ -27,6 +28,8 @@ export async function GET(req: NextRequest) {
       user: { isVerified: true },
       resumeUrl: { not: null },
     };
+
+    if (openToWorkOnly) where.openToWork = true;
 
     if (jlptLevel) where.jlptLevel = jlptLevel;
     if (minExp) where.experienceYears = { gte: minExp };
@@ -68,6 +71,7 @@ export async function GET(req: NextRequest) {
           photoUrl: true,
           resumeUrl: true,
           education: true,
+          openToWork: true,
           createdAt: true,
         },
       }),
@@ -85,6 +89,7 @@ export async function GET(req: NextRequest) {
       photoUrl: c.photoUrl,
       hasResume: !!c.resumeUrl, // boolean only
       educationCount: c.education ? safeParseArray(c.education).length : 0,
+      openToWork: c.openToWork,
       createdAt: c.createdAt.toISOString(),
     }));
 

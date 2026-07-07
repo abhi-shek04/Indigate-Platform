@@ -1,0 +1,2002 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useState, useCallback, useMemo } from "react";
+     4→import { useApp } from "@/lib/store";
+     5→import { useT } from "@/lib/use-t";
+     6→import { api, formatRelative, formatDate } from "@/lib/api-client";
+     7→import {
+     8→  DashboardShell,
+     9→  MetricCard,
+    10→  EmptyState,
+    11→  SectionCard,
+    12→  RoleGuard,
+    13→  CardSkeleton,
+    14→  MetricSkeleton,
+    15→  type NavItem,
+    16→} from "@/components/dashboard/dashboard-shell";
+    17→import { Button } from "@/components/ui/button";
+    18→import { Input } from "@/components/ui/input";
+    19→import { Badge } from "@/components/ui/badge";
+    20→import { Switch } from "@/components/ui/switch";
+    21→import {
+    22→  Select,
+    23→  SelectContent,
+    24→  SelectItem,
+    25→  SelectTrigger,
+    26→  SelectValue,
+    27→} from "@/components/ui/select";
+    28→import {
+    29→  Table,
+    30→  TableBody,
+    31→  TableCell,
+    32→  TableHead,
+    33→  TableHeader,
+    34→  TableRow,
+    35→} from "@/components/ui/table";
+    36→import {
+    37→  AlertDialog,
+    38→  AlertDialogAction,
+    39→  AlertDialogCancel,
+    40→  AlertDialogContent,
+    41→  AlertDialogDescription,
+    42→  AlertDialogFooter,
+    43→  AlertDialogHeader,
+    44→  AlertDialogTitle,
+    45→  AlertDialogTrigger,
+    46→} from "@/components/ui/alert-dialog";
+    47→import {
+    48→  Dialog,
+    49→  DialogContent,
+    50→  DialogDescription,
+    51→  DialogFooter,
+    52→  DialogHeader,
+    53→  DialogTitle,
+    54→} from "@/components/ui/dialog";
+    55→import {
+    56→  Sheet,
+    57→  SheetContent,
+    58→  SheetHeader,
+    59→  SheetTitle,
+    60→} from "@/components/ui/sheet";
+    61→import { Label } from "@/components/ui/label";
+    62→import { Textarea } from "@/components/ui/textarea";
+    63→import { Skeleton } from "@/components/ui/skeleton";
+    64→import {
+    65→  ChartContainer,
+    66→  ChartTooltip,
+    67→  ChartTooltipContent,
+    68→  type ChartConfig,
+    69→} from "@/components/ui/chart";
+    70→import { CompanyAvatar, CandidateAvatar } from "@/components/brand/logo";
+    71→import { toast } from "sonner";
+    72→import {
+    73→  LayoutDashboard,
+    74→  Briefcase,
+    75→  Users,
+    76→  Building2,
+    77→  FileText,
+    78→  Quote,
+    79→  Send,
+    80→  CheckCircle2,
+    81→  XCircle,
+    82→  Trash2,
+    83→  Search,
+    84→  Download,
+    85→  TrendingUp,
+    86→  Hourglass,
+    87→  Trophy,
+    88→  Plus,
+    89→  Pencil,
+    90→  Mail,
+    91→} from "lucide-react";
+    92→import {
+    93→  Area,
+    94→  AreaChart,
+    95→  CartesianGrid,
+    96→  Cell,
+    97→  Pie,
+    98→  PieChart as RechartsPie,
+    99→  XAxis,
+   100→  YAxis,
+   101→} from "recharts";
+   102→import type {
+   103→  ApplicationDTO,
+   104→  ApplicationStatus,
+   105→  CompanyProfileDTO,
+   106→  CandidateProfileDTO,
+   107→  JobDTO,
+   108→} from "@/lib/types";
+   109→import {
+   110→  JLPT_LEVELS,
+   111→  JLPT_BADGE,
+   112→  STATUS_BADGE,
+   113→  APPLICATION_STATUSES,
+   114→  JOB_TYPES,
+   115→  type TestimonialDTO,
+   116→} from "@/lib/types";
+   117→import { cn } from "@/lib/utils";
+   118→
+   119→const NAV: NavItem[] = [
+   120→  { key: "overview", label: "Overview", icon: LayoutDashboard },
+   121→  { key: "jobs", label: "Jobs", icon: Briefcase },
+   122→  { key: "candidates", label: "Candidates", icon: Users },
+   123→  { key: "companies", label: "Companies", icon: Building2 },
+   124→  { key: "applications", label: "Applications", icon: FileText },
+   125→  { key: "testimonials", label: "Testimonials", icon: Quote },
+   126→  { key: "contacts", label: "Enquiries", icon: Mail },
+   127→];
+   128→
+   129→interface AdminStats {
+   130→  metrics: {
+   131→    candidates: number;
+   132→    companies: number;
+   133→    pendingCompanies: number;
+   134→    activeJobs: number;
+   135→    totalJobs: number;
+   136→    totalApps: number;
+   137→    appsThisMonth: number;
+   138→    placements: number;
+   139→  };
+   140→  appsPerWeek: { label: string; count: number }[];
+   141→  appsByStatus: { status: ApplicationStatus; count: number }[];
+   142→  companiesList: {
+   143→    id: string;
+   144→    companyName: string;
+   145→    industry: string | null;
+   146→    locationJapan: string | null;
+   147→    isApproved: boolean;
+   148→    email: string;
+   149→    createdAt: string;
+   150→  }[];
+   151→}
+   152→
+   153→type CandidateRow = CandidateProfileDTO & { email?: string };
+   154→type CompanyRow = CompanyProfileDTO & { email?: string };
+   155→type TestimonialRow = {
+   156→  id: string;
+   157→  name: string;
+   158→  role: string;
+   159→  company: string | null;
+   160→  content: string;
+   161→  contentJa: string | null;
+   162→  photoUrl: string | null;
+   163→  order: number;
+   164→  isActive?: boolean;
+   165→};
+   166→
+   167→export function AdminDashboard() {
+   168→  const user = useApp((s) => s.user);
+   169→  const tab = useApp((s) => s.adminTab);
+   170→  const setTab = useApp((s) => s.setAdminTab);
+   171→  const { t } = useT();
+   172→
+   173→  if (!user || user.role !== "ADMIN") {
+   174→    return <RoleGuard expected="ADMIN" />;
+   175→  }
+   176→
+   177→  return (
+   178→    <DashboardShell
+   179→      brand="Admin"
+   180→      nav={NAV}
+   181→      active={tab}
+   182→      onSelect={(k) => setTab(k as typeof tab)}
+   183→      welcome={t("admin.title")}
+   184→      subtitle="Platform oversight & moderation"
+   185→      avatar={
+   186→        <div className="hidden sm:flex items-center gap-2 pl-2 ml-1 border-l border-border">
+   187→          <div className="grid place-items-center h-8 w-8 rounded-lg bg-brand-gradient text-white text-xs font-bold">
+   188→            AD
+   189→          </div>
+   190→        </div>
+   191→      }
+   192→    >
+   193→      {tab === "overview" && <Overview />}
+   194→      {tab === "jobs" && <JobsTab />}
+   195→      {tab === "candidates" && <CandidatesTab />}
+   196→      {tab === "companies" && <CompaniesTab />}
+   197→      {tab === "applications" && <ApplicationsTab />}
+   198→      {tab === "testimonials" && <TestimonialsTab />}
+   199→      {tab === "contacts" && <ContactsTab />}
+   200→    </DashboardShell>
+   201→  );
+   202→}
+   203→
+   204→/* ============== Overview ============== */
+   205→
+   206→const STATUS_COLORS: Record<ApplicationStatus, string> = {
+   207→  APPLIED: "var(--chart-3)",
+   208→  SHORTLISTED: "var(--chart-2)",
+   209→  INTERVIEWED: "var(--chart-5)",
+   210→  OFFERED: "var(--chart-4)",
+   211→  REJECTED: "var(--crimson)",
+   212→  WITHDRAWN: "var(--muted-foreground)",
+   213→};
+   214→
+   215→function Overview() {
+   216→  const { t, locale } = useT();
+   217→  const [stats, setStats] = useState<AdminStats | null>(null);
+   218→  const [apps, setApps] = useState<ApplicationDTO[]>([]);
+   219→  const [loading, setLoading] = useState(true);
+   220→  const [busyId, setBusyId] = useState<string | null>(null);
+   221→
+   222→  const load = useCallback(async () => {
+   223→    setLoading(true);
+   224→    try {
+   225→      const [s, a] = await Promise.all([
+   226→        api<AdminStats>("/api/admin/stats"),
+   227→        api<{ items: ApplicationDTO[] }>("/api/admin/list/applications"),
+   228→      ]);
+   229→      setStats(s);
+   230→      setApps(a.items.slice(0, 10));
+   231→    } catch {
+   232→      setStats(null);
+   233→    } finally {
+   234→      setLoading(false);
+   235→    }
+   236→  }, []);
+   237→
+   238→  useEffect(() => {
+   239→    load();
+   240→  }, [load]);
+   241→
+   242→  async function approve(id: string, approve: boolean) {
+   243→    setBusyId(id);
+   244→    try {
+   245→      await api(`/api/admin/companies/${id}?action=${approve ? "approve" : "reject"}`, {
+   246→        method: "PATCH",
+   247→      });
+   248→      toast.success(approve ? "Company approved." : "Company rejected.");
+   249→      await load();
+   250→    } catch (e) {
+   251→      toast.error(e instanceof Error ? e.message : "Failed.");
+   252→    } finally {
+   253→      setBusyId(null);
+   254→    }
+   255→  }
+   256→
+   257→  const pendingCompanies = stats?.companiesList.filter((c) => !c.isApproved) ?? [];
+   258→
+   259→  const chartConfig: ChartConfig = useMemo(
+   260→    () => ({
+   261→      count: { label: "Applications" },
+   262→      ...Object.fromEntries(
+   263→        APPLICATION_STATUSES.map((s) => [
+   264→          s,
+   265→          { label: t(`status.${s}`), color: STATUS_COLORS[s] },
+   266→        ]),
+   267→      ),
+   268→    }),
+   269→    [t],
+   270→  );
+   271→
+   272→  return (
+   273→    <div className="space-y-6">
+   274→      {/* Metrics */}
+   275→      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+   276→        {loading ? (
+   277→          Array.from({ length: 6 }).map((_, i) => <MetricSkeleton key={i} />)
+   278→        ) : (
+   279→          <>
+   280→            <MetricCard
+   281→              label="Candidates"
+   282→              value={stats?.metrics.candidates ?? 0}
+   283→              icon={Users}
+   284→              accent="saffron"
+   285→            />
+   286→            <MetricCard
+   287→              label="Companies"
+   288→              value={stats?.metrics.companies ?? 0}
+   289→              icon={Building2}
+   290→              accent="crimson"
+   291→              hint={`${stats?.metrics.pendingCompanies ?? 0} pending`}
+   292→            />
+   293→            <MetricCard
+   294→              label="Active jobs"
+   295→              value={stats?.metrics.activeJobs ?? 0}
+   296→              icon={Briefcase}
+   297→              accent="emerald"
+   298→            />
+   299→            <MetricCard
+   300→              label="Total applications"
+   301→              value={stats?.metrics.totalApps ?? 0}
+   302→              icon={Send}
+   303→              accent="sky"
+   304→            />
+   305→            <MetricCard
+   306→              label={t("admin.thismonth")}
+   307→              value={stats?.metrics.appsThisMonth ?? 0}
+   308→              icon={TrendingUp}
+   309→              accent="violet"
+   310→            />
+   311→            <MetricCard
+   312→              label={t("admin.placements")}
+   313→              value={stats?.metrics.placements ?? 0}
+   314→              icon={Trophy}
+   315→              accent="amber"
+   316→            />
+   317→          </>
+   318→        )}
+   319→      </div>
+   320→
+   321→      {/* Charts */}
+   322→      <div className="grid lg:grid-cols-5 gap-6">
+   323→        <SectionCard
+   324→          title="Applications over time"
+   325→          className="lg:col-span-3"
+   326→          bodyClassName="pt-2"
+   327→        >
+   328→          {loading || !stats ? (
+   329→            <Skeleton className="h-[260px] w-full" />
+   330→          ) : (
+   331→            <ChartContainer config={chartConfig} className="aspect-[16/9] w-full">
+   332→              <AreaChart data={stats.appsPerWeek} margin={{ left: -16, right: 8, top: 8 }}>
+   333→                <defs>
+   334→                  <linearGradient id="appsGrad" x1="0" y1="0" x2="0" y2="1">
+   335→                    <stop offset="0%" stopColor="var(--saffron)" stopOpacity={0.5} />
+   336→                    <stop offset="100%" stopColor="var(--saffron)" stopOpacity={0.02} />
+   337→                  </linearGradient>
+   338→                </defs>
+   339→                <CartesianGrid vertical={false} stroke="var(--border)" />
+   340→                <XAxis
+   341→                  dataKey="label"
+   342→                  tickLine={false}
+   343→                  axisLine={false}
+   344→                  tick={{ fontSize: 11 }}
+   345→                />
+   346→                <YAxis
+   347→                  allowDecimals={false}
+   348→                  tickLine={false}
+   349→                  axisLine={false}
+   350→                  tick={{ fontSize: 11 }}
+   351→                  width={36}
+   352→                />
+   353→                <ChartTooltip content={<ChartTooltipContent />} />
+   354→                <Area
+   355→                  type="monotone"
+   356→                  dataKey="count"
+   357→                  stroke="var(--saffron)"
+   358→                  strokeWidth={2.5}
+   359→                  fill="url(#appsGrad)"
+   360→                  dot={{ r: 3, fill: "var(--saffron)" }}
+   361→                />
+   362→              </AreaChart>
+   363→            </ChartContainer>
+   364→          )}
+   365→        </SectionCard>
+   366→
+   367→        <SectionCard
+   368→          title="By status"
+   369→          className="lg:col-span-2"
+   370→          bodyClassName="pt-2"
+   371→        >
+   372→          {loading || !stats ? (
+   373→            <Skeleton className="h-[260px] w-full" />
+   374→          ) : (
+   375→            <div className="flex flex-col items-center gap-2">
+   376→              <ChartContainer config={chartConfig} className="aspect-square w-full max-w-[240px]">
+   377→                <RechartsPie data={stats.appsByStatus}>
+   378→                  <ChartTooltip content={<ChartTooltipContent nameKey="status" />} />
+   379→                  <Pie
+   380→                    data={stats.appsByStatus}
+   381→                    dataKey="count"
+   382→                    nameKey="status"
+   383→                    innerRadius={50}
+   384→                    outerRadius={80}
+   385→                    paddingAngle={2}
+   386→                  >
+   387→                    {stats.appsByStatus.map((entry) => (
+   388→                      <Cell
+   389→                        key={entry.status}
+   390→                        fill={STATUS_COLORS[entry.status]}
+   391→                      />
+   392→                    ))}
+   393→                  </Pie>
+   394→                </RechartsPie>
+   395→              </ChartContainer>
+   396→              <ul className="grid grid-cols-2 gap-1.5 w-full text-xs">
+   397→                {stats.appsByStatus
+   398→                  .filter((s) => s.count > 0)
+   399→                  .map((s) => (
+   400→                    <li
+   401→                      key={s.status}
+   402→                      className="flex items-center gap-1.5"
+   403→                    >
+   404→                      <span
+   405→                        className="h-2 w-2 rounded-full shrink-0"
+   406→                        style={{ background: STATUS_COLORS[s.status] }}
+   407→                      />
+   408→                      <span className="text-muted-foreground">
+   409→                        {t(`status.${s.status}`)}
+   410→                      </span>
+   411→                      <span className="font-semibold ml-auto">{s.count}</span>
+   412→                    </li>
+   413→                  ))}
+   414→              </ul>
+   415→            </div>
+   416→          )}
+   417→        </SectionCard>
+   418→      </div>
+   419→
+   420→      {/* Pending approvals */}
+   421→      <SectionCard
+   422→        title={t("admin.pending")}
+   423→        action={
+   424→          pendingCompanies.length > 0 && (
+   425→            <Badge variant="secondary" className="font-semibold">
+   426→              {pendingCompanies.length} to review
+   427→            </Badge>
+   428→          )
+   429→        }
+   430→        bodyClassName="p-0"
+   431→      >
+   432→        {loading ? (
+   433→          <div className="p-5 space-y-3">
+   434→            {Array.from({ length: 2 }).map((_, i) => (
+   435→              <Skeleton key={i} className="h-12 w-full" />
+   436→            ))}
+   437→          </div>
+   438→        ) : pendingCompanies.length === 0 ? (
+   439→          <div className="p-6">
+   440→            <EmptyState
+   441→              icon={CheckCircle2}
+   442→              title="All caught up"
+   443→              description="No companies pending approval."
+   444→            />
+   445→          </div>
+   446→        ) : (
+   447→          <ul className="divide-y">
+   448→            {pendingCompanies.map((c) => (
+   449→              <li
+   450→                key={c.id}
+   451→                className="flex items-center gap-3 px-5 sm:px-6 py-3"
+   452→              >
+   453→                <CompanyAvatar
+   454→                  name={c.companyName}
+   455→                  color={null}
+   456→                  size={36}
+   457→                />
+   458→                <div className="min-w-0 flex-1">
+   459→                  <p className="font-semibold text-sm truncate">
+   460→                    {c.companyName}
+   461→                  </p>
+   462→                  <p className="text-xs text-muted-foreground truncate">
+   463→                    {c.email} · {c.industry ?? "Industry not set"} ·{" "}
+   464→                    {formatRelative(c.createdAt, locale)}
+   465→                  </p>
+   466→                </div>
+   467→                <div className="flex gap-1">
+   468→                  <Button
+   469→                    size="sm"
+   470→                    className="bg-brand-gradient text-white hover:opacity-90"
+   471→                    disabled={busyId === c.id}
+   472→                    onClick={() => approve(c.id, true)}
+   473→                  >
+   474→                    <CheckCircle2 className="h-3.5 w-3.5" />
+   475→                    <span className="hidden sm:inline">
+   476→                      {t("admin.approve")}
+   477→                    </span>
+   478→                  </Button>
+   479→                  <Button
+   480→                    size="sm"
+   481→                    variant="outline"
+   482→                    className="text-destructive hover:text-destructive"
+   483→                    disabled={busyId === c.id}
+   484→                    onClick={() => approve(c.id, false)}
+   485→                  >
+   486→                    <XCircle className="h-3.5 w-3.5" />
+   487→                    <span className="hidden sm:inline">
+   488→                      {t("admin.reject")}
+   489→                    </span>
+   490→                  </Button>
+   491→                </div>
+   492→              </li>
+   493→            ))}
+   494→          </ul>
+   495→        )}
+   496→      </SectionCard>
+   497→
+   498→      {/* Recent applications */}
+   499→      <SectionCard
+   500→        title="Recent applications"
+   501→        bodyClassName="p-0"
+   502→      >
+   503→        {loading ? (
+   504→          <div className="p-5 space-y-3">
+   505→            {Array.from({ length: 4 }).map((_, i) => (
+   506→              <Skeleton key={i} className="h-10 w-full" />
+   507→            ))}
+   508→          </div>
+   509→        ) : apps.length === 0 ? (
+   510→          <div className="p-6">
+   511→            <EmptyState
+   512→              icon={FileText}
+   513→              title="No applications yet"
+   514→            />
+   515→          </div>
+   516→        ) : (
+   517→          <ul className="divide-y">
+   518→            {apps.map((a) => (
+   519→              <li
+   520→                key={a.id}
+   521→                className="flex items-center gap-3 px-5 sm:px-6 py-3"
+   522→              >
+   523→                <CandidateAvatar
+   524→                  name={a.candidate?.fullName || "?"}
+   525→                  photoUrl={a.candidate?.photoUrl}
+   526→                  size={32}
+   527→                />
+   528→                <div className="min-w-0 flex-1">
+   529→                  <p className="text-sm font-semibold truncate">
+   530→                    {a.candidate?.fullName ?? "Candidate"}
+   531→                  </p>
+   532→                  <p className="text-xs text-muted-foreground truncate">
+   533→                    {a.job?.title} · {a.job?.company?.companyName} ·{" "}
+   534→                    {formatRelative(a.appliedAt, locale)}
+   535→                  </p>
+   536→                </div>
+   537→                <Badge
+   538→                  variant="outline"
+   539→                  className={cn("font-semibold hidden sm:inline-flex", STATUS_BADGE[a.status])}
+   540→                >
+   541→                  {t(`status.${a.status}`)}
+   542→                </Badge>
+   543→              </li>
+   544→            ))}
+   545→          </ul>
+   546→        )}
+   547→      </SectionCard>
+   548→    </div>
+   549→  );
+   550→}
+   551→
+   552→/* ============== Reusable admin table wrapper ============== */
+   553→
+   554→function ExportCsvButton({ resource }: { resource: string }) {
+   555→  const { t } = useT();
+   556→  return (
+   557→    <Button
+   558→      variant="outline"
+   559→      size="sm"
+   560→      asChild
+   561→    >
+   562→      <a href={`/api/admin/list/${resource}?export=csv`} download>
+   563→        <Download className="h-3.5 w-3.5" />
+   564→        {t("admin.export")}
+   565→      </a>
+   566→    </Button>
+   567→  );
+   568→}
+   569→
+   570→/* ============== Jobs tab ============== */
+   571→
+   572→function JobsTab() {
+   573→  const { t, locale } = useT();
+   574→  const [items, setItems] = useState<JobDTO[] | null>(null);
+   575→  const [loading, setLoading] = useState(true);
+   576→  const [search, setSearch] = useState("");
+   577→  const [busyId, setBusyId] = useState<string | null>(null);
+   578→  const [deleteId, setDeleteId] = useState<string | null>(null);
+   579→  const [editorState, setEditorState] = useState<{
+   580→    mode: "create" | "edit";
+   581→    job: JobDTO | null;
+   582→  } | null>(null);
+   583→
+   584→  const load = useCallback(async () => {
+   585→    setLoading(true);
+   586→    try {
+   587→      const res = await api<{ items: JobDTO[] }>("/api/admin/list/jobs");
+   588→      setItems(res.items);
+   589→    } catch {
+   590→      setItems([]);
+   591→    } finally {
+   592→      setLoading(false);
+   593→    }
+   594→  }, []);
+   595→
+   596→  useEffect(() => {
+   597→    load();
+   598→  }, [load]);
+   599→
+   600→  const filtered = useMemo(() => {
+   601→    if (!items) return [];
+   602→    const q = search.trim().toLowerCase();
+   603→    if (!q) return items;
+   604→    return items.filter(
+   605→      (j) =>
+   606→        j.title.toLowerCase().includes(q) ||
+   607→        j.company.companyName.toLowerCase().includes(q) ||
+   608→        j.location.toLowerCase().includes(q),
+   609→    );
+   610→  }, [items, search]);
+   611→
+   612→  async function toggleActive(j: JobDTO) {
+   613→    setBusyId(j.id);
+   614→    try {
+   615→      await api(`/api/jobs/${j.id}`, {
+   616→        method: "PUT",
+   617→        body: JSON.stringify({ isActive: !j.isActive }),
+   618→      });
+   619→      toast.success(j.isActive ? "Paused." : "Activated.");
+   620→      await load();
+   621→    } catch (e) {
+   622→      toast.error(e instanceof Error ? e.message : "Failed.");
+   623→    } finally {
+   624→      setBusyId(null);
+   625→    }
+   626→  }
+   627→
+   628→  async function remove(id: string) {
+   629→    setBusyId(id);
+   630→    try {
+   631→      await api(`/api/jobs/${id}`, { method: "DELETE" });
+   632→      toast.success("Job deleted.");
+   633→      await load();
+   634→    } catch (e) {
+   635→      toast.error(e instanceof Error ? e.message : "Failed.");
+   636→    } finally {
+   637→      setBusyId(null);
+   638→      setDeleteId(null);
+   639→    }
+   640→  }
+   641→
+   642→  return (
+   643→    <div className="space-y-4">
+   644→      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+   645→        <h2 className="font-display font-extrabold text-xl">
+   646→          {t("admin.jobs")}
+   647→        </h2>
+   648→        <div className="flex items-center gap-2">
+   649→          <div className="relative">
+   650→            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+   651→            <Input
+   652→              value={search}
+   653→              onChange={(e) => setSearch(e.target.value)}
+   654→              placeholder={t("common.search")}
+   655→              className="pl-8 h-9 w-[200px]"
+   656→            />
+   657→          </div>
+   658→          <ExportCsvButton resource="jobs" />
+   659→          <Button
+   660→            size="sm"
+   661→            className="bg-brand-gradient text-white hover:opacity-90 font-semibold"
+   662→            onClick={() => setEditorState({ mode: "create", job: null })}
+   663→          >
+   664→            <Plus className="h-4 w-4 mr-1" />
+   665→            Post Job
+   666→          </Button>
+   667→        </div>
+   668→      </div>
+   669→
+   670→      {loading ? (
+   671→        <CardSkeleton lines={8} />
+   672→      ) : filtered.length === 0 ? (
+   673→        <EmptyState
+   674→          icon={Briefcase}
+   675→          title="No jobs found"
+   676→          description={search ? "Try a different search." : undefined}
+   677→        />
+   678→      ) : (
+   679→        <SectionCard bodyClassName="p-0">
+   680→          <div className="max-h-[70vh] overflow-y-auto scroll-area">
+   681→            <Table>
+   682→              <TableHeader className="sticky top-0 bg-card z-10">
+   683→                <TableRow>
+   684→                  <TableHead className="pl-5 sm:pl-6">Title</TableHead>
+   685→                  <TableHead className="hidden md:table-cell">Company</TableHead>
+   686→                  <TableHead className="hidden lg:table-cell">Location</TableHead>
+   687→                  <TableHead className="hidden md:table-cell">JLPT</TableHead>
+   688→                  <TableHead>Apps</TableHead>
+   689→                  <TableHead>Active</TableHead>
+   690→                  <TableHead className="text-right pr-5 sm:pr-6">
+   691→                    <span className="sr-only">Actions</span>
+   692→                  </TableHead>
+   693→                </TableRow>
+   694→              </TableHeader>
+   695→              <TableBody>
+   696→                {filtered.map((j) => (
+   697→                  <TableRow key={j.id}>
+   698→                    <TableCell className="pl-5 sm:pl-6">
+   699→                      <p className="font-semibold text-sm">{j.title}</p>
+   700→                      <p className="text-xs text-muted-foreground md:hidden">
+   701→                        {j.company.companyName}
+   702→                      </p>
+   703→                      <p className="text-xs text-muted-foreground">
+   704→                        {formatRelative(j.postedAt, locale)}
+   705→                      </p>
+   706→                    </TableCell>
+   707→                    <TableCell className="hidden md:table-cell text-sm">
+   708→                      {j.company.companyName}
+   709→                    </TableCell>
+   710→                    <TableCell className="hidden lg:table-cell text-sm">
+   711→                      {j.location}
+   712→                    </TableCell>
+   713→                    <TableCell className="hidden md:table-cell">
+   714→                      <Badge
+   715→                        variant="outline"
+   716→                        className={cn("font-semibold", JLPT_BADGE[j.jlptRequired])}
+   717→                      >
+   718→                        {j.jlptRequired}
+   719→                      </Badge>
+   720→                    </TableCell>
+   721→                    <TableCell>
+   722→                      <span className="font-semibold">
+   723→                        {j.applicationCount ?? 0}
+   724→                      </span>
+   725→                    </TableCell>
+   726→                    <TableCell>
+   727→                      <Switch
+   728→                        checked={j.isActive}
+   729→                        onCheckedChange={() => toggleActive(j)}
+   730→                        disabled={busyId === j.id}
+   731→                        aria-label="Toggle active"
+   732→                      />
+   733→                    </TableCell>
+   734→                    <TableCell className="text-right pr-5 sm:pr-6">
+   735→                      <div className="flex items-center justify-end gap-1">
+   736→                        <Button
+   737→                          size="icon"
+   738→                          variant="ghost"
+   739→                          className="h-8 w-8 text-muted-foreground hover:text-crimson"
+   740→                          aria-label="Edit job"
+   741→                          onClick={() =>
+   742→                            setEditorState({ mode: "edit", job: j })
+   743→                          }
+   744→                        >
+   745→                          <Pencil className="h-3.5 w-3.5" />
+   746→                        </Button>
+   747→                      <AlertDialog
+   748→                        open={deleteId === j.id}
+   749→                        onOpenChange={(o) => setDeleteId(o ? j.id : null)}
+   750→                      >
+   751→                        <AlertDialogTrigger asChild>
+   752→                          <Button
+   753→                            size="icon"
+   754→                            variant="ghost"
+   755→                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+   756→                            aria-label="Delete job"
+   757→                          >
+   758→                            <Trash2 className="h-3.5 w-3.5" />
+   759→                          </Button>
+   760→                        </AlertDialogTrigger>
+   761→                        <AlertDialogContent>
+   762→                          <AlertDialogHeader>
+   763→                            <AlertDialogTitle>Delete this job?</AlertDialogTitle>
+   764→                            <AlertDialogDescription>
+   765→                              "{j.title}" by {j.company.companyName} will be removed.
+   766→                            </AlertDialogDescription>
+   767→                          </AlertDialogHeader>
+   768→                          <AlertDialogFooter>
+   769→                            <AlertDialogCancel>
+   770→                              {t("common.cancel")}
+   771→                            </AlertDialogCancel>
+   772→                            <AlertDialogAction
+   773→                              className="bg-destructive text-white hover:bg-destructive/90"
+   774→                              onClick={() => remove(j.id)}
+   775→                            >
+   776→                              {t("common.delete")}
+   777→                            </AlertDialogAction>
+   778→                          </AlertDialogFooter>
+   779→                        </AlertDialogContent>
+   780→                      </AlertDialog>
+   781→                      </div>
+   782→                    </TableCell>
+   783→                  </TableRow>
+   784→                ))}
+   785→              </TableBody>
+   786→            </Table>
+   787→          </div>
+   788→        </SectionCard>
+   789→      )}
+   790→
+   791→      {editorState && (
+   792→        <JobEditorSheet
+   793→          mode={editorState.mode}
+   794→          job={editorState.job}
+   795→          onClose={() => setEditorState(null)}
+   796→          onSaved={load}
+   797→        />
+   798→      )}
+   799→    </div>
+   800→  );
+   801→}
+   802→
+   803→/* ============== Job Editor Sheet (admin) ============== */
+   804→
+   805→interface JobFormState {
+   806→  companyId: string;
+   807→  title: string;
+   808→  titleJa: string;
+   809→  description: string;
+   810→  descriptionJa: string;
+   811→  location: string;
+   812→  jobType: string;
+   813→  jlptRequired: string;
+   814→  salaryMin: string;
+   815→  salaryMax: string;
+   816→  salaryType: string;
+   817→  skillsInput: string;
+   818→  deadline: string;
+   819→  isActive: boolean;
+   820→}
+   821→
+   822→function JobEditorSheet({
+   823→  mode,
+   824→  job,
+   825→  onClose,
+   826→  onSaved,
+   827→}: {
+   828→  mode: "create" | "edit";
+   829→  job: JobDTO | null;
+   830→  onClose: () => void;
+   831→  onSaved: () => Promise<void>;
+   832→}) {
+   833→  const [companies, setCompanies] = useState<
+   834→    { id: string; companyName: string }[]
+   835→  >([]);
+   836→  const [form, setForm] = useState<JobFormState>({
+   837→    companyId: "",
+   838→    title: "",
+   839→    titleJa: "",
+   840→    description: "",
+   841→    descriptionJa: "",
+   842→    location: "",
+   843→    jobType: "FULL_TIME",
+   844→    jlptRequired: "NONE",
+   845→    salaryMin: "",
+   846→    salaryMax: "",
+   847→    salaryType: "MONTHLY",
+   848→    skillsInput: "",
+   849→    deadline: "",
+   850→    isActive: true,
+   851→  });
+   852→  const [saving, setSaving] = useState(false);
+   853→
+   854→  useEffect(() => {
+   855→    // Pre-fill form in edit mode
+   856→    if (job) {
+   857→      setForm({
+   858→        companyId: job.companyId,
+   859→        title: job.title,
+   860→        titleJa: job.titleJa ?? "",
+   861→        description: job.description,
+   862→        descriptionJa: job.descriptionJa ?? "",
+   863→        location: job.location,
+   864→        jobType: job.jobType,
+   865→        jlptRequired: job.jlptRequired,
+   866→        salaryMin: job.salaryMin ? String(job.salaryMin) : "",
+   867→        salaryMax: job.salaryMax ? String(job.salaryMax) : "",
+   868→        salaryType: job.salaryType,
+   869→        skillsInput: job.skillsRequired.join(", "),
+   870→        deadline: job.deadline
+   871→          ? new Date(job.deadline).toISOString().slice(0, 10)
+   872→          : "",
+   873→        isActive: job.isActive,
+   874→      });
+   875→    }
+   876→  }, [job]);
+   877→
+   878→  // Load companies for create mode
+   879→  useEffect(() => {
+   880→    if (mode === "create") {
+   881→      api<{ items: CompanyProfileDTO[] }>(
+   882→        "/api/admin/list/companies",
+   883→      )
+   884→        .then((res) =>
+   885→          setCompanies(
+   886→            res.items
+   887→              .filter((c) => c.isApproved)
+   888→              .map((c) => ({ id: c.id, companyName: c.companyName })),
+   889→          ),
+   890→        )
+   891→        .catch(() => {});
+   892→    }
+   893→  }, [mode]);
+   894→
+   895→  function update<K extends keyof JobFormState>(
+   896→    key: K,
+   897→    value: JobFormState[K],
+   898→  ) {
+   899→    setForm((prev) => ({ ...prev, [key]: value }));
+   900→  }
+   901→
+   902→  async function submit(e: React.FormEvent) {
+   903→    e.preventDefault();
+   904→    if (mode === "create" && !form.companyId) {
+   905→      toast.error("Select a company.");
+   906→      return;
+   907→    }
+   908→    if (form.description.length < 50) {
+   909→      toast.error("Description must be at least 50 characters.");
+   910→      return;
+   911→    }
+   912→    setSaving(true);
+   913→    try {
+   914→      const payload: Record<string, unknown> = {
+   915→        title: form.title,
+   916→        titleJa: form.titleJa || undefined,
+   917→        description: form.description,
+   918→        descriptionJa: form.descriptionJa || undefined,
+   919→        location: form.location,
+   920→        jobType: form.jobType,
+   921→        jlptRequired: form.jlptRequired,
+   922→        salaryMin: form.salaryMin ? Number(form.salaryMin) : undefined,
+   923→        salaryMax: form.salaryMax ? Number(form.salaryMax) : undefined,
+   924→        salaryType: form.salaryType,
+   925→        skillsRequired: form.skillsInput
+   926→          .split(",")
+   927→          .map((s) => s.trim())
+   928→          .filter(Boolean),
+   929→        deadline: form.deadline || undefined,
+   930→        isActive: form.isActive,
+   931→      };
+   932→      if (mode === "create") {
+   933→        payload.companyId = form.companyId;
+   934→        await api("/api/admin/jobs", {
+   935→          method: "POST",
+   936→          body: JSON.stringify(payload),
+   937→        });
+   938→        toast.success("Job created.");
+   939→      } else if (job) {
+   940→        await api(`/api/admin/jobs/${job.id}`, {
+   941→          method: "PUT",
+   942→          body: JSON.stringify(payload),
+   943→        });
+   944→        toast.success("Job updated.");
+   945→      }
+   946→      await onSaved();
+   947→      onClose();
+   948→    } catch (e) {
+   949→      toast.error(e instanceof Error ? e.message : "Failed to save.");
+   950→    } finally {
+   951→      setSaving(false);
+   952→    }
+   953→  }
+   954→
+   955→  return (
+   956→    <Sheet open onOpenChange={(o) => !o && onClose()}>
+   957→      <SheetContent className="w-[440px] sm:max-w-[440px] overflow-y-auto scroll-area">
+   958→        <SheetHeader>
+   959→          <SheetTitle>
+   960→            {mode === "create" ? "Post New Job" : "Edit Job"}
+   961→          </SheetTitle>
+   962→        </SheetHeader>
+   963→        <form onSubmit={submit} className="space-y-4 mt-4 pr-1">
+   964→          {mode === "create" && (
+   965→            <div>
+   966→              <Label className="mb-1.5 block text-xs font-medium">
+   967→                Company *
+   968→              </Label>
+   969→              <Select
+   970→                value={form.companyId}
+   971→                onValueChange={(v) => update("companyId", v)}
+   972→              >
+   973→                <SelectTrigger className="h-10">
+   974→                  <SelectValue placeholder="Select approved company" />
+   975→                </SelectTrigger>
+   976→                <SelectContent>
+   977→                  {companies.map((c) => (
+   978→                    <SelectItem key={c.id} value={c.id}>
+   979→                      {c.companyName}
+   980→                    </SelectItem>
+   981→                  ))}
+   982→                </SelectContent>
+   983→              </Select>
+   984→            </div>
+   985→          )}
+   986→          <FormField label="Title *">
+   987→            <Input
+   988→              required
+   989→              value={form.title}
+   990→              onChange={(e) => update("title", e.target.value)}
+   991→              placeholder="Senior Backend Engineer"
+   992→            />
+   993→          </FormField>
+   994→          <FormField label="Title (Japanese)">
+   995→            <Input
+   996→              value={form.titleJa}
+   997→              onChange={(e) => update("titleJa", e.target.value)}
+   998→              placeholder="シニアバックエンドエンジニア"
+   999→            />
+  1000→          </FormField>
+  1001→          <FormField label="Description * (min 50 chars)">
+  1002→            <Textarea
+  1003→              required
+  1004→              rows={5}
+  1005→              minLength={50}
+  1006→              value={form.description}
+  1007→              onChange={(e) => update("description", e.target.value)}
+  1008→              placeholder="Describe the role, responsibilities, requirements..."
+  1009→            />
+  1010→          </FormField>
+  1011→          <FormField label="Description (Japanese)">
+  1012→            <Textarea
+  1013→              rows={4}
+  1014→              value={form.descriptionJa}
+  1015→              onChange={(e) => update("descriptionJa", e.target.value)}
+  1016→            />
+  1017→          </FormField>
+  1018→          <FormField label="Location *">
+  1019→            <Input
+  1020→              required
+  1021→              value={form.location}
+  1022→              onChange={(e) => update("location", e.target.value)}
+  1023→              placeholder="Tokyo, Japan"
+  1024→            />
+  1025→          </FormField>
+  1026→          <div className="grid grid-cols-2 gap-3">
+  1027→            <FormField label="Job type">
+  1028→              <Select
+  1029→                value={form.jobType}
+  1030→                onValueChange={(v) => update("jobType", v)}
+  1031→              >
+  1032→                <SelectTrigger className="h-10">
+  1033→                  <SelectValue />
+  1034→                </SelectTrigger>
+  1035→                <SelectContent>
+  1036→                  {JOB_TYPES.map((jt) => (
+  1037→                    <SelectItem key={jt} value={jt}>
+  1038→                      {jt.replace("_", " ")}
+  1039→                    </SelectItem>
+  1040→                  ))}
+  1041→                </SelectContent>
+  1042→              </Select>
+  1043→            </FormField>
+  1044→            <FormField label="JLPT required">
+  1045→              <Select
+  1046→                value={form.jlptRequired}
+  1047→                onValueChange={(v) => update("jlptRequired", v)}
+  1048→              >
+  1049→                <SelectTrigger className="h-10">
+  1050→                  <SelectValue />
+  1051→                </SelectTrigger>
+  1052→                <SelectContent>
+  1053→                  {JLPT_LEVELS.map((l) => (
+  1054→                    <SelectItem key={l} value={l}>
+  1055→                      {l}
+  1056→                    </SelectItem>
+  1057→                  ))}
+  1058→                </SelectContent>
+  1059→              </Select>
+  1060→            </FormField>
+  1061→          </div>
+  1062→          <div className="grid grid-cols-3 gap-3">
+  1063→            <FormField label="Salary min">
+  1064→              <Input
+  1065→                type="number"
+  1066→                value={form.salaryMin}
+  1067→                onChange={(e) => update("salaryMin", e.target.value)}
+  1068→                placeholder="500000"
+  1069→              />
+  1070→            </FormField>
+  1071→            <FormField label="Salary max">
+  1072→              <Input
+  1073→                type="number"
+  1074→                value={form.salaryMax}
+  1075→                onChange={(e) => update("salaryMax", e.target.value)}
+  1076→                placeholder="800000"
+  1077→              />
+  1078→            </FormField>
+  1079→            <FormField label="Type">
+  1080→              <Select
+  1081→                value={form.salaryType}
+  1082→                onValueChange={(v) => update("salaryType", v)}
+  1083→              >
+  1084→                <SelectTrigger className="h-10">
+  1085→                  <SelectValue />
+  1086→                </SelectTrigger>
+  1087→                <SelectContent>
+  1088→                  <SelectItem value="HOURLY">Hourly</SelectItem>
+  1089→                  <SelectItem value="MONTHLY">Monthly</SelectItem>
+  1090→                  <SelectItem value="YEARLY">Yearly</SelectItem>
+  1091→                </SelectContent>
+  1092→              </Select>
+  1093→            </FormField>
+  1094→          </div>
+  1095→          <FormField label="Skills (comma-separated)">
+  1096→            <Input
+  1097→              value={form.skillsInput}
+  1098→              onChange={(e) => update("skillsInput", e.target.value)}
+  1099→              placeholder="React, Go, PostgreSQL"
+  1100→            />
+  1101→          </FormField>
+  1102→          <FormField label="Deadline">
+  1103→            <Input
+  1104→              type="date"
+  1105→              value={form.deadline}
+  1106→              onChange={(e) => update("deadline", e.target.value)}
+  1107→            />
+  1108→          </FormField>
+  1109→          <label className="flex items-center gap-2 cursor-pointer">
+  1110→            <Switch
+  1111→              checked={form.isActive}
+  1112→              onCheckedChange={(v) => update("isActive", v)}
+  1113→            />
+  1114→            <span className="text-sm">Active</span>
+  1115→          </label>
+  1116→          <div className="flex gap-2 pt-2 sticky bottom-0 bg-card pb-2">
+  1117→            <Button
+  1118→              type="button"
+  1119→              variant="outline"
+  1120→              onClick={onClose}
+  1121→              className="flex-1"
+  1122→            >
+  1123→              Cancel
+  1124→            </Button>
+  1125→            <Button
+  1126→              type="submit"
+  1127→              disabled={saving}
+  1128→              className="flex-1 bg-brand-gradient text-white hover:opacity-90 font-semibold"
+  1129→            >
+  1130→              {saving
+  1131→                ? "Saving..."
+  1132→                : mode === "create"
+  1133→                  ? "Create Job"
+  1134→                  : "Save Changes"}
+  1135→            </Button>
+  1136→          </div>
+  1137→        </form>
+  1138→      </SheetContent>
+  1139→    </Sheet>
+  1140→  );
+  1141→}
+  1142→
+  1143→function FormField({
+  1144→  label,
+  1145→  children,
+  1146→}: {
+  1147→  label: string;
+  1148→  children: React.ReactNode;
+  1149→}) {
+  1150→  return (
+  1151→    <div>
+  1152→      <Label className="mb-1.5 block text-xs font-medium">{label}</Label>
+  1153→      {children}
+  1154→    </div>
+  1155→  );
+  1156→}
+  1157→
+  1158→function CandidatesTab() {
+  1159→  const { t, locale } = useT();
+  1160→  const [items, setItems] = useState<CandidateRow[] | null>(null);
+  1161→  const [loading, setLoading] = useState(true);
+  1162→  const [search, setSearch] = useState("");
+  1163→  const [jlpt, setJlpt] = useState<string>("all");
+  1164→
+  1165→  useEffect(() => {
+  1166→    (async () => {
+  1167→      setLoading(true);
+  1168→      try {
+  1169→        const res = await api<{ items: CandidateRow[] }>(
+  1170→          "/api/admin/list/candidates",
+  1171→        );
+  1172→        setItems(res.items);
+  1173→      } catch {
+  1174→        setItems([]);
+  1175→      } finally {
+  1176→        setLoading(false);
+  1177→      }
+  1178→    })();
+  1179→  }, []);
+  1180→
+  1181→  const filtered = useMemo(() => {
+  1182→    if (!items) return [];
+  1183→    const q = search.trim().toLowerCase();
+  1184→    return items.filter((c) => {
+  1185→      if (jlpt !== "all" && c.jlptLevel !== jlpt) return false;
+  1186→      if (!q) return true;
+  1187→      return (
+  1188→        c.fullName.toLowerCase().includes(q) ||
+  1189→        (c.email ?? "").toLowerCase().includes(q)
+  1190→      );
+  1191→    });
+  1192→  }, [items, search, jlpt]);
+  1193→
+  1194→  return (
+  1195→    <div className="space-y-4">
+  1196→      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+  1197→        <h2 className="font-display font-extrabold text-xl">
+  1198→          {t("admin.candidates")}
+  1199→        </h2>
+  1200→        <div className="flex items-center gap-2 flex-wrap">
+  1201→          <div className="relative">
+  1202→            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+  1203→            <Input
+  1204→              value={search}
+  1205→              onChange={(e) => setSearch(e.target.value)}
+  1206→              placeholder="Name or email"
+  1207→              className="pl-8 h-9 w-[200px]"
+  1208→            />
+  1209→          </div>
+  1210→          <Select value={jlpt} onValueChange={setJlpt}>
+  1211→            <SelectTrigger className="h-9 w-[120px]">
+  1212→              <SelectValue />
+  1213→            </SelectTrigger>
+  1214→            <SelectContent>
+  1215→              <SelectItem value="all">{t("jobs.alljlpt")}</SelectItem>
+  1216→              {JLPT_LEVELS.map((l) => (
+  1217→                <SelectItem key={l} value={l}>
+  1218→                  {l === "NONE" ? "None" : l}
+  1219→                </SelectItem>
+  1220→              ))}
+  1221→            </SelectContent>
+  1222→          </Select>
+  1223→          <ExportCsvButton resource="candidates" />
+  1224→        </div>
+  1225→      </div>
+  1226→
+  1227→      {loading ? (
+  1228→        <CardSkeleton lines={8} />
+  1229→      ) : filtered.length === 0 ? (
+  1230→        <EmptyState
+  1231→          icon={Users}
+  1232→          title="No candidates found"
+  1233→          description={search || jlpt !== "all" ? "Try different filters." : undefined}
+  1234→        />
+  1235→      ) : (
+  1236→        <SectionCard bodyClassName="p-0">
+  1237→          <div className="max-h-[70vh] overflow-y-auto scroll-area">
+  1238→            <Table>
+  1239→              <TableHeader className="sticky top-0 bg-card z-10">
+  1240→                <TableRow>
+  1241→                  <TableHead className="pl-5 sm:pl-6">Name</TableHead>
+  1242→                  <TableHead className="hidden md:table-cell">Email</TableHead>
+  1243→                  <TableHead className="hidden lg:table-cell">Location</TableHead>
+  1244→                  <TableHead>JLPT</TableHead>
+  1245→                  <TableHead className="hidden sm:table-cell">Exp</TableHead>
+  1246→                  <TableHead className="hidden lg:table-cell">Skills</TableHead>
+  1247→                  <TableHead className="hidden sm:table-cell pr-5 sm:pr-6 text-right">
+  1248→                    Joined
+  1249→                  </TableHead>
+  1250→                </TableRow>
+  1251→              </TableHeader>
+  1252→              <TableBody>
+  1253→                {filtered.map((c) => (
+  1254→                  <TableRow key={c.id}>
+  1255→                    <TableCell className="pl-5 sm:pl-6">
+  1256→                      <div className="flex items-center gap-3">
+  1257→                        <CandidateAvatar
+  1258→                          name={c.fullName}
+  1259→                          photoUrl={c.photoUrl}
+  1260→                          size={32}
+  1261→                        />
+  1262→                        <div className="min-w-0">
+  1263→                          <p className="font-semibold text-sm truncate">
+  1264→                            {c.fullName}
+  1265→                          </p>
+  1266→                          <p className="text-xs text-muted-foreground md:hidden truncate">
+  1267→                            {c.email}
+  1268→                          </p>
+  1269→                        </div>
+  1270→                      </div>
+  1271→                    </TableCell>
+  1272→                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+  1273→                      {c.email ?? "—"}
+  1274→                    </TableCell>
+  1275→                    <TableCell className="hidden lg:table-cell text-sm">
+  1276→                      {c.location ?? "—"}
+  1277→                    </TableCell>
+  1278→                    <TableCell>
+  1279→                      <Badge
+  1280→                        variant="outline"
+  1281→                        className={cn("font-semibold", JLPT_BADGE[c.jlptLevel])}
+  1282→                      >
+  1283→                        {c.jlptLevel}
+  1284→                      </Badge>
+  1285→                    </TableCell>
+  1286→                    <TableCell className="hidden sm:table-cell text-sm">
+  1287→                      {c.experienceYears}y
+  1288→                    </TableCell>
+  1289→                    <TableCell className="hidden lg:table-cell">
+  1290→                      <div className="flex flex-wrap gap-1 max-w-[220px]">
+  1291→                        {c.skills.slice(0, 3).map((s) => (
+  1292→                          <Badge
+  1293→                            key={s}
+  1294→                            variant="secondary"
+  1295→                            className="text-[10px]"
+  1296→                          >
+  1297→                            {s}
+  1298→                          </Badge>
+  1299→                        ))}
+  1300→                        {c.skills.length > 3 && (
+  1301→                          <span className="text-xs text-muted-foreground">
+  1302→                            +{c.skills.length - 3}
+  1303→                          </span>
+  1304→                        )}
+  1305→                      </div>
+  1306→                    </TableCell>
+  1307→                    <TableCell className="hidden sm:table-cell pr-5 sm:pr-6 text-sm text-muted-foreground text-right">
+  1308→                      {formatDate(c.createdAt, locale)}
+  1309→                    </TableCell>
+  1310→                  </TableRow>
+  1311→                ))}
+  1312→              </TableBody>
+  1313→            </Table>
+  1314→          </div>
+  1315→        </SectionCard>
+  1316→      )}
+  1317→    </div>
+  1318→  );
+  1319→}
+  1320→
+  1321→/* ============== Companies tab ============== */
+  1322→
+  1323→function CompaniesTab() {
+  1324→  const { t, locale } = useT();
+  1325→  const [items, setItems] = useState<CompanyRow[] | null>(null);
+  1326→  const [loading, setLoading] = useState(true);
+  1327→  const [filter, setFilter] = useState<"all" | "approved" | "pending">("all");
+  1328→  const [busyId, setBusyId] = useState<string | null>(null);
+  1329→
+  1330→  const load = useCallback(async () => {
+  1331→    setLoading(true);
+  1332→    try {
+  1333→      const res = await api<{ items: CompanyRow[] }>(
+  1334→        "/api/admin/list/companies",
+  1335→      );
+  1336→      setItems(res.items);
+  1337→    } catch {
+  1338→      setItems([]);
+  1339→    } finally {
+  1340→      setLoading(false);
+  1341→    }
+  1342→  }, []);
+  1343→
+  1344→  useEffect(() => {
+  1345→    load();
+  1346→  }, [load]);
+  1347→
+  1348→  async function approve(id: string, approve: boolean) {
+  1349→    setBusyId(id);
+  1350→    try {
+  1351→      await api(`/api/admin/companies/${id}?action=${approve ? "approve" : "reject"}`, {
+  1352→        method: "PATCH",
+  1353→      });
+  1354→      toast.success(approve ? "Approved." : "Rejected.");
+  1355→      await load();
+  1356→    } catch (e) {
+  1357→      toast.error(e instanceof Error ? e.message : "Failed.");
+  1358→    } finally {
+  1359→      setBusyId(null);
+  1360→    }
+  1361→  }
+  1362→
+  1363→  const filtered = useMemo(() => {
+  1364→    if (!items) return [];
+  1365→    if (filter === "approved") return items.filter((c) => c.isApproved);
+  1366→    if (filter === "pending") return items.filter((c) => !c.isApproved);
+  1367→    return items;
+  1368→  }, [items, filter]);
+  1369→
+  1370→  return (
+  1371→    <div className="space-y-4">
+  1372→      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+  1373→        <h2 className="font-display font-extrabold text-xl">
+  1374→          {t("admin.companies")}
+  1375→        </h2>
+  1376→        <div className="flex items-center gap-2">
+  1377→          <Select value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
+  1378→            <SelectTrigger className="h-9 w-[140px]">
+  1379→              <SelectValue />
+  1380→            </SelectTrigger>
+  1381→            <SelectContent>
+  1382→              <SelectItem value="all">{t("common.all")}</SelectItem>
+  1383→              <SelectItem value="approved">Approved</SelectItem>
+  1384→              <SelectItem value="pending">Pending</SelectItem>
+  1385→            </SelectContent>
+  1386→          </Select>
+  1387→          <ExportCsvButton resource="companies" />
+  1388→        </div>
+  1389→      </div>
+  1390→
+  1391→      {loading ? (
+  1392→        <CardSkeleton lines={8} />
+  1393→      ) : filtered.length === 0 ? (
+  1394→        <EmptyState
+  1395→          icon={Building2}
+  1396→          title="No companies found"
+  1397→          description={filter !== "all" ? "Try a different filter." : undefined}
+  1398→        />
+  1399→      ) : (
+  1400→        <SectionCard bodyClassName="p-0">
+  1401→          <div className="max-h-[70vh] overflow-y-auto scroll-area">
+  1402→            <Table>
+  1403→              <TableHeader className="sticky top-0 bg-card z-10">
+  1404→                <TableRow>
+  1405→                  <TableHead className="pl-5 sm:pl-6">Company</TableHead>
+  1406→                  <TableHead className="hidden md:table-cell">Email</TableHead>
+  1407→                  <TableHead className="hidden lg:table-cell">Industry</TableHead>
+  1408→                  <TableHead className="hidden lg:table-cell">Location</TableHead>
+  1409→                  <TableHead>Status</TableHead>
+  1410→                  <TableHead className="text-right pr-5 sm:pr-6">Actions</TableHead>
+  1411→                </TableRow>
+  1412→              </TableHeader>
+  1413→              <TableBody>
+  1414→                {filtered.map((c) => (
+  1415→                  <TableRow key={c.id}>
+  1416→                    <TableCell className="pl-5 sm:pl-6">
+  1417→                      <div className="flex items-center gap-3">
+  1418→                        <CompanyAvatar
+  1419→                          name={c.companyName}
+  1420→                          color={c.logoUrl}
+  1421→                          size={32}
+  1422→                        />
+  1423→                        <div className="min-w-0">
+  1424→                          <p className="font-semibold text-sm truncate">
+  1425→                            {c.companyName}
+  1426→                          </p>
+  1427→                          <p className="text-xs text-muted-foreground md:hidden truncate">
+  1428→                            {c.email}
+  1429→                          </p>
+  1430→                          <p className="text-xs text-muted-foreground hidden sm:block">
+  1431→                            Joined {formatDate(c.createdAt, locale)}
+  1432→                          </p>
+  1433→                        </div>
+  1434→                      </div>
+  1435→                    </TableCell>
+  1436→                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+  1437→                      {c.email ?? "—"}
+  1438→                    </TableCell>
+  1439→                    <TableCell className="hidden lg:table-cell text-sm">
+  1440→                      {c.industry ?? "—"}
+  1441→                    </TableCell>
+  1442→                    <TableCell className="hidden lg:table-cell text-sm">
+  1443→                      {c.locationJapan ?? "—"}
+  1444→                    </TableCell>
+  1445→                    <TableCell>
+  1446→                      {c.isApproved ? (
+  1447→                        <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-transparent font-semibold">
+  1448→                          Approved
+  1449→                        </Badge>
+  1450→                      ) : (
+  1451→                        <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border-transparent font-semibold">
+  1452→                          <Hourglass className="h-3 w-3 mr-1" />
+  1453→                          Pending
+  1454→                        </Badge>
+  1455→                      )}
+  1456→                    </TableCell>
+  1457→                    <TableCell className="text-right pr-5 sm:pr-6">
+  1458→                      {!c.isApproved ? (
+  1459→                        <div className="inline-flex gap-1">
+  1460→                          <Button
+  1461→                            size="sm"
+  1462→                            className="bg-brand-gradient text-white hover:opacity-90 h-7"
+  1463→                            disabled={busyId === c.id}
+  1464→                            onClick={() => approve(c.id, true)}
+  1465→                          >
+  1466→                            <CheckCircle2 className="h-3 w-3" />
+  1467→                            <span className="hidden sm:inline">
+  1468→                              {t("admin.approve")}
+  1469→                            </span>
+  1470→                          </Button>
+  1471→                          <Button
+  1472→                            size="sm"
+  1473→                            variant="outline"
+  1474→                            className="text-destructive hover:text-destructive h-7"
+  1475→                            disabled={busyId === c.id}
+  1476→                            onClick={() => approve(c.id, false)}
+  1477→                          >
+  1478→                            <XCircle className="h-3 w-3" />
+  1479→                            <span className="hidden sm:inline">
+  1480→                              {t("admin.reject")}
+  1481→                            </span>
+  1482→                          </Button>
+  1483→                        </div>
+  1484→                      ) : (
+  1485→                        <Button
+  1486→                          size="sm"
+  1487→                          variant="ghost"
+  1488→                          className="text-muted-foreground hover:text-destructive h-7"
+  1489→                          disabled={busyId === c.id}
+  1490→                          onClick={() => approve(c.id, false)}
+  1491→                        >
+  1492→                          Revoke
+  1493→                        </Button>
+  1494→                      )}
+  1495→                    </TableCell>
+  1496→                  </TableRow>
+  1497→                ))}
+  1498→              </TableBody>
+  1499→            </Table>
+  1500→          </div>
+  1501→        </SectionCard>
+  1502→      )}
+  1503→    </div>
+  1504→  );
+  1505→}
+  1506→
+  1507→/* ============== Applications tab ============== */
+  1508→
+  1509→function ApplicationsTab() {
+  1510→  const { t, locale } = useT();
+  1511→  const [items, setItems] = useState<ApplicationDTO[] | null>(null);
+  1512→  const [loading, setLoading] = useState(true);
+  1513→  const [status, setStatus] = useState<ApplicationStatus | "all">("all");
+  1514→
+  1515→  useEffect(() => {
+  1516→    (async () => {
+  1517→      setLoading(true);
+  1518→      try {
+  1519→        const res = await api<{ items: ApplicationDTO[] }>(
+  1520→          "/api/admin/list/applications",
+  1521→        );
+  1522→        setItems(res.items);
+  1523→      } catch {
+  1524→        setItems([]);
+  1525→      } finally {
+  1526→        setLoading(false);
+  1527→      }
+  1528→    })();
+  1529→  }, []);
+  1530→
+  1531→  const filtered = useMemo(() => {
+  1532→    if (!items) return [];
+  1533→    if (status === "all") return items;
+  1534→    return items.filter((a) => a.status === status);
+  1535→  }, [items, status]);
+  1536→
+  1537→  return (
+  1538→    <div className="space-y-4">
+  1539→      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+  1540→        <h2 className="font-display font-extrabold text-xl">
+  1541→          {t("admin.applications")}
+  1542→        </h2>
+  1543→        <div className="flex items-center gap-2">
+  1544→          <Select value={status} onValueChange={(v) => setStatus(v as ApplicationStatus | "all")}>
+  1545→            <SelectTrigger className="h-9 w-[150px]">
+  1546→              <SelectValue />
+  1547→            </SelectTrigger>
+  1548→            <SelectContent>
+  1549→              <SelectItem value="all">{t("common.all")}</SelectItem>
+  1550→              {APPLICATION_STATUSES.map((s) => (
+  1551→                <SelectItem key={s} value={s}>
+  1552→                  {t(`status.${s}`)}
+  1553→                </SelectItem>
+  1554→              ))}
+  1555→            </SelectContent>
+  1556→          </Select>
+  1557→          <ExportCsvButton resource="applications" />
+  1558→        </div>
+  1559→      </div>
+  1560→
+  1561→      {loading ? (
+  1562→        <CardSkeleton lines={8} />
+  1563→      ) : filtered.length === 0 ? (
+  1564→        <EmptyState
+  1565→          icon={FileText}
+  1566→          title="No applications found"
+  1567→          description={status !== "all" ? "Try a different status filter." : undefined}
+  1568→        />
+  1569→      ) : (
+  1570→        <SectionCard bodyClassName="p-0">
+  1571→          <div className="max-h-[70vh] overflow-y-auto scroll-area">
+  1572→            <Table>
+  1573→              <TableHeader className="sticky top-0 bg-card z-10">
+  1574→                <TableRow>
+  1575→                  <TableHead className="pl-5 sm:pl-6">Candidate</TableHead>
+  1576→                  <TableHead>Job</TableHead>
+  1577→                  <TableHead className="hidden md:table-cell">Company</TableHead>
+  1578→                  <TableHead>Status</TableHead>
+  1579→                  <TableHead className="text-right pr-5 sm:pr-6">Applied</TableHead>
+  1580→                </TableRow>
+  1581→              </TableHeader>
+  1582→              <TableBody>
+  1583→                {filtered.map((a) => (
+  1584→                  <TableRow key={a.id}>
+  1585→                    <TableCell className="pl-5 sm:pl-6">
+  1586→                      <div className="flex items-center gap-3">
+  1587→                        <CandidateAvatar
+  1588→                          name={a.candidate?.fullName || "?"}
+  1589→                          photoUrl={a.candidate?.photoUrl}
+  1590→                          size={28}
+  1591→                        />
+  1592→                        <span className="text-sm font-medium truncate max-w-[160px]">
+  1593→                          {a.candidate?.fullName ?? "—"}
+  1594→                        </span>
+  1595→                      </div>
+  1596→                    </TableCell>
+  1597→                    <TableCell className="text-sm">
+  1598→                      {a.job?.title ?? "—"}
+  1599→                    </TableCell>
+  1600→                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+  1601→                      {a.job?.company?.companyName ?? "—"}
+  1602→                    </TableCell>
+  1603→                    <TableCell>
+  1604→                      <Badge
+  1605→                        variant="outline"
+  1606→                        className={cn("font-semibold", STATUS_BADGE[a.status])}
+  1607→                      >
+  1608→                        {t(`status.${a.status}`)}
+  1609→                      </Badge>
+  1610→                    </TableCell>
+  1611→                    <TableCell className="text-right pr-5 sm:pr-6 text-sm text-muted-foreground">
+  1612→                      {formatDate(a.appliedAt, locale)}
+  1613→                    </TableCell>
+  1614→                  </TableRow>
+  1615→                ))}
+  1616→              </TableBody>
+  1617→            </Table>
+  1618→          </div>
+  1619→        </SectionCard>
+  1620→      )}
+  1621→    </div>
+  1622→  );
+  1623→}
+  1624→
+  1625→/* ============== Testimonials tab ============== */
+  1626→
+  1627→function TestimonialsTab() {
+  1628→  const { t } = useT();
+  1629→  const [items, setItems] = useState<TestimonialRow[] | null>(null);
+  1630→  const [loading, setLoading] = useState(true);
+  1631→  const [busyId, setBusyId] = useState<string | null>(null);
+  1632→  const [deleteId, setDeleteId] = useState<string | null>(null);
+  1633→  const [editorState, setEditorState] = useState<{
+  1634→    mode: "create" | "edit";
+  1635→    item: TestimonialRow | null;
+  1636→  } | null>(null);
+  1637→
+  1638→  const load = useCallback(async () => {
+  1639→    setLoading(true);
+  1640→    try {
+  1641→      const res = await api<{ items: TestimonialRow[] }>(
+  1642→        "/api/admin/list/testimonials",
+  1643→      );
+  1644→      setItems(res.items);
+  1645→    } catch {
+  1646→      setItems([]);
+  1647→    } finally {
+  1648→      setLoading(false);
+  1649→    }
+  1650→  }, []);
+  1651→
+  1652→  useEffect(() => {
+  1653→    load();
+  1654→  }, [load]);
+  1655→
+  1656→  async function toggle(id: string) {
+  1657→    setBusyId(id);
+  1658→    try {
+  1659→      await api(`/api/admin/testimonials/${id}/toggle`, { method: "PATCH" });
+  1660→      await load();
+  1661→    } catch (e) {
+  1662→      toast.error(e instanceof Error ? e.message : "Failed.");
+  1663→    } finally {
+  1664→      setBusyId(null);
+  1665→    }
+  1666→  }
+  1667→
+  1668→  async function remove(id: string) {
+  1669→    setBusyId(id);
+  1670→    try {
+  1671→      await api(`/api/admin/testimonials/${id}`, { method: "DELETE" });
+  1672→      toast.success("Testimonial deleted.");
+  1673→      await load();
+  1674→    } catch (e) {
+  1675→      toast.error(e instanceof Error ? e.message : "Failed.");
+  1676→    } finally {
+  1677→      setBusyId(null);
+  1678→      setDeleteId(null);
+  1679→    }
+  1680→  }
+  1681→
+  1682→  return (
+  1683→    <div className="space-y-4">
+  1684→      <div className="flex items-center justify-between gap-3">
+  1685→        <h2 className="font-display font-extrabold text-xl">
+  1686→          {t("admin.testimonials")}
+  1687→        </h2>
+  1688→        <Button
+  1689→          size="sm"
+  1690→          className="bg-brand-gradient text-white hover:opacity-90 font-semibold"
+  1691→          onClick={() => setEditorState({ mode: "create", item: null })}
+  1692→        >
+  1693→          <Plus className="h-4 w-4 mr-1" />
+  1694→          Add Testimonial
+  1695→        </Button>
+  1696→      </div>
+  1697→
+  1698→      {loading ? (
+  1699→        <div className="grid sm:grid-cols-2 gap-4">
+  1700→          <CardSkeleton lines={4} />
+  1701→          <CardSkeleton lines={4} />
+  1702→        </div>
+  1703→      ) : !items || items.length === 0 ? (
+  1704→        <EmptyState
+  1705→          icon={Quote}
+  1706→          title="No testimonials yet"
+  1707→          description="Add success stories from placed candidates and happy employers."
+  1708→          action={
+  1709→            <Button
+  1710→              className="bg-brand-gradient text-white"
+  1711→              onClick={() => setEditorState({ mode: "create", item: null })}
+  1712→            >
+  1713→              <Plus className="h-4 w-4 mr-1" />
+  1714→              Add Testimonial
+  1715→            </Button>
+  1716→          }
+  1717→        />
+  1718→      ) : (
+  1719→        <div className="grid sm:grid-cols-2 gap-4">
+  1720→          {items.map((row) => (
+  1721→            <div
+  1722→              key={row.id}
+  1723→              className={cn(
+  1724→                "rounded-2xl border border-border bg-card shadow-premium p-5 flex flex-col gap-3",
+  1725→                !row.isActive && "opacity-60",
+  1726→              )}
+  1727→            >
+  1728→              <div className="flex items-start justify-between gap-2">
+  1729→                <div className="min-w-0">
+  1730→                  <p className="font-display font-bold">{row.name}</p>
+  1731→                  <p className="text-xs text-muted-foreground">
+  1732→                    {row.role}
+  1733→                    {row.company ? ` · ${row.company}` : ""}
+  1734→                  </p>
+  1735→                </div>
+  1736→                <Badge
+  1737→                  variant={row.isActive ? "default" : "secondary"}
+  1738→                  className="shrink-0"
+  1739→                >
+  1740→                  {row.isActive ? "Active" : "Hidden"}
+  1741→                </Badge>
+  1742→              </div>
+  1743→              <Quote className="h-4 w-4 text-saffron/60" />
+  1744→              <p className="text-sm text-foreground/90 leading-relaxed line-clamp-4">
+  1745→                {row.content}
+  1746→              </p>
+  1747→              {row.contentJa && (
+  1748→                <p className="text-xs text-muted-foreground line-clamp-2">
+  1749→                  {row.contentJa}
+  1750→                </p>
+  1751→              )}
+  1752→              <div className="flex items-center justify-between gap-2 mt-auto pt-3 border-t border-border">
+  1753→                <span className="text-xs text-muted-foreground">
+  1754→                  Order #{row.order}
+  1755→                </span>
+  1756→                <div className="flex items-center gap-1">
+  1757→                  <Button
+  1758→                    size="sm"
+  1759→                    variant="outline"
+  1760→                    disabled={busyId === row.id}
+  1761→                    onClick={() => toggle(row.id)}
+  1762→                  >
+  1763→                    {row.isActive ? "Hide" : "Show"}
+  1764→                  </Button>
+  1765→                  <Button
+  1766→                    size="icon"
+  1767→                    variant="ghost"
+  1768→                    className="h-8 w-8 text-muted-foreground hover:text-crimson"
+  1769→                    aria-label="Edit"
+  1770→                    onClick={() =>
+  1771→                      setEditorState({ mode: "edit", item: row })
+  1772→                    }
+  1773→                  >
+  1774→                    <Pencil className="h-3.5 w-3.5" />
+  1775→                  </Button>
+  1776→                  <AlertDialog
+  1777→                    open={deleteId === row.id}
+  1778→                    onOpenChange={(o) => setDeleteId(o ? row.id : null)}
+  1779→                  >
+  1780→                    <AlertDialogTrigger asChild>
+  1781→                      <Button
+  1782→                        size="icon"
+  1783→                        variant="ghost"
+  1784→                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+  1785→                        aria-label="Delete"
+  1786→                      >
+  1787→                        <Trash2 className="h-3.5 w-3.5" />
+  1788→                      </Button>
+  1789→                    </AlertDialogTrigger>
+  1790→                    <AlertDialogContent>
+  1791→                      <AlertDialogHeader>
+  1792→                        <AlertDialogTitle>
+  1793→                          Delete this testimonial?
+  1794→                        </AlertDialogTitle>
+  1795→                        <AlertDialogDescription>
+  1796→                          "{row.name}"'s testimonial will be permanently
+  1797→                          removed.
+  1798→                        </AlertDialogDescription>
+  1799→                      </AlertDialogHeader>
+  1800→                      <AlertDialogFooter>
+  1801→                        <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+  1802→                        <AlertDialogAction
+  1803→                          className="bg-destructive text-white hover:bg-destructive/90"
+  1804→                          onClick={() => remove(row.id)}
+  1805→                        >
+  1806→                          {t("common.delete")}
+  1807→                        </AlertDialogAction>
+  1808→                      </AlertDialogFooter>
+  1809→                    </AlertDialogContent>
+  1810→                  </AlertDialog>
+  1811→                </div>
+  1812→              </div>
+  1813→            </div>
+  1814→          ))}
+  1815→        </div>
+  1816→      )}
+  1817→
+  1818→      {editorState && (
+  1819→        <TestimonialEditorSheet
+  1820→          mode={editorState.mode}
+  1821→          item={editorState.item}
+  1822→          onClose={() => setEditorState(null)}
+  1823→          onSaved={load}
+  1824→        />
+  1825→      )}
+  1826→    </div>
+  1827→  );
+  1828→}
+  1829→
+  1830→/* ============== Testimonial Editor Sheet ============== */
+  1831→
+  1832→interface TestimonialFormState {
+  1833→  name: string;
+  1834→  role: string;
+  1835→  company: string;
+  1836→  content: string;
+  1837→  contentJa: string;
+  1838→  photoUrl: string;
+  1839→  order: string;
+  1840→  isActive: boolean;
+  1841→}
+  1842→
+  1843→function TestimonialEditorSheet({
+  1844→  mode,
+  1845→  item,
+  1846→  onClose,
+  1847→  onSaved,
+  1848→}: {
+  1849→  mode: "create" | "edit";
+  1850→  item: TestimonialRow | null;
+  1851→  onClose: () => void;
+  1852→  onSaved: () => Promise<void>;
+  1853→}) {
+  1854→  const [form, setForm] = useState<TestimonialFormState>({
+  1855→    name: "",
+  1856→    role: "",
+  1857→    company: "",
+  1858→    content: "",
+  1859→    contentJa: "",
+  1860→    photoUrl: "",
+  1861→    order: "0",
+  1862→    isActive: true,
+  1863→  });
+  1864→  const [saving, setSaving] = useState(false);
+  1865→
+  1866→  useEffect(() => {
+  1867→    if (item) {
+  1868→      setForm({
+  1869→        name: item.name,
+  1870→        role: item.role,
+  1871→        company: item.company ?? "",
+  1872→        content: item.content,
+  1873→        contentJa: item.contentJa ?? "",
+  1874→        photoUrl: item.photoUrl ?? "",
+  1875→        order: String(item.order),
+  1876→        isActive: item.isActive,
+  1877→      });
+  1878→    }
+  1879→  }, [item]);
+  1880→
+  1881→  function update<K extends keyof TestimonialFormState>(
+  1882→    key: K,
+  1883→    value: TestimonialFormState[K],
+  1884→  ) {
+  1885→    setForm((prev) => ({ ...prev, [key]: value }));
+  1886→  }
+  1887→
+  1888→  async function submit(e: React.FormEvent) {
+  1889→    e.preventDefault();
+  1890→    if (form.content.length < 10) {
+  1891→      toast.error("Content must be at least 10 characters.");
+  1892→      return;
+  1893→    }
+  1894→    setSaving(true);
+  1895→    try {
+  1896→      const payload: Record<string, unknown> = {
+  1897→        name: form.name,
+  1898→        role: form.role,
+  1899→        company: form.company || undefined,
+  1900→        content: form.content,
+  1901→        contentJa: form.contentJa || undefined,
+  1902→        photoUrl: form.photoUrl || undefined,
+  1903→        order: Number(form.order) || 0,
+  1904→        isActive: form.isActive,
+  1905→      };
+  1906→      if (mode === "create") {
+  1907→        await api("/api/admin/testimonials", {
+  1908→          method: "POST",
+  1909→          body: JSON.stringify(payload),
+  1910→        });
+  1911→        toast.success("Testimonial created.");
+  1912→      } else if (item) {
+  1913→        await api(`/api/admin/testimonials/${item.id}`, {
+  1914→          method: "PUT",
+  1915→          body: JSON.stringify(payload),
+  1916→        });
+  1917→        toast.success("Testimonial updated.");
+  1918→      }
+  1919→      await onSaved();
+  1920→      onClose();
+  1921→    } catch (e) {
+  1922→      toast.error(e instanceof Error ? e.message : "Failed to save.");
+  1923→    } finally {
+  1924→      setSaving(false);
+  1925→    }
+  1926→  }
+  1927→
+  1928→  return (
+  1929→    <Sheet open onOpenChange={(o) => !o && onClose()}>
+  1930→      <SheetContent className="w-[440px] sm:max-w-[440px] overflow-y-auto scroll-area">
+  1931→        <SheetHeader>
+  1932→          <SheetTitle>
+  1933→            {mode === "create" ? "Add Testimonial" : "Edit Testimonial"}
+  1934→          </SheetTitle>
+  1935→        </SheetHeader>
+  1936→        <form onSubmit={submit} className="space-y-4 mt-4 pr-1">
+  1937→          <FormField label="Name *">
+  1938→            <Input
+  1939→              required
+  1940→              value={form.name}
+  1941→              onChange={(e) => update("name", e.target.value)}
+  1942→              placeholder="Arjun Sharma"
+  1943→            />
+  1944→          </FormField>
+  1945→          <FormField label="Role *">
+  1946→            <Input
+  1947→              required
+  1948→              value={form.role}
+  1949→              onChange={(e) => update("role", e.target.value)}
+  1950→              placeholder="Backend Engineer"
+  1951→            />
+  1952→          </FormField>
+  1953→          <FormField label="Company">
+  1954→            <Input
+  1955→              value={form.company}
+  1956→              onChange={(e) => update("company", e.target.value)}
+  1957→              placeholder="TechNova Japan"
+  1958→            />
+  1959→          </FormField>
+  1960→          <FormField label="Content (English) *">
+  1961→            <Textarea
+  1962→              required
+  1963→              rows={4}
+  1964→              minLength={10}
+  1965→              value={form.content}
+  1966→              onChange={(e) => update("content", e.target.value)}
+  1967→              placeholder="IndiGate made my move to Tokyo seamless..."
+  1968→            />
+  1969→          </FormField>
+  1970→          <FormField label="Content (Japanese)">
+  1971→            <Textarea
+  1972→              rows={4}
+  1973→              value={form.contentJa}
+  1974→              onChange={(e) => update("contentJa", e.target.value)}
+  1975→              placeholder="IndiGateのおかげで東京への移住がスムーズでした..."
+  1976→            />
+  1977→          </FormField>
+  1978→          <FormField label="Photo URL">
+  1979→            <Input
+  1980→              value={form.photoUrl}
+  1981→              onChange={(e) => update("photoUrl", e.target.value)}
+  1982→              placeholder="https://..."
+  1983→            />
+  1984→          </FormField>
+  1985→          <div className="grid grid-cols-2 gap-3">
+  1986→            <FormField label="Display order">
+  1987→              <Input
+  1988→                type="number"
+  1989→                value={form.order}
+  1990→                onChange={(e) => update("order", e.target.value)}
+  1991→              />
+  1992→            </FormField>
+  1993→            <label className="flex items-center gap-2 cursor-pointer pt-6">
+  1994→              <Switch
+  1995→                checked={form.isActive}
+  1996→                onCheckedChange={(v) => update("isActive", v)}
+  1997→              />
+  1998→              <span className="text-sm">Active</span>
+  1999→            </label>
+  2000→          </div>
+
+[showing lines 1-2000 of 2218; use offset=2001 with limit to continue reading]

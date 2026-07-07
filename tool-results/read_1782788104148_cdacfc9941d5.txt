@@ -1,0 +1,2002 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useState, useCallback, useMemo } from "react";
+     4→import { useApp } from "@/lib/store";
+     5→import { useT } from "@/lib/use-t";
+     6→import { api, formatRelative, formatDate } from "@/lib/api-client";
+     7→import {
+     8→  DashboardShell,
+     9→  MetricCard,
+    10→  EmptyState,
+    11→  SectionCard,
+    12→  RoleGuard,
+    13→  CardSkeleton,
+    14→  MetricSkeleton,
+    15→  type NavItem,
+    16→} from "@/components/dashboard/dashboard-shell";
+    17→import { SkillsInput, FileDropZone } from "@/components/dashboard/widgets";
+    18→import { Button } from "@/components/ui/button";
+    19→import { Input } from "@/components/ui/input";
+    20→import { Label } from "@/components/ui/label";
+    21→import { Textarea } from "@/components/ui/textarea";
+    22→import { Badge } from "@/components/ui/badge";
+    23→import {
+    24→  Select,
+    25→  SelectContent,
+    26→  SelectItem,
+    27→  SelectTrigger,
+    28→  SelectValue,
+    29→} from "@/components/ui/select";
+    30→import {
+    31→  Table,
+    32→  TableBody,
+    33→  TableCell,
+    34→  TableHead,
+    35→  TableHeader,
+    36→  TableRow,
+    37→} from "@/components/ui/table";
+    38→import {
+    39→  AlertDialog,
+    40→  AlertDialogAction,
+    41→  AlertDialogCancel,
+    42→  AlertDialogContent,
+    43→  AlertDialogDescription,
+    44→  AlertDialogFooter,
+    45→  AlertDialogHeader,
+    46→  AlertDialogTitle,
+    47→  AlertDialogTrigger,
+    48→} from "@/components/ui/alert-dialog";
+    49→import {
+    50→  Dialog,
+    51→  DialogContent,
+    52→  DialogDescription,
+    53→  DialogFooter,
+    54→  DialogHeader,
+    55→  DialogTitle,
+    56→} from "@/components/ui/dialog";
+    57→import {
+    58→  Sheet,
+    59→  SheetContent,
+    60→  SheetHeader,
+    61→  SheetTitle,
+    62→  SheetDescription,
+    63→} from "@/components/ui/sheet";
+    64→import { Skeleton } from "@/components/ui/skeleton";
+    65→import { CompanyAvatar, CandidateAvatar } from "@/components/brand/logo";
+    66→import { toast } from "sonner";
+    67→import {
+    68→  LayoutDashboard,
+    69→  Briefcase,
+    70→  Plus,
+    71→  Users,
+    72→  Users2,
+    73→  Building2,
+    74→  Send,
+    75→  Star,
+    76→  Trophy,
+    77→  ImageIcon,
+    78→  Trash2,
+    79→  Eye,
+    80→  ArrowRight,
+    81→  Download,
+    82→  Clock,
+    83→  XCircle,
+    84→  CalendarClock,
+    85→  BarChart2,
+    86→  Search,
+    87→} from "lucide-react";
+    88→import type {
+    89→  ApplicationDTO,
+    90→  ApplicationStatus,
+    91→  JobDTO,
+    92→  JobType,
+    93→  JLPTLevel,
+    94→  SalaryType,
+    95→  EducationEntry,
+    96→  CandidateTalentDTO,
+    97→} from "@/lib/types";
+    98→import {
+    99→  JLPT_LEVELS,
+   100→  JLPT_BADGE,
+   101→  JOB_TYPES,
+   102→  SALARY_TYPES,
+   103→  STATUS_BADGE,
+   104→  APPLICATION_STATUSES,
+   105→} from "@/lib/types";
+   106→import { cn } from "@/lib/utils";
+   107→
+   108→const NAV: NavItem[] = [
+   109→  { key: "overview", label: "Overview", icon: LayoutDashboard },
+   110→  { key: "jobs", label: "My Jobs", icon: Briefcase },
+   111→  { key: "new", label: "Post New Job", icon: Plus },
+   112→  { key: "applicants", label: "Applicants", icon: Users },
+   113→  { key: "talent", label: "Find Talent", icon: Users2 },
+   114→  { key: "analytics", label: "Analytics", icon: BarChart2 },
+   115→  { key: "profile", label: "Company Profile", icon: Building2 },
+   116→];
+   117→
+   118→export function CompanyDashboard() {
+   119→  const user = useApp((s) => s.user);
+   120→  const company = useApp((s) => s.company);
+   121→  const authLoading = useApp((s) => s.authLoading);
+   122→  const tab = useApp((s) => s.companyTab);
+   123→  const setTab = useApp((s) => s.setCompanyTab);
+   124→  const { t } = useT();
+   125→
+   126→  if (!user || user.role !== "COMPANY") {
+   127→    return <RoleGuard expected="COMPANY" />;
+   128→  }
+   129→
+   130→  // Wait for the company profile to load before deciding pending state.
+   131→  if (authLoading || !company) {
+   132→    return (
+   133→      <div className="min-h-screen grid place-items-center bg-background">
+   134→        <div className="flex flex-col items-center gap-3">
+   135→          <div className="h-8 w-8 rounded-full border-2 border-saffron border-t-transparent animate-spin" />
+   136→          <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+   137→        </div>
+   138→      </div>
+   139→    );
+   140→  }
+   141→
+   142→  const welcome = t("dash.company.welcome", {
+   143→    name: company?.companyName || user.name || user.email,
+   144→  });
+   145→  const subtitle = company?.locationJapan
+   146→    ? `${company.locationJapan}${company.industry ? " · " + company.industry : ""}`
+   147→    : company?.industry ?? undefined;
+   148→
+   149→  const pending = company?.isApproved === false;
+   150→
+   151→  // While pending, only overview + profile are usable
+   152→  const disabled = pending
+   153→    ? ["jobs", "new", "applicants"]
+   154→    : [];
+   155→
+   156→  return (
+   157→    <DashboardShell
+   158→      brand="Company"
+   159→      nav={NAV}
+   160→      active={tab}
+   161→      onSelect={(k) => setTab(k as typeof tab)}
+   162→      welcome={welcome}
+   163→      subtitle={subtitle}
+   164→      disabledKeys={disabled}
+   165→      avatar={
+   166→        <div className="hidden sm:flex items-center gap-2 pl-2 ml-1 border-l border-border">
+   167→          <CompanyAvatar
+   168→            name={company?.companyName || "?"}
+   169→            color={company?.logoUrl}
+   170→            size={32}
+   171→          />
+   172→        </div>
+   173→      }
+   174→      topbarActions={
+   175→        !pending && (
+   176→          <Button
+   177→            size="sm"
+   178→            className="hidden sm:inline-flex bg-brand-gradient text-white hover:opacity-90"
+   179→            onClick={() => setTab("new")}
+   180→          >
+   181→            <Plus className="h-4 w-4" />
+   182→            {t("dash.company.new")}
+   183→          </Button>
+   184→        )
+   185→      }
+   186→    >
+   187→      {pending && tab !== "overview" && tab !== "profile" ? (
+   188→        <PendingState />
+   189→      ) : (
+   190→        <>
+   191→          {tab === "overview" && <Overview />}
+   192→          {tab === "jobs" && <Jobs />}
+   193→          {tab === "new" && <NewJob />}
+   194→          {tab === "applicants" && <Applicants />}
+   195→          {tab === "talent" && <TalentSearch />}
+   196→          {tab === "analytics" && <Analytics />}
+   197→          {tab === "profile" && <Profile />}
+   198→        </>
+   199→      )}
+   200→    </DashboardShell>
+   201→  );
+   202→}
+   203→
+   204→/* ============== Pending ============== */
+   205→
+   206→function PendingState() {
+   207→  const { t } = useT();
+   208→  return (
+   209→    <div className="grid place-items-center py-12">
+   210→      <div className="max-w-md w-full rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 p-8 text-center">
+   211→        <div className="mx-auto mb-5 grid place-items-center h-16 w-16 rounded-2xl bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300">
+   212→          <Clock className="h-7 w-7" />
+   213→        </div>
+   214→        <h2 className="font-display font-extrabold text-xl">
+   215→          {t("dash.company.pending")}
+   216→        </h2>
+   217→        <p className="mt-2 text-sm text-amber-800 dark:text-amber-200">
+   218→          {t("dash.company.pending.desc")}
+   219→        </p>
+   220→      </div>
+   221→    </div>
+   222→  );
+   223→}
+   224→
+   225→/* ============== Overview ============== */
+   226→
+   227→function useCompanyJobs() {
+   228→  const user = useApp((s) => s.user);
+   229→  const [jobs, setJobs] = useState<JobDTO[] | null>(null);
+   230→  const [loading, setLoading] = useState(true);
+   231→
+   232→  const load = useCallback(async () => {
+   233→    setLoading(true);
+   234→    try {
+   235→      const res = await api<{ jobs: JobDTO[] }>(`/api/jobs?limit=50`);
+   236→      // Filter to this company's jobs (including inactive ones we own)
+   237→      const mine = (res.jobs || []).filter(
+   238→        (j) => j.company?.userId === user?.id,
+   239→      );
+   240→      setJobs(mine);
+   241→    } catch {
+   242→      setJobs([]);
+   243→    } finally {
+   244→      setLoading(false);
+   245→    }
+   246→  }, [user?.id]);
+   247→
+   248→  useEffect(() => {
+   249→    load();
+   250→  }, [load]);
+   251→
+   252→  return { jobs, loading, reload: load };
+   253→}
+   254→
+   255→function useCompanyApps() {
+   256→  const [apps, setApps] = useState<ApplicationDTO[] | null>(null);
+   257→  const [loading, setLoading] = useState(true);
+   258→
+   259→  const load = useCallback(async () => {
+   260→    setLoading(true);
+   261→    try {
+   262→      const res = await api<{ applications: ApplicationDTO[] }>(
+   263→        "/api/applications",
+   264→      );
+   265→      setApps(res.applications);
+   266→    } catch {
+   267→      setApps([]);
+   268→    } finally {
+   269→      setLoading(false);
+   270→    }
+   271→  }, []);
+   272→
+   273→  useEffect(() => {
+   274→    load();
+   275→  }, [load]);
+   276→
+   277→  return { apps, loading, reload: load };
+   278→}
+   279→
+   280→function Overview() {
+   281→  const company = useApp((s) => s.company);
+   282→  const setTab = useApp((s) => s.setCompanyTab);
+   283→  const { t, locale } = useT();
+   284→  const { jobs, loading: jobsLoading } = useCompanyJobs();
+   285→  const { apps, loading: appsLoading } = useCompanyApps();
+   286→
+   287→  const pending = company?.isApproved === false;
+   288→  const activeJobs = (jobs ?? []).filter((j) => j.isActive).length;
+   289→  const totalApps = apps?.length ?? 0;
+   290→  const shortlisted =
+   291→    apps?.filter((a) => a.status === "SHORTLISTED").length ?? 0;
+   292→  const offers = apps?.filter((a) => a.status === "OFFERED").length ?? 0;
+   293→  const recentApps = (apps ?? []).slice(0, 10);
+   294→
+   295→  return (
+   296→    <div className="space-y-6">
+   297→      {pending && (
+   298→        <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 p-4 flex items-start gap-3">
+   299→          <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+   300→          <div>
+   301→            <p className="font-semibold text-sm text-amber-900 dark:text-amber-100">
+   302→              {t("dash.company.pending")}
+   303→            </p>
+   304→            <p className="text-xs text-amber-800 dark:text-amber-200 mt-0.5">
+   305→              {t("dash.company.pending.desc")}
+   306→            </p>
+   307→          </div>
+   308→        </div>
+   309→      )}
+   310→
+   311→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   312→        {jobsLoading || appsLoading ? (
+   313→          <>
+   314→            <MetricSkeleton />
+   315→            <MetricSkeleton />
+   316→            <MetricSkeleton />
+   317→            <MetricSkeleton />
+   318→          </>
+   319→        ) : (
+   320→          <>
+   321→            <MetricCard
+   322→              label={t("dash.company.active")}
+   323→              value={activeJobs}
+   324→              icon={Briefcase}
+   325→              accent="saffron"
+   326→            />
+   327→            <MetricCard
+   328→              label={t("dash.company.totalapps")}
+   329→              value={totalApps}
+   330→              icon={Send}
+   331→              accent="sky"
+   332→            />
+   333→            <MetricCard
+   334→              label={t("dash.company.shortlisted")}
+   335→              value={shortlisted}
+   336→              icon={Star}
+   337→              accent="amber"
+   338→            />
+   339→            <MetricCard
+   340→              label={t("dash.company.offers")}
+   341→              value={offers}
+   342→              icon={Trophy}
+   343→              accent="emerald"
+   344→            />
+   345→          </>
+   346→        )}
+   347→      </div>
+   348→
+   349→      <div className="grid lg:grid-cols-2 gap-6">
+   350→        {/* Recent applicants */}
+   351→        <SectionCard
+   352→          title={t("dash.company.recent")}
+   353→          action={
+   354→            <Button
+   355→              variant="ghost"
+   356→              size="sm"
+   357→              onClick={() => setTab("applicants")}
+   358→            >
+   359→              {t("common.viewall")}
+   360→              <ArrowRight className="h-3.5 w-3.5" />
+   361→            </Button>
+   362→          }
+   363→          bodyClassName="p-0"
+   364→        >
+   365→          {appsLoading ? (
+   366→            <div className="p-5 space-y-3">
+   367→              {Array.from({ length: 4 }).map((_, i) => (
+   368→                <Skeleton key={i} className="h-12 w-full" />
+   369→              ))}
+   370→            </div>
+   371→          ) : recentApps.length === 0 ? (
+   372→            <div className="p-6">
+   373→              <EmptyState
+   374→                icon={Users}
+   375→                title="No applicants yet"
+   376→                description="Once candidates apply to your jobs, you'll see them here."
+   377→              />
+   378→            </div>
+   379→          ) : (
+   380→            <ul className="divide-y">
+   381→              {recentApps.map((a) => (
+   382→                <li
+   383→                  key={a.id}
+   384→                  className="flex items-center gap-3 px-5 py-3 hover:bg-accent/40 transition-colors"
+   385→                >
+   386→                  <CandidateAvatar
+   387→                    name={a.candidate?.fullName || "?"}
+   388→                    photoUrl={a.candidate?.photoUrl}
+   389→                    size={36}
+   390→                  />
+   391→                  <div className="min-w-0 flex-1">
+   392→                    <p className="font-semibold text-sm truncate">
+   393→                      {a.candidate?.fullName ?? "Candidate"}
+   394→                    </p>
+   395→                    <p className="text-xs text-muted-foreground truncate">
+   396→                      {a.job?.title} · {formatRelative(a.appliedAt, locale)}
+   397→                    </p>
+   398→                  </div>
+   399→                  <Badge
+   400→                    variant="outline"
+   401→                    className={cn("font-semibold hidden sm:inline-flex", STATUS_BADGE[a.status])}
+   402→                  >
+   403→                    {t(`status.${a.status}`)}
+   404→                  </Badge>
+   405→                </li>
+   406→              ))}
+   407→            </ul>
+   408→          )}
+   409→        </SectionCard>
+   410→
+   411→        {/* Active jobs */}
+   412→        <SectionCard
+   413→          title="Active jobs"
+   414→          action={
+   415→            <Button variant="ghost" size="sm" onClick={() => setTab("jobs")}>
+   416→              {t("common.viewall")}
+   417→              <ArrowRight className="h-3.5 w-3.5" />
+   418→            </Button>
+   419→          }
+   420→          bodyClassName="p-0"
+   421→        >
+   422→          {jobsLoading ? (
+   423→            <div className="p-5 space-y-3">
+   424→              {Array.from({ length: 3 }).map((_, i) => (
+   425→                <Skeleton key={i} className="h-14 w-full" />
+   426→              ))}
+   427→            </div>
+   428→          ) : !jobs || jobs.length === 0 ? (
+   429→            <div className="p-6">
+   430→              <EmptyState
+   431→                icon={Briefcase}
+   432→                title="No jobs posted"
+   433→                description="Post your first job to start receiving applications."
+   434→                action={
+   435→                  !pending && (
+   436→                    <Button
+   437→                      className="bg-brand-gradient text-white hover:opacity-90"
+   438→                      onClick={() => setTab("new")}
+   439→                    >
+   440→                      <Plus className="h-4 w-4" />
+   441→                      {t("dash.company.new")}
+   442→                    </Button>
+   443→                  )
+   444→                }
+   445→              />
+   446→            </div>
+   447→          ) : (
+   448→            <ul className="divide-y">
+   449→              {jobs.slice(0, 5).map((j) => (
+   450→                <li
+   451→                  key={j.id}
+   452→                  className="px-5 py-3 hover:bg-accent/40 transition-colors"
+   453→                >
+   454→                  <div className="flex items-center justify-between gap-3">
+   455→                    <div className="min-w-0">
+   456→                      <p className="font-semibold text-sm truncate">
+   457→                        {j.title}
+   458→                      </p>
+   459→                      <p className="text-xs text-muted-foreground">
+   460→                        {j.location} ·{" "}
+   461→                        {typeof j.applicationCount === "number"
+   462→                          ? `${j.applicationCount} applicant${j.applicationCount === 1 ? "" : "s"}`
+   463→                          : "—"}{" "}
+   464→                        · {formatRelative(j.postedAt, locale)}
+   465→                      </p>
+   466→                    </div>
+   467→                    <Badge
+   468→                      variant={j.isActive ? "default" : "secondary"}
+   469→                      className="shrink-0"
+   470→                    >
+   471→                      {j.isActive ? "Active" : "Paused"}
+   472→                    </Badge>
+   473→                  </div>
+   474→                </li>
+   475→              ))}
+   476→            </ul>
+   477→          )}
+   478→        </SectionCard>
+   479→      </div>
+   480→
+   481→      {/* Quick actions */}
+   482→      {!pending && (
+   483→        <div className="grid sm:grid-cols-2 gap-4">
+   484→          <Button
+   485→            variant="outline"
+   486→            className="h-auto py-5 justify-start text-left"
+   487→            onClick={() => setTab("new")}
+   488→          >
+   489→            <div className="grid place-items-center h-10 w-10 rounded-xl bg-saffron/15 text-saffron mr-3">
+   490→              <Plus className="h-5 w-5" />
+   491→            </div>
+   492→            <div>
+   493→              <p className="font-semibold">{t("dash.company.post")}</p>
+   494→              <p className="text-xs text-muted-foreground font-normal">
+   495→                Create a new job listing
+   496→              </p>
+   497→            </div>
+   498→          </Button>
+   499→          <Button
+   500→            variant="outline"
+   501→            className="h-auto py-5 justify-start text-left"
+   502→            onClick={() => setTab("applicants")}
+   503→          >
+   504→            <div className="grid place-items-center h-10 w-10 rounded-xl bg-crimson/15 text-crimson mr-3">
+   505→              <Users className="h-5 w-5" />
+   506→            </div>
+   507→            <div>
+   508→              <p className="font-semibold">{t("dash.company.applicants")}</p>
+   509→              <p className="text-xs text-muted-foreground font-normal">
+   510→                Review candidates for your roles
+   511→              </p>
+   512→            </div>
+   513→          </Button>
+   514→        </div>
+   515→      )}
+   516→    </div>
+   517→  );
+   518→}
+   519→
+   520→/* ============== Jobs list ============== */
+   521→
+   522→function Jobs() {
+   523→  const { t, locale } = useT();
+   524→  const setTab = useApp((s) => s.setCompanyTab);
+   525→  const { jobs, loading, reload } = useCompanyJobs();
+   526→  const [busyId, setBusyId] = useState<string | null>(null);
+   527→  const [deleteId, setDeleteId] = useState<string | null>(null);
+   528→
+   529→  async function toggleActive(j: JobDTO) {
+   530→    setBusyId(j.id);
+   531→    try {
+   532→      await api(`/api/jobs/${j.id}`, {
+   533→        method: "PUT",
+   534→        body: JSON.stringify({ isActive: !j.isActive }),
+   535→      });
+   536→      toast.success(j.isActive ? "Job paused." : "Job reactivated.");
+   537→      await reload();
+   538→    } catch (e) {
+   539→      toast.error(e instanceof Error ? e.message : "Failed to update.");
+   540→    } finally {
+   541→      setBusyId(null);
+   542→    }
+   543→  }
+   544→
+   545→  async function remove(id: string) {
+   546→    setBusyId(id);
+   547→    try {
+   548→      await api(`/api/jobs/${id}`, { method: "DELETE" });
+   549→      toast.success("Job deleted.");
+   550→      await reload();
+   551→    } catch (e) {
+   552→      toast.error(e instanceof Error ? e.message : "Failed to delete.");
+   553→    } finally {
+   554→      setBusyId(null);
+   555→      setDeleteId(null);
+   556→    }
+   557→  }
+   558→
+   559→  return (
+   560→    <div className="space-y-4">
+   561→      <div className="flex items-center justify-between gap-3">
+   562→        <h2 className="font-display font-extrabold text-xl">
+   563→          {t("dash.company.jobs")}
+   564→        </h2>
+   565→        <Button
+   566→          size="sm"
+   567→          className="bg-brand-gradient text-white hover:opacity-90"
+   568→          onClick={() => setTab("new")}
+   569→        >
+   570→          <Plus className="h-4 w-4" />
+   571→          {t("dash.company.new")}
+   572→        </Button>
+   573→      </div>
+   574→
+   575→      {loading ? (
+   576→        <CardSkeleton lines={6} />
+   577→      ) : !jobs || jobs.length === 0 ? (
+   578→        <EmptyState
+   579→          icon={Briefcase}
+   580→          title="No jobs yet"
+   581→          description="Post your first role to start receiving applications."
+   582→          action={
+   583→            <Button
+   584→              className="bg-brand-gradient text-white hover:opacity-90"
+   585→              onClick={() => setTab("new")}
+   586→            >
+   587→              <Plus className="h-4 w-4" />
+   588→              {t("dash.company.new")}
+   589→            </Button>
+   590→          }
+   591→        />
+   592→      ) : (
+   593→        <SectionCard bodyClassName="p-0">
+   594→          <div className="max-h-[70vh] overflow-y-auto scroll-area">
+   595→            <Table>
+   596→              <TableHeader className="sticky top-0 bg-card z-10">
+   597→                <TableRow>
+   598→                  <TableHead className="pl-5 sm:pl-6">Title</TableHead>
+   599→                  <TableHead className="hidden md:table-cell">Location</TableHead>
+   600→                  <TableHead className="hidden md:table-cell">JLPT</TableHead>
+   601→                  <TableHead>Apps</TableHead>
+   602→                  <TableHead>Status</TableHead>
+   603→                  <TableHead className="text-right pr-5 sm:pr-6">Actions</TableHead>
+   604→                </TableRow>
+   605→              </TableHeader>
+   606→              <TableBody>
+   607→                {jobs.map((j) => (
+   608→                  <TableRow key={j.id}>
+   609→                    <TableCell className="pl-5 sm:pl-6">
+   610→                      <p className="font-semibold text-sm">{j.title}</p>
+   611→                      <p className="text-xs text-muted-foreground">
+   612→                        {formatRelative(j.postedAt, locale)}
+   613→                      </p>
+   614→                    </TableCell>
+   615→                    <TableCell className="hidden md:table-cell text-sm">
+   616→                      {j.location}
+   617→                    </TableCell>
+   618→                    <TableCell className="hidden md:table-cell">
+   619→                      <Badge
+   620→                        variant="outline"
+   621→                        className={cn("font-semibold", JLPT_BADGE[j.jlptRequired])}
+   622→                      >
+   623→                        {j.jlptRequired}
+   624→                      </Badge>
+   625→                    </TableCell>
+   626→                    <TableCell>
+   627→                      <span className="font-semibold">
+   628→                        {j.applicationCount ?? 0}
+   629→                      </span>
+   630→                    </TableCell>
+   631→                    <TableCell>
+   632→                      <button
+   633→                        onClick={() => toggleActive(j)}
+   634→                        disabled={busyId === j.id}
+   635→                        className={cn(
+   636→                          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors",
+   637→                          j.isActive
+   638→                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 hover:bg-emerald-200"
+   639→                            : "bg-muted text-muted-foreground hover:bg-muted/70",
+   640→                        )}
+   641→                      >
+   642→                        <span
+   643→                          className={cn(
+   644→                            "h-1.5 w-1.5 rounded-full",
+   645→                            j.isActive ? "bg-emerald-500" : "bg-muted-foreground",
+   646→                          )}
+   647→                        />
+   648→                        {j.isActive ? "Active" : "Paused"}
+   649→                      </button>
+   650→                    </TableCell>
+   651→                    <TableCell className="text-right pr-5 sm:pr-6">
+   652→                      <div className="inline-flex gap-1">
+   653→                        <Button
+   654→                          size="sm"
+   655→                          variant="ghost"
+   656→                          onClick={() =>
+   657→                            setTab("applicants", { jobId: j.id })
+   658→                          }
+   659→                        >
+   660→                          <Users className="h-3.5 w-3.5" />
+   661→                          <span className="hidden sm:inline">Applicants</span>
+   662→                        </Button>
+   663→                        <AlertDialog
+   664→                          open={deleteId === j.id}
+   665→                          onOpenChange={(o) => setDeleteId(o ? j.id : null)}
+   666→                        >
+   667→                          <AlertDialogTrigger asChild>
+   668→                            <Button
+   669→                              size="icon"
+   670→                              variant="ghost"
+   671→                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+   672→                              aria-label="Delete job"
+   673→                            >
+   674→                              <Trash2 className="h-3.5 w-3.5" />
+   675→                            </Button>
+   676→                          </AlertDialogTrigger>
+   677→                          <AlertDialogContent>
+   678→                            <AlertDialogHeader>
+   679→                              <AlertDialogTitle>Delete this job?</AlertDialogTitle>
+   680→                              <AlertDialogDescription>
+   681→                                "{j.title}" will be permanently removed. Existing
+   682→                                applications will remain in your applicants tab.
+   683→                              </AlertDialogDescription>
+   684→                            </AlertDialogHeader>
+   685→                            <AlertDialogFooter>
+   686→                              <AlertDialogCancel>
+   687→                                {t("common.cancel")}
+   688→                              </AlertDialogCancel>
+   689→                              <AlertDialogAction
+   690→                                className="bg-destructive text-white hover:bg-destructive/90"
+   691→                                onClick={() => remove(j.id)}
+   692→                              >
+   693→                                {t("common.delete")}
+   694→                              </AlertDialogAction>
+   695→                            </AlertDialogFooter>
+   696→                          </AlertDialogContent>
+   697→                        </AlertDialog>
+   698→                      </div>
+   699→                    </TableCell>
+   700→                  </TableRow>
+   701→                ))}
+   702→              </TableBody>
+   703→            </Table>
+   704→          </div>
+   705→        </SectionCard>
+   706→      )}
+   707→    </div>
+   708→  );
+   709→}
+   710→
+   711→/* ============== New job ============== */
+   712→
+   713→function NewJob() {
+   714→  const { t } = useT();
+   715→  const setTab = useApp((s) => s.setCompanyTab);
+   716→  const [saving, setSaving] = useState(false);
+   717→  const [form, setForm] = useState({
+   718→    title: "",
+   719→    description: "",
+   720→    location: "",
+   721→    jobType: "FULL_TIME" as JobType,
+   722→    jlptRequired: "N3" as JLPTLevel,
+   723→    salaryMin: "",
+   724→    salaryMax: "",
+   725→    salaryType: "MONTHLY" as SalaryType,
+   726→    skills: [] as string[],
+   727→    deadline: "",
+   728→  });
+   729→
+   730→  function set<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
+   731→    setForm((f) => ({ ...f, [k]: v }));
+   732→  }
+   733→
+   734→  async function submit(e: React.FormEvent) {
+   735→    e.preventDefault();
+   736→    if (form.title.trim().length < 3) {
+   737→      toast.error("Job title must be at least 3 characters.");
+   738→      return;
+   739→    }
+   740→    if (form.description.trim().length < 50) {
+   741→      toast.error("Description must be at least 50 characters.");
+   742→      return;
+   743→    }
+   744→    if (form.location.trim().length < 2) {
+   745→      toast.error("Location is required.");
+   746→      return;
+   747→    }
+   748→    setSaving(true);
+   749→    try {
+   750→      const body: Record<string, unknown> = {
+   751→        title: form.title.trim(),
+   752→        description: form.description.trim(),
+   753→        location: form.location.trim(),
+   754→        jobType: form.jobType,
+   755→        jlptRequired: form.jlptRequired,
+   756→        salaryType: form.salaryType,
+   757→        skillsRequired: form.skills,
+   758→      };
+   759→      if (form.salaryMin) body.salaryMin = Number(form.salaryMin);
+   760→      if (form.salaryMax) body.salaryMax = Number(form.salaryMax);
+   761→      if (form.deadline) body.deadline = form.deadline;
+   762→      const res = await api<JobDTO>("/api/jobs", {
+   763→        method: "POST",
+   764→        body: JSON.stringify(body),
+   765→      });
+   766→      toast.success("Job posted! 🎉");
+   767→      setTab("applicants", { jobId: res.id });
+   768→    } catch (e) {
+   769→      toast.error(e instanceof Error ? e.message : "Failed to post job.");
+   770→    } finally {
+   771→      setSaving(false);
+   772→    }
+   773→  }
+   774→
+   775→  return (
+   776→    <form onSubmit={submit} className="space-y-6 max-w-3xl">
+   777→      <div className="flex items-center justify-between gap-3">
+   778→        <h2 className="font-display font-extrabold text-xl">
+   779→          {t("dash.company.post")}
+   780→        </h2>
+   781→      </div>
+   782→
+   783→      <SectionCard>
+   784→        <div className="grid gap-4">
+   785→          <div className="space-y-1.5">
+   786→            <Label htmlFor="title">
+   787→              {t("dash.company.post.title")} <span className="text-destructive">*</span>
+   788→            </Label>
+   789→            <Input
+   790→              id="title"
+   791→              value={form.title}
+   792→              onChange={(e) => set("title", e.target.value)}
+   793→              placeholder="e.g. Senior Frontend Engineer (React)"
+   794→              required
+   795→              minLength={3}
+   796→            />
+   797→          </div>
+   798→          <div className="space-y-1.5">
+   799→            <Label htmlFor="description">
+   800→              {t("dash.company.post.desc")} <span className="text-destructive">*</span>
+   801→              <span className="ml-2 text-xs text-muted-foreground font-normal">
+   802→                ({form.description.length}/50 min)
+   803→              </span>
+   804→            </Label>
+   805→            <Textarea
+   806→              id="description"
+   807→              rows={6}
+   808→              value={form.description}
+   809→              onChange={(e) => set("description", e.target.value)}
+   810→              placeholder="Describe responsibilities, requirements, and what makes this role exciting..."
+   811→              required
+   812→              minLength={50}
+   813→            />
+   814→          </div>
+   815→          <div className="grid sm:grid-cols-2 gap-4">
+   816→            <div className="space-y-1.5">
+   817→              <Label htmlFor="location">
+   818→                {t("dash.company.post.location")}{" "}
+   819→                <span className="text-destructive">*</span>
+   820→              </Label>
+   821→              <Input
+   822→                id="location"
+   823→                value={form.location}
+   824→                onChange={(e) => set("location", e.target.value)}
+   825→                placeholder="e.g. Tokyo, Japan"
+   826→                required
+   827→                minLength={2}
+   828→              />
+   829→            </div>
+   830→            <div className="space-y-1.5">
+   831→              <Label htmlFor="deadline">
+   832→                {t("dash.company.post.deadline")}
+   833→              </Label>
+   834→              <Input
+   835→                id="deadline"
+   836→                type="date"
+   837→                value={form.deadline}
+   838→                onChange={(e) => set("deadline", e.target.value)}
+   839→              />
+   840→            </div>
+   841→            <div className="space-y-1.5">
+   842→              <Label>{t("dash.company.post.type")}</Label>
+   843→              <Select
+   844→                value={form.jobType}
+   845→                onValueChange={(v) => set("jobType", v as JobType)}
+   846→              >
+   847→                <SelectTrigger className="w-full">
+   848→                  <SelectValue />
+   849→                </SelectTrigger>
+   850→                <SelectContent>
+   851→                  {JOB_TYPES.map((jt) => (
+   852→                    <SelectItem key={jt} value={jt}>
+   853→                      {t(`jobtype.${jt}`)}
+   854→                    </SelectItem>
+   855→                  ))}
+   856→                </SelectContent>
+   857→              </Select>
+   858→            </div>
+   859→            <div className="space-y-1.5">
+   860→              <Label>{t("dash.company.post.jlpt")}</Label>
+   861→              <Select
+   862→                value={form.jlptRequired}
+   863→                onValueChange={(v) => set("jlptRequired", v as JLPTLevel)}
+   864→              >
+   865→                <SelectTrigger className="w-full">
+   866→                  <SelectValue />
+   867→                </SelectTrigger>
+   868→                <SelectContent>
+   869→                  {JLPT_LEVELS.map((lvl) => (
+   870→                    <SelectItem key={lvl} value={lvl}>
+   871→                      {lvl === "NONE" ? "Any JLPT" : `JLPT ${lvl}+`}
+   872→                    </SelectItem>
+   873→                  ))}
+   874→                </SelectContent>
+   875→              </Select>
+   876→            </div>
+   877→          </div>
+   878→
+   879→          <div className="grid sm:grid-cols-3 gap-4">
+   880→            <div className="space-y-1.5">
+   881→              <Label htmlFor="salaryMin">
+   882→                {t("dash.company.post.salary.min")}
+   883→              </Label>
+   884→              <Input
+   885→                id="salaryMin"
+   886→                type="number"
+   887→                min={0}
+   888→                value={form.salaryMin}
+   889→                onChange={(e) => set("salaryMin", e.target.value)}
+   890→                placeholder="e.g. 250000"
+   891→              />
+   892→            </div>
+   893→            <div className="space-y-1.5">
+   894→              <Label htmlFor="salaryMax">
+   895→                {t("dash.company.post.salary.max")}
+   896→              </Label>
+   897→              <Input
+   898→                id="salaryMax"
+   899→                type="number"
+   900→                min={0}
+   901→                value={form.salaryMax}
+   902→                onChange={(e) => set("salaryMax", e.target.value)}
+   903→                placeholder="e.g. 400000"
+   904→              />
+   905→            </div>
+   906→            <div className="space-y-1.5">
+   907→              <Label>{t("dash.company.post.salary.type")}</Label>
+   908→              <Select
+   909→                value={form.salaryType}
+   910→                onValueChange={(v) => set("salaryType", v as SalaryType)}
+   911→              >
+   912→                <SelectTrigger className="w-full">
+   913→                  <SelectValue />
+   914→                </SelectTrigger>
+   915→                <SelectContent>
+   916→                  {SALARY_TYPES.map((st) => (
+   917→                    <SelectItem key={st} value={st}>
+   918→                      {t(`salarytype.${st}`)}
+   919→                    </SelectItem>
+   920→                  ))}
+   921→                </SelectContent>
+   922→              </Select>
+   923→            </div>
+   924→          </div>
+   925→
+   926→          <div className="space-y-1.5">
+   927→            <Label>{t("dash.company.post.skill")}</Label>
+   928→            <SkillsInput
+   929→              value={form.skills}
+   930→              onChange={(next) => set("skills", next)}
+   931→              placeholder={t("dash.company.post.skill.placeholder")}
+   932→            />
+   933→          </div>
+   934→        </div>
+   935→      </SectionCard>
+   936→
+   937→      <div className="flex items-center justify-end gap-3 sticky bottom-4">
+   938→        <Button
+   939→          type="button"
+   940→          variant="outline"
+   941→          onClick={() => setTab("jobs")}
+   942→          disabled={saving}
+   943→        >
+   944→          {t("common.cancel")}
+   945→        </Button>
+   946→        <Button
+   947→          type="submit"
+   948→          disabled={saving}
+   949→          className="bg-brand-gradient text-white shadow-premium hover:opacity-90 px-6"
+   950→        >
+   951→          {saving ? t("common.loading") : t("dash.company.post.submit")}
+   952→        </Button>
+   953→      </div>
+   954→    </form>
+   955→  );
+   956→}
+   957→
+   958→/* ============== Applicants ============== */
+   959→
+   960→function Applicants() {
+   961→  const { t, locale } = useT();
+   962→  const jobId = useApp((s) => s.companyApplicantsJobId);
+   963→  const setTab = useApp((s) => s.setCompanyTab);
+   964→  const { jobs } = useCompanyJobs();
+   965→  const { apps, loading, reload } = useCompanyApps();
+   966→  const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "ALL">(
+   967→    "ALL",
+   968→  );
+   969→  const [selectedId, setSelectedId] = useState<string | null>(null);
+   970→  const [busyId, setBusyId] = useState<string | null>(null);
+   971→
+   972→  const filtered = useMemo(() => {
+   973→    let list = apps ?? [];
+   974→    if (jobId) list = list.filter((a) => a.jobId === jobId);
+   975→    if (statusFilter !== "ALL")
+   976→      list = list.filter((a) => a.status === statusFilter);
+   977→    return list;
+   978→  }, [apps, jobId, statusFilter]);
+   979→
+   980→  const selectedApp = filtered.find((a) => a.id === selectedId) ?? null;
+   981→
+   982→  async function changeStatus(
+   983→    app: ApplicationDTO,
+   984→    status: ApplicationStatus,
+   985→    interview?: { date: string; notes: string },
+   986→  ) {
+   987→    setBusyId(app.id);
+   988→    try {
+   989→      const body: Record<string, unknown> = { status };
+   990→      if (interview) {
+   991→        body.interviewDate = interview.date;
+   992→        body.interviewNotes = interview.notes;
+   993→      }
+   994→      await api(`/api/applications/${app.id}/status`, {
+   995→        method: "PATCH",
+   996→        body: JSON.stringify(body),
+   997→      });
+   998→      toast.success(`Marked as ${t(`status.${status}`)}.`);
+   999→      await reload();
+  1000→      if (selectedId === app.id) {
+  1001→        // keep slide-over open; data will refresh
+  1002→      }
+  1003→    } catch (e) {
+  1004→      toast.error(e instanceof Error ? e.message : "Failed to update.");
+  1005→    } finally {
+  1006→      setBusyId(null);
+  1007→    }
+  1008→  }
+  1009→
+  1010→  return (
+  1011→    <div className="space-y-4">
+  1012→      {/* Top filter bar */}
+  1013→      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+  1014→        <div>
+  1015→          <h2 className="font-display font-extrabold text-xl">
+  1016→            {t("dash.company.applicants")}
+  1017→          </h2>
+  1018→          {jobId ? (
+  1019→            <p className="text-sm text-muted-foreground">
+  1020→              {t("dash.company.applicants.title", {
+  1021→                title: jobs?.find((j) => j.id === jobId)?.title ?? "Selected job",
+  1022→              })}{" "}
+  1023→              <button
+  1024→                className="text-crimson hover:underline ml-1"
+  1025→                onClick={() => useApp.setState({ companyApplicantsJobId: null })}
+  1026→              >
+  1027→                (show all)
+  1028→              </button>
+  1029→            </p>
+  1030→          ) : (
+  1031→            <p className="text-sm text-muted-foreground">
+  1032→              {jobs && jobs.length > 0
+  1033→                ? "All applications across your jobs"
+  1034→                : "Post a job to start receiving applications."}
+  1035→            </p>
+  1036→          )}
+  1037→        </div>
+  1038→        <div className="flex items-center gap-2">
+  1039→          {jobs && jobs.length > 0 && (
+  1040→            <Select
+  1041→              value={jobId ?? "all"}
+  1042→              onValueChange={(v) => {
+  1043→                if (v === "all") {
+  1044→                  useApp.setState({ companyApplicantsJobId: null });
+  1045→                } else {
+  1046→                  setTab("applicants", { jobId: v });
+  1047→                }
+  1048→              }}
+  1049→            >
+  1050→              <SelectTrigger className="w-[200px]">
+  1051→                <SelectValue placeholder="All jobs" />
+  1052→              </SelectTrigger>
+  1053→              <SelectContent>
+  1054→                <SelectItem value="all">All jobs</SelectItem>
+  1055→                {jobs.map((j) => (
+  1056→                  <SelectItem key={j.id} value={j.id}>
+  1057→                    {j.title}
+  1058→                  </SelectItem>
+  1059→                ))}
+  1060→              </SelectContent>
+  1061→            </Select>
+  1062→          )}
+  1063→          <Select
+  1064→            value={statusFilter}
+  1065→            onValueChange={(v) => setStatusFilter(v as ApplicationStatus | "ALL")}
+  1066→          >
+  1067→            <SelectTrigger className="w-[140px]">
+  1068→              <SelectValue />
+  1069→            </SelectTrigger>
+  1070→            <SelectContent>
+  1071→              <SelectItem value="ALL">{t("common.all")}</SelectItem>
+  1072→              {APPLICATION_STATUSES.map((s) => (
+  1073→                <SelectItem key={s} value={s}>
+  1074→                  {t(`status.${s}`)}
+  1075→                </SelectItem>
+  1076→              ))}
+  1077→            </SelectContent>
+  1078→          </Select>
+  1079→        </div>
+  1080→      </div>
+  1081→
+  1082→      {loading ? (
+  1083→        <CardSkeleton lines={6} />
+  1084→      ) : filtered.length === 0 ? (
+  1085→        <EmptyState
+  1086→          icon={Users}
+  1087→          title={t("dash.company.applicants.empty")}
+  1088→          description="Try changing the status filter or check back later."
+  1089→          action={
+  1090→            <Button variant="outline" onClick={() => setTab("jobs")}>
+  1091→              <Briefcase className="h-4 w-4" />
+  1092→              View your jobs
+  1093→            </Button>
+  1094→          }
+  1095→        />
+  1096→      ) : (
+  1097→        <SectionCard bodyClassName="p-0">
+  1098→          <div className="max-h-[70vh] overflow-y-auto scroll-area">
+  1099→            <Table>
+  1100→              <TableHeader className="sticky top-0 bg-card z-10">
+  1101→                <TableRow>
+  1102→                  <TableHead className="pl-5 sm:pl-6">Candidate</TableHead>
+  1103→                  <TableHead className="hidden md:table-cell">JLPT</TableHead>
+  1104→                  <TableHead className="hidden lg:table-cell">Skills</TableHead>
+  1105→                  <TableHead className="hidden sm:table-cell">Applied</TableHead>
+  1106→                  <TableHead>Status</TableHead>
+  1107→                  <TableHead className="text-right pr-5 sm:pr-6">Action</TableHead>
+  1108→                </TableRow>
+  1109→              </TableHeader>
+  1110→              <TableBody>
+  1111→                {filtered.map((a) => (
+  1112→                  <TableRow key={a.id}>
+  1113→                    <TableCell className="pl-5 sm:pl-6">
+  1114→                      <div className="flex items-center gap-3">
+  1115→                        <CandidateAvatar
+  1116→                          name={a.candidate?.fullName || "?"}
+  1117→                          photoUrl={a.candidate?.photoUrl}
+  1118→                          size={36}
+  1119→                        />
+  1120→                        <div className="min-w-0">
+  1121→                          <p className="font-semibold text-sm truncate">
+  1122→                            {a.candidate?.fullName ?? "Candidate"}
+  1123→                          </p>
+  1124→                          <p className="text-xs text-muted-foreground truncate">
+  1125→                            {a.job?.title}
+  1126→                          </p>
+  1127→                        </div>
+  1128→                      </div>
+  1129→                    </TableCell>
+  1130→                    <TableCell className="hidden md:table-cell">
+  1131→                      {a.candidate?.jlptLevel && (
+  1132→                        <Badge
+  1133→                          variant="outline"
+  1134→                          className={cn(
+  1135→                            "font-semibold",
+  1136→                            JLPT_BADGE[a.candidate.jlptLevel],
+  1137→                          )}
+  1138→                        >
+  1139→                          {a.candidate.jlptLevel}
+  1140→                        </Badge>
+  1141→                      )}
+  1142→                    </TableCell>
+  1143→                    <TableCell className="hidden lg:table-cell">
+  1144→                      <div className="flex flex-wrap gap-1 max-w-[220px]">
+  1145→                        {(a.candidate?.skills ?? []).slice(0, 3).map((s) => (
+  1146→                          <Badge key={s} variant="secondary" className="text-[10px]">
+  1147→                            {s}
+  1148→                          </Badge>
+  1149→                        ))}
+  1150→                        {(a.candidate?.skills ?? []).length > 3 && (
+  1151→                          <span className="text-xs text-muted-foreground">
+  1152→                            +{(a.candidate?.skills ?? []).length - 3}
+  1153→                          </span>
+  1154→                        )}
+  1155→                      </div>
+  1156→                    </TableCell>
+  1157→                    <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+  1158→                      {formatDate(a.appliedAt, locale)}
+  1159→                    </TableCell>
+  1160→                    <TableCell>
+  1161→                      <Select
+  1162→                        value={a.status}
+  1163→                        onValueChange={(v) =>
+  1164→                          changeStatus(a, v as ApplicationStatus)
+  1165→                        }
+  1166→                      >
+  1167→                        <SelectTrigger
+  1168→                          size="sm"
+  1169→                          className="w-[130px] h-8"
+  1170→                          disabled={busyId === a.id}
+  1171→                        >
+  1172→                          <SelectValue />
+  1173→                        </SelectTrigger>
+  1174→                        <SelectContent>
+  1175→                          {APPLICATION_STATUSES.map((s) => (
+  1176→                            <SelectItem key={s} value={s}>
+  1177→                              {t(`status.${s}`)}
+  1178→                            </SelectItem>
+  1179→                          ))}
+  1180→                        </SelectContent>
+  1181→                      </Select>
+  1182→                    </TableCell>
+  1183→                    <TableCell className="text-right pr-5 sm:pr-6">
+  1184→                      <Button
+  1185→                        size="sm"
+  1186→                        variant="outline"
+  1187→                        onClick={() => setSelectedId(a.id)}
+  1188→                      >
+  1189→                        <Eye className="h-3.5 w-3.5" />
+  1190→                        <span className="hidden sm:inline">
+  1191→                          {t("dash.company.viewprofile")}
+  1192→                        </span>
+  1193→                      </Button>
+  1194→                    </TableCell>
+  1195→                  </TableRow>
+  1196→                ))}
+  1197→              </TableBody>
+  1198→            </Table>
+  1199→          </div>
+  1200→        </SectionCard>
+  1201→      )}
+  1202→
+  1203→      {/* Slide-over detail */}
+  1204→      <Sheet
+  1205→        open={!!selectedApp}
+  1206→        onOpenChange={(o) => !o && setSelectedId(null)}
+  1207→      >
+  1208→        <SheetContent side="right" className="w-full sm:max-w-md p-0 overflow-y-auto scroll-area">
+  1209→          {selectedApp && (
+  1210→            <>
+  1211→              <SheetHeader className="px-5 pt-5">
+  1212→                <SheetTitle className="font-display text-lg">
+  1213→                  Candidate profile
+  1214→                </SheetTitle>
+  1215→                <SheetDescription>
+  1216→                  {selectedApp.job?.title} ·{" "}
+  1217→                  {selectedApp.job?.company?.companyName}
+  1218→                </SheetDescription>
+  1219→              </SheetHeader>
+  1220→              <ApplicantDetail
+  1221→                app={selectedApp}
+  1222→                busy={busyId === selectedApp.id}
+  1223→                onAction={(s, iv) => changeStatus(selectedApp, s, iv)}
+  1224→              />
+  1225→            </>
+  1226→          )}
+  1227→        </SheetContent>
+  1228→      </Sheet>
+  1229→    </div>
+  1230→  );
+  1231→}
+  1232→
+  1233→function ApplicantDetail({
+  1234→  app,
+  1235→  busy,
+  1236→  onAction,
+  1237→}: {
+  1238→  app: ApplicationDTO;
+  1239→  busy: boolean;
+  1240→  onAction: (
+  1241→    s: ApplicationStatus,
+  1242→    interview?: { date: string; notes: string },
+  1243→  ) => void;
+  1244→}) {
+  1245→  const { t, locale } = useT();
+  1246→  const c = app.candidate;
+  1247→  // Interview scheduling dialog state
+  1248→  const [showSchedule, setShowSchedule] = useState(false);
+  1249→  const [intDate, setIntDate] = useState("");
+  1250→  const [intNotes, setIntNotes] = useState("");
+  1251→  if (!c) {
+  1252→    return (
+  1253→      <div className="p-5">
+  1254→        <p className="text-sm text-muted-foreground">
+  1255→          Candidate data unavailable.
+  1256→        </p>
+  1257→      </div>
+  1258→    );
+  1259→  }
+  1260→
+  1261→  const actions: { label: string; status: ApplicationStatus; icon: typeof Star; accent: string }[] = [
+  1262→    { label: t("status.SHORTLISTED"), status: "SHORTLISTED", icon: Star, accent: "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-950 dark:text-amber-300" },
+  1263→    { label: "Schedule interview", status: "INTERVIEWED", icon: CalendarClock, accent: "bg-violet-100 text-violet-700 hover:bg-violet-200 dark:bg-violet-950 dark:text-violet-300" },
+  1264→    { label: "Make offer", status: "OFFERED", icon: Trophy, accent: "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-300" },
+  1265→    { label: t("status.REJECTED"), status: "REJECTED", icon: XCircle, accent: "bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-950 dark:text-rose-300" },
+  1266→  ];
+  1267→
+  1268→  return (
+  1269→    <div className="px-5 pb-6 space-y-5">
+  1270→      {/* Header */}
+  1271→      <div className="flex items-center gap-4 pt-3">
+  1272→        <CandidateAvatar
+  1273→          name={c.fullName}
+  1274→          photoUrl={c.photoUrl}
+  1275→          size={56}
+  1276→        />
+  1277→        <div className="min-w-0">
+  1278→          <p className="font-display font-bold text-lg truncate">
+  1279→            {c.fullName}
+  1280→          </p>
+  1281→          <p className="text-sm text-muted-foreground truncate">
+  1282→            {c.location ?? "—"}
+  1283→          </p>
+  1284→        </div>
+  1285→      </div>
+  1286→
+  1287→      {/* Status pill */}
+  1288→      <div className="flex items-center gap-2">
+  1289→        <Badge
+  1290→          variant="outline"
+  1291→          className={cn("font-semibold", STATUS_BADGE[app.status])}
+  1292→        >
+  1293→          {t(`status.${app.status}`)}
+  1294→        </Badge>
+  1295→        <span className="text-xs text-muted-foreground">
+  1296→          Applied {formatDate(app.appliedAt, locale)}
+  1297→        </span>
+  1298→      </div>
+  1299→
+  1300→      {/* Quick facts */}
+  1301→      <div className="grid grid-cols-2 gap-3 text-sm">
+  1302→        <div className="rounded-lg border border-border bg-background/60 p-3">
+  1303→          <p className="text-xs text-muted-foreground uppercase">JLPT</p>
+  1304→          <Badge
+  1305→            variant="outline"
+  1306→            className={cn("mt-1 font-semibold", JLPT_BADGE[c.jlptLevel])}
+  1307→          >
+  1308→            {c.jlptLevel}
+  1309→          </Badge>
+  1310→        </div>
+  1311→        <div className="rounded-lg border border-border bg-background/60 p-3">
+  1312→          <p className="text-xs text-muted-foreground uppercase">Experience</p>
+  1313→          <p className="mt-1 font-semibold">
+  1314→            {c.experienceYears} year{c.experienceYears === 1 ? "" : "s"}
+  1315→          </p>
+  1316→        </div>
+  1317→      </div>
+  1318→
+  1319→      {/* Skills */}
+  1320→      <div>
+  1321→        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+  1322→          Skills
+  1323→        </p>
+  1324→        <div className="flex flex-wrap gap-1.5">
+  1325→          {c.skills.length === 0 ? (
+  1326→            <span className="text-sm text-muted-foreground">No skills listed</span>
+  1327→          ) : (
+  1328→            c.skills.map((s) => (
+  1329→              <Badge key={s} variant="secondary" className="font-medium">
+  1330→                {s}
+  1331→              </Badge>
+  1332→            ))
+  1333→          )}
+  1334→        </div>
+  1335→      </div>
+  1336→
+  1337→      {/* Bio */}
+  1338→      {c.bio && (
+  1339→        <div>
+  1340→          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+  1341→            About
+  1342→          </p>
+  1343→          <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
+  1344→            {c.bio}
+  1345→          </p>
+  1346→        </div>
+  1347→      )}
+  1348→
+  1349→      {/* Education */}
+  1350→      {c.education && c.education.length > 0 && (
+  1351→        <div>
+  1352→          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+  1353→            Education
+  1354→          </p>
+  1355→          <ul className="space-y-1.5 text-sm">
+  1356→            {c.education.map((ed: EducationEntry, i: number) => (
+  1357→              <li key={i} className="text-foreground/90">
+  1358→                <span className="font-medium">{ed.degree}</span> · {ed.field}
+  1359→                <br />
+  1360→                <span className="text-xs text-muted-foreground">
+  1361→                  {ed.institution} · {ed.year}
+  1362→                </span>
+  1363→              </li>
+  1364→            ))}
+  1365→          </ul>
+  1366→        </div>
+  1367→      )}
+  1368→
+  1369→      {/* Resume */}
+  1370→      {(c.resumeUrl || app.resumeUrlSnapshot) && (
+  1371→        <div>
+  1372→          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+  1373→            Resume
+  1374→          </p>
+  1375→          <Button asChild variant="outline" size="sm">
+  1376→            <a
+  1377→              href={c.resumeUrl || app.resumeUrlSnapshot || "#"}
+  1378→              target="_blank"
+  1379→              rel="noreferrer"
+  1380→              download
+  1381→            >
+  1382→              <Download className="h-3.5 w-3.5" />
+  1383→              Download {c.resumeName || "resume.pdf"}
+  1384→            </a>
+  1385→          </Button>
+  1386→        </div>
+  1387→      )}
+  1388→
+  1389→      {/* Cover note */}
+  1390→      {app.coverNote && (
+  1391→        <div>
+  1392→          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+  1393→            Cover note
+  1394→          </p>
+  1395→          <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap rounded-lg border border-border bg-background/60 p-3">
+  1396→            {app.coverNote}
+  1397→          </p>
+  1398→        </div>
+  1399→      )}
+  1400→
+  1401→      {/* Actions */}
+  1402→      <div className="space-y-2 pt-3 border-t border-border">
+  1403→        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+  1404→          Update status
+  1405→        </p>
+  1406→        <div className="grid grid-cols-2 gap-2">
+  1407→          {actions.map((a) => {
+  1408→            const Icon = a.icon;
+  1409→            return (
+  1410→              <Button
+  1411→                key={a.status}
+  1412→                type="button"
+  1413→                variant="outline"
+  1414→                disabled={busy}
+  1415→                className={cn("justify-start h-auto py-2.5", a.accent)}
+  1416→                onClick={() => {
+  1417→                  if (a.status === "INTERVIEWED") {
+  1418→                    setShowSchedule(true);
+  1419→                  } else {
+  1420→                    onAction(a.status);
+  1421→                  }
+  1422→                }}
+  1423→              >
+  1424→                <Icon className="h-4 w-4" />
+  1425→                <span className="text-xs">{a.label}</span>
+  1426→              </Button>
+  1427→            );
+  1428→          })}
+  1429→        </div>
+  1430→      </div>
+  1431→
+  1432→      {/* Interview scheduling dialog */}
+  1433→      <Dialog open={showSchedule} onOpenChange={setShowSchedule}>
+  1434→        <DialogContent>
+  1435→          <DialogHeader>
+  1436→            <DialogTitle>Schedule Interview</DialogTitle>
+  1437→            <DialogDescription>
+  1438→              Set the interview date/time and notes for {c.fullName}. These
+  1439→              will be visible to the candidate.
+  1440→            </DialogDescription>
+  1441→          </DialogHeader>
+  1442→          <div className="space-y-4 py-2">
+  1443→            <div>
+  1444→              <label className="text-sm font-medium mb-1.5 block">
+  1445→                Interview date &amp; time (JST)
+  1446→              </label>
+  1447→              <Input
+  1448→                type="datetime-local"
+  1449→                value={intDate}
+  1450→                onChange={(e) => setIntDate(e.target.value)}
+  1451→              />
+  1452→            </div>
+  1453→            <div>
+  1454→              <label className="text-sm font-medium mb-1.5 block">
+  1455→                Notes for candidate
+  1456→              </label>
+  1457→              <Textarea
+  1458→                rows={3}
+  1459→                value={intNotes}
+  1460→                onChange={(e) => setIntNotes(e.target.value)}
+  1461→                placeholder="Include meeting link, format (video/in-person), duration..."
+  1462→              />
+  1463→            </div>
+  1464→          </div>
+  1465→          <DialogFooter>
+  1466→            <Button
+  1467→              variant="outline"
+  1468→              onClick={() => setShowSchedule(false)}
+  1469→            >
+  1470→              Cancel
+  1471→            </Button>
+  1472→            <Button
+  1473→              disabled={!intDate || busy}
+  1474→              onClick={() => {
+  1475→                onAction("INTERVIEWED", { date: intDate, notes: intNotes });
+  1476→                setShowSchedule(false);
+  1477→                setIntDate("");
+  1478→                setIntNotes("");
+  1479→              }}
+  1480→              className="bg-brand-gradient text-white hover:opacity-90 font-semibold"
+  1481→            >
+  1482→              <CalendarClock className="mr-2 h-4 w-4" />
+  1483→              Schedule Interview
+  1484→            </Button>
+  1485→          </DialogFooter>
+  1486→        </DialogContent>
+  1487→      </Dialog>
+  1488→    </div>
+  1489→  );
+  1490→}
+  1491→
+  1492→/* ============== Profile ============== */
+  1493→
+  1494→function Profile() {
+  1495→  const company = useApp((s) => s.company);
+  1496→  const refreshAuth = useApp((s) => s.refreshAuth);
+  1497→  const { t } = useT();
+  1498→  const [form, setForm] = useState({
+  1499→    companyName: company?.companyName ?? "",
+  1500→    industry: company?.industry ?? "",
+  1501→    locationJapan: company?.locationJapan ?? "",
+  1502→    description: company?.description ?? "",
+  1503→    website: company?.website ?? "",
+  1504→    employeeCount: company?.employeeCount ?? "",
+  1505→    logoUrl: company?.logoUrl ?? "",
+  1506→  });
+  1507→  const [saving, setSaving] = useState(false);
+  1508→  const [uploading, setUploading] = useState(false);
+  1509→
+  1510→  useEffect(() => {
+  1511→    if (!company) return;
+  1512→    setForm({
+  1513→      companyName: company.companyName,
+  1514→      industry: company.industry ?? "",
+  1515→      locationJapan: company.locationJapan ?? "",
+  1516→      description: company.description ?? "",
+  1517→      website: company.website ?? "",
+  1518→      employeeCount: company.employeeCount ?? "",
+  1519→      logoUrl: company.logoUrl ?? "",
+  1520→    });
+  1521→  }, [company?.updatedAt]);
+  1522→
+  1523→  function set<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
+  1524→    setForm((f) => ({ ...f, [k]: v }));
+  1525→  }
+  1526→
+  1527→  async function uploadLogo(file: File) {
+  1528→    if (!file.type.startsWith("image/")) {
+  1529→      toast.error("Logo must be an image.");
+  1530→      return;
+  1531→    }
+  1532→    if (file.size > 2 * 1024 * 1024) {
+  1533→      toast.error("Max logo size is 2MB.");
+  1534→      return;
+  1535→    }
+  1536→    setUploading(true);
+  1537→    try {
+  1538→      const fd = new FormData();
+  1539→      fd.append("file", file);
+  1540→      fd.append("kind", "logo");
+  1541→      const res = await fetch("/api/upload", { method: "POST", body: fd });
+  1542→      if (!res.ok) {
+  1543→        const d = await res.json().catch(() => null);
+  1544→        throw new Error(d?.error || "Upload failed");
+  1545→      }
+  1546→      const data = (await res.json()) as { url: string };
+  1547→      // The upload route already persists logoUrl on the company profile,
+  1548→      // so refreshAuth will pick it up. We also update local form state.
+  1549→      set("logoUrl", data.url);
+  1550→      toast.success("Logo updated.");
+  1551→      await refreshAuth();
+  1552→    } catch (e) {
+  1553→      toast.error(e instanceof Error ? e.message : "Upload failed.");
+  1554→    } finally {
+  1555→      setUploading(false);
+  1556→    }
+  1557→  }
+  1558→
+  1559→  async function save(e: React.FormEvent) {
+  1560→    e.preventDefault();
+  1561→    setSaving(true);
+  1562→    try {
+  1563→      await api("/api/companies/me", {
+  1564→        method: "PUT",
+  1565→        body: JSON.stringify({
+  1566→          companyName: form.companyName.trim(),
+  1567→          industry: form.industry.trim() || null,
+  1568→          locationJapan: form.locationJapan.trim() || null,
+  1569→          description: form.description.trim() || null,
+  1570→          website: form.website.trim() || null,
+  1571→          employeeCount: form.employeeCount.trim() || null,
+  1572→        }),
+  1573→      });
+  1574→      await refreshAuth();
+  1575→      toast.success("Company profile saved.");
+  1576→    } catch (e) {
+  1577→      toast.error(e instanceof Error ? e.message : "Failed to save.");
+  1578→    } finally {
+  1579→      setSaving(false);
+  1580→    }
+  1581→  }
+  1582→
+  1583→  return (
+  1584→    <form onSubmit={save} className="space-y-6 max-w-3xl">
+  1585→      {/* Logo */}
+  1586→      <SectionCard title="Company logo">
+  1587→        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+  1588→          <CompanyAvatar
+  1589→            name={form.companyName || "?"}
+  1590→            color={form.logoUrl}
+  1591→            size={72}
+  1592→          />
+  1593→          <div className="flex-1 min-w-0">
+  1594→            <p className="text-sm font-medium">
+  1595→              {form.logoUrl
+  1596→                ? "Logo uploaded"
+  1597→                : "No logo yet — using a colored avatar."}
+  1598→            </p>
+  1599→            <p className="text-xs text-muted-foreground mb-3">
+  1600→              PNG, JPG or SVG · max 2MB
+  1601→            </p>
+  1602→            <FileDropZone
+  1603→              accept="image/*"
+  1604→              onFile={uploadLogo}
+  1605→              busy={uploading}
+  1606→              title={uploading ? "Uploading..." : "Upload new logo"}
+  1607→              hint="Drag an image or click to browse"
+  1608→              icon={<ImageIcon className="h-5 w-5" />}
+  1609→              className="py-5"
+  1610→            />
+  1611→          </div>
+  1612→        </div>
+  1613→      </SectionCard>
+  1614→
+  1615→      {/* Details */}
+  1616→      <SectionCard title="Company details">
+  1617→        <div className="grid sm:grid-cols-2 gap-4">
+  1618→          <div className="space-y-1.5 sm:col-span-2">
+  1619→            <Label htmlFor="companyName">Company name</Label>
+  1620→            <Input
+  1621→              id="companyName"
+  1622→              value={form.companyName}
+  1623→              onChange={(e) => set("companyName", e.target.value)}
+  1624→              required
+  1625→              minLength={2}
+  1626→            />
+  1627→          </div>
+  1628→          <div className="space-y-1.5">
+  1629→            <Label htmlFor="industry">Industry</Label>
+  1630→            <Input
+  1631→              id="industry"
+  1632→              value={form.industry}
+  1633→              onChange={(e) => set("industry", e.target.value)}
+  1634→              placeholder="e.g. IT Services"
+  1635→            />
+  1636→          </div>
+  1637→          <div className="space-y-1.5">
+  1638→            <Label htmlFor="locationJapan">Location (Japan)</Label>
+  1639→            <Input
+  1640→              id="locationJapan"
+  1641→              value={form.locationJapan}
+  1642→              onChange={(e) => set("locationJapan", e.target.value)}
+  1643→              placeholder="e.g. Shibuya, Tokyo"
+  1644→            />
+  1645→          </div>
+  1646→          <div className="space-y-1.5">
+  1647→            <Label htmlFor="website">Website</Label>
+  1648→            <Input
+  1649→              id="website"
+  1650→              value={form.website}
+  1651→              onChange={(e) => set("website", e.target.value)}
+  1652→              placeholder="https://example.com"
+  1653→            />
+  1654→          </div>
+  1655→          <div className="space-y-1.5">
+  1656→            <Label htmlFor="employeeCount">Employee count</Label>
+  1657→            <Input
+  1658→              id="employeeCount"
+  1659→              value={form.employeeCount}
+  1660→              onChange={(e) => set("employeeCount", e.target.value)}
+  1661→              placeholder="e.g. 50-200"
+  1662→            />
+  1663→          </div>
+  1664→          <div className="space-y-1.5 sm:col-span-2">
+  1665→            <Label htmlFor="description">About the company</Label>
+  1666→            <Textarea
+  1667→              id="description"
+  1668→              rows={5}
+  1669→              value={form.description}
+  1670→              onChange={(e) => set("description", e.target.value)}
+  1671→              placeholder="Tell candidates what makes your company special..."
+  1672→              maxLength={5000}
+  1673→            />
+  1674→          </div>
+  1675→        </div>
+  1676→      </SectionCard>
+  1677→
+  1678→      {company?.isApproved === false && (
+  1679→        <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 p-4 flex items-start gap-3">
+  1680→          <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+  1681→          <div>
+  1682→            <p className="font-semibold text-sm text-amber-900 dark:text-amber-100">
+  1683→              {t("dash.company.pending")}
+  1684→            </p>
+  1685→            <p className="text-xs text-amber-800 dark:text-amber-200 mt-0.5">
+  1686→              You can edit your profile now — it will be visible once an admin
+  1687→              approves your account.
+  1688→            </p>
+  1689→          </div>
+  1690→        </div>
+  1691→      )}
+  1692→
+  1693→      <div className="flex items-center justify-end gap-3 sticky bottom-4">
+  1694→        <Button
+  1695→          type="submit"
+  1696→          disabled={saving}
+  1697→          className="bg-brand-gradient text-white shadow-premium hover:opacity-90 px-6"
+  1698→        >
+  1699→          {saving ? t("common.loading") : t("common.save")}
+  1700→        </Button>
+  1701→      </div>
+  1702→    </form>
+  1703→  );
+  1704→}
+  1705→
+  1706→/* ============== Talent Search (Milestone D) ============== */
+  1707→
+  1708→function TalentSearch() {
+  1709→  const { t } = useT();
+  1710→  const [search, setSearch] = useState("");
+  1711→  const [jlpt, setJlpt] = useState("");
+  1712→  const [minExp, setMinExp] = useState("");
+  1713→  const [skillsInput, setSkillsInput] = useState("");
+  1714→  const [results, setResults] = useState<CandidateTalentDTO[]>([]);
+  1715→  const [total, setTotal] = useState(0);
+  1716→  const [loading, setLoading] = useState(false);
+  1717→  const [selected, setSelected] = useState<CandidateTalentDTO | null>(null);
+  1718→
+  1719→  async function fetchCandidates() {
+  1720→    setLoading(true);
+  1721→    try {
+  1722→      const params = new URLSearchParams();
+  1723→      if (search) params.set("search", search);
+  1724→      if (jlpt) params.set("jlptLevel", jlpt);
+  1725→      if (minExp) params.set("minExp", minExp);
+  1726→      if (skillsInput) params.set("skills", skillsInput);
+  1727→      const res = await api<{ candidates: CandidateTalentDTO[]; total: number }>(
+  1728→        `/api/candidates/search?${params.toString()}`,
+  1729→      );
+  1730→      setResults(res.candidates);
+  1731→      setTotal(res.total);
+  1732→    } catch {
+  1733→      toast.error("Failed to load candidates.");
+  1734→    } finally {
+  1735→      setLoading(false);
+  1736→    }
+  1737→  }
+  1738→
+  1739→  // initial load + refetch on filter change (debounced for text)
+  1740→  useEffect(() => {
+  1741→    const tm = setTimeout(fetchCandidates, 400);
+  1742→    return () => clearTimeout(tm);
+  1743→  }, [search, skillsInput, jlpt, minExp]);
+  1744→
+  1745→  return (
+  1746→    <div className="space-y-5">
+  1747→      <SectionCard title="Find Talent" action={null}>
+  1748→        <div className="flex flex-wrap gap-3">
+  1749→          <div className="relative flex-1 min-w-[200px]">
+  1750→            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+  1751→            <Input
+  1752→              placeholder={t("dash.company.talent.search")}
+  1753→              value={search}
+  1754→              onChange={(e) => setSearch(e.target.value)}
+  1755→              className="pl-10"
+  1756→            />
+  1757→          </div>
+  1758→          <Select value={jlpt || "all"} onValueChange={(v) => setJlpt(v === "all" ? "" : v)}>
+  1759→            <SelectTrigger className="w-[140px]">
+  1760→              <SelectValue placeholder={t("dash.company.talent.jlpt")} />
+  1761→            </SelectTrigger>
+  1762→            <SelectContent>
+  1763→              <SelectItem value="all">Any JLPT</SelectItem>
+  1764→              {JLPT_LEVELS.filter((l) => l !== "NONE").map((l) => (
+  1765→                <SelectItem key={l} value={l}>{l}</SelectItem>
+  1766→              ))}
+  1767→            </SelectContent>
+  1768→          </Select>
+  1769→          <Select value={minExp || "all"} onValueChange={(v) => setMinExp(v === "all" ? "" : v)}>
+  1770→            <SelectTrigger className="w-[150px]">
+  1771→              <SelectValue placeholder={t("dash.company.talent.exp")} />
+  1772→            </SelectTrigger>
+  1773→            <SelectContent>
+  1774→              <SelectItem value="all">Any experience</SelectItem>
+  1775→              {[1, 2, 3, 5, 8].map((y) => (
+  1776→                <SelectItem key={y} value={String(y)}>{y}+ years</SelectItem>
+  1777→              ))}
+  1778→            </SelectContent>
+  1779→          </Select>
+  1780→          <Input
+  1781→            placeholder="Skills (React, Go...)"
+  1782→            value={skillsInput}
+  1783→            onChange={(e) => setSkillsInput(e.target.value)}
+  1784→            className="w-[180px]"
+  1785→          />
+  1786→        </div>
+  1787→      </SectionCard>
+  1788→
+  1789→      <p className="text-sm text-muted-foreground">
+  1790→        {loading ? "Searching…" : t("dash.company.talent.found", { count: String(total) })}
+  1791→      </p>
+  1792→
+  1793→      {loading ? (
+  1794→        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  1795→          {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-52 rounded-xl" />)}
+  1796→        </div>
+  1797→      ) : results.length === 0 ? (
+  1798→        <EmptyState icon={Users2} title={t("dash.company.talent.empty")} />
+  1799→      ) : (
+  1800→        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  1801→          {results.map((c) => (
+  1802→            <CandidateTalentCard key={c.id} candidate={c} onView={() => setSelected(c)} />
+  1803→          ))}
+  1804→        </div>
+  1805→      )}
+  1806→
+  1807→      <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+  1808→        <SheetContent className="w-[480px] sm:max-w-[480px] overflow-y-auto scroll-area">
+  1809→          {selected && <CandidateDetailPanel candidate={selected} />}
+  1810→        </SheetContent>
+  1811→      </Sheet>
+  1812→    </div>
+  1813→  );
+  1814→}
+  1815→
+  1816→function CandidateTalentCard({
+  1817→  candidate,
+  1818→  onView,
+  1819→}: {
+  1820→  candidate: CandidateTalentDTO;
+  1821→  onView: () => void;
+  1822→}) {
+  1823→  const { t } = useT();
+  1824→  return (
+  1825→    <div className="rounded-xl border border-border bg-card p-5 shadow-premium hover:-translate-y-0.5 transition-transform">
+  1826→      <div className="flex items-start gap-3">
+  1827→        <CandidateAvatar name={candidate.fullName} photoUrl={candidate.photoUrl} size={48} />
+  1828→        <div className="min-w-0 flex-1">
+  1829→          <h3 className="font-bold truncate">{candidate.fullName}</h3>
+  1830→          <p className="text-xs text-muted-foreground truncate">
+  1831→            {candidate.location || "—"}
+  1832→          </p>
+  1833→        </div>
+  1834→        <Badge variant="outline" className={cn("font-semibold shrink-0", JLPT_BADGE[candidate.jlptLevel])}>
+  1835→          {candidate.jlptLevel}
+  1836→        </Badge>
+  1837→      </div>
+  1838→      <p className="mt-3 text-sm text-muted-foreground line-clamp-2">
+  1839→        {candidate.bio || "No bio provided."}
+  1840→      </p>
+  1841→      <div className="mt-3 flex flex-wrap gap-1.5">
+  1842→        {candidate.skills.slice(0, 4).map((s) => (
+  1843→          <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
+  1844→        ))}
+  1845→        {candidate.skills.length > 4 && (
+  1846→          <span className="text-xs text-muted-foreground">+{candidate.skills.length - 4}</span>
+  1847→        )}
+  1848→      </div>
+  1849→      <div className="mt-4 flex items-center justify-between">
+  1850→        <span className="text-xs text-muted-foreground">
+  1851→          {candidate.experienceYears} {t("dash.company.talent.years")}
+  1852→          {candidate.hasResume && (
+  1853→            <span className="text-emerald-600 font-medium ml-2">✓ Resume</span>
+  1854→          )}
+  1855→        </span>
+  1856→        <Button size="sm" variant="outline" onClick={onView}>
+  1857→          <Eye className="mr-1.5 h-3.5 w-3.5" />
+  1858→          View profile
+  1859→        </Button>
+  1860→      </div>
+  1861→    </div>
+  1862→  );
+  1863→}
+  1864→
+  1865→function CandidateDetailPanel({ candidate }: { candidate: CandidateTalentDTO }) {
+  1866→  const { t } = useT();
+  1867→  return (
+  1868→    <div className="space-y-4 p-6">
+  1869→      <div className="flex items-center gap-3">
+  1870→        <CandidateAvatar name={candidate.fullName} photoUrl={candidate.photoUrl} size={56} />
+  1871→        <div>
+  1872→          <h2 className="font-display text-xl font-bold">{candidate.fullName}</h2>
+  1873→          <p className="text-sm text-muted-foreground">{candidate.location || "—"}</p>
+  1874→        </div>
+  1875→      </div>
+  1876→      <div className="flex items-center gap-2 flex-wrap">
+  1877→        <Badge variant="outline" className={cn("font-semibold", JLPT_BADGE[candidate.jlptLevel])}>
+  1878→          JLPT {candidate.jlptLevel}
+  1879→        </Badge>
+  1880→        <Badge variant="secondary">{candidate.experienceYears} {t("dash.company.talent.years")}</Badge>
+  1881→      </div>
+  1882→      {candidate.bio && (
+  1883→        <div>
+  1884→          <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-1">About</h3>
+  1885→          <p className="text-sm leading-relaxed">{candidate.bio}</p>
+  1886→        </div>
+  1887→      )}
+  1888→      <div>
+  1889→        <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Skills</h3>
+  1890→        <div className="flex flex-wrap gap-1.5">
+  1891→          {candidate.skills.map((s) => (
+  1892→            <Badge key={s} variant="secondary">{s}</Badge>
+  1893→          ))}
+  1894→        </div>
+  1895→      </div>
+  1896→      <div className="grid grid-cols-2 gap-3">
+  1897→        <div>
+  1898→          <p className="text-xs text-muted-foreground">Experience</p>
+  1899→          <p className="font-medium">{candidate.experienceYears} years</p>
+  1900→        </div>
+  1901→        <div>
+  1902→          <p className="text-xs text-muted-foreground">Education records</p>
+  1903→          <p className="font-medium">{candidate.educationCount}</p>
+  1904→        </div>
+  1905→        {candidate.hasResume && (
+  1906→          <div>
+  1907→            <p className="text-xs text-muted-foreground">Resume</p>
+  1908→            <p className="font-medium text-emerald-600">✓ Uploaded</p>
+  1909→          </div>
+  1910→        )}
+  1911→      </div>
+  1912→      <div className="pt-3 border-t text-xs text-muted-foreground leading-relaxed">
+  1913→        Contact details (email, phone, resume) are shared only after this
+  1914→        candidate applies to your job. Use your job postings to attract them.
+  1915→      </div>
+  1916→    </div>
+  1917→  );
+  1918→}
+  1919→
+  1920→/* ============== Analytics (Milestone F) ============== */
+  1921→
+  1922→function Analytics() {
+  1923→  const { t } = useT();
+  1924→  const [data, setData] = useState<{
+  1925→    totalViews: number;
+  1926→    totalApplications: number;
+  1927→    averageConversion: string;
+  1928→    jobs: Array<{
+  1929→      id: string;
+  1930→      title: string;
+  1931→      isActive: boolean;
+  1932→      viewCount: number;
+  1933→      viewsThisWeek: number;
+  1934→      applicationCount: number;
+  1935→      conversionRate: string;
+  1936→    }>;
+  1937→  } | null>(null);
+  1938→  const [loading, setLoading] = useState(true);
+  1939→
+  1940→  useEffect(() => {
+  1941→    api<{
+  1942→      totalViews: number;
+  1943→      totalApplications: number;
+  1944→      averageConversion: string;
+  1945→      jobs: Array<{
+  1946→        id: string;
+  1947→        title: string;
+  1948→        isActive: boolean;
+  1949→        viewCount: number;
+  1950→        viewsThisWeek: number;
+  1951→        applicationCount: number;
+  1952→        conversionRate: string;
+  1953→      }>;
+  1954→    }>("/api/companies/me/analytics")
+  1955→      .then(setData)
+  1956→      .catch(() => toast.error("Failed to load analytics."))
+  1957→      .finally(() => setLoading(false));
+  1958→  }, []);
+  1959→
+  1960→  if (loading) {
+  1961→    return (
+  1962→      <div className="grid sm:grid-cols-3 gap-4">
+  1963→        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+  1964→      </div>
+  1965→    );
+  1966→  }
+  1967→
+  1968→  if (!data || data.jobs.length === 0) {
+  1969→    return <EmptyState icon={BarChart2} title={t("dash.company.analytics.empty")} />;
+  1970→  }
+  1971→
+  1972→  return (
+  1973→    <div className="space-y-6">
+  1974→      <div className="grid sm:grid-cols-3 gap-4">
+  1975→        <MetricCard label={t("dash.company.analytics.views")} value={data.totalViews} icon={Eye} accent="saffron" />
+  1976→        <MetricCard label="Total applications" value={data.totalApplications} icon={Send} accent="crimson" />
+  1977→        <MetricCard label={t("dash.company.analytics.conversion")} value={data.averageConversion} icon={BarChart2} accent="emerald" />
+  1978→      </div>
+  1979→
+  1980→      <SectionCard title="Per-job breakdown">
+  1981→        <div className="overflow-x-auto scroll-area">
+  1982→          <table className="w-full text-sm">
+  1983→            <thead>
+  1984→              <tr className="border-b text-left text-xs text-muted-foreground uppercase">
+  1985→                <th className="py-2 pr-4">Job Title</th>
+  1986→                <th className="py-2 px-4">Views</th>
+  1987→                <th className="py-2 px-4">{t("dash.company.analytics.thisweek")}</th>
+  1988→                <th className="py-2 px-4">Applications</th>
+  1989→                <th className="py-2 px-4">Conversion</th>
+  1990→                <th className="py-2 pl-4">Status</th>
+  1991→              </tr>
+  1992→            </thead>
+  1993→            <tbody>
+  1994→              {data.jobs.map((j) => (
+  1995→                <tr key={j.id} className="border-b last:border-0">
+  1996→                  <td className="py-3 pr-4 font-medium">{j.title}</td>
+  1997→                  <td className="py-3 px-4">{j.viewCount}</td>
+  1998→                  <td className="py-3 px-4">{j.viewsThisWeek}</td>
+  1999→                  <td className="py-3 px-4">{j.applicationCount}</td>
+  2000→                  <td className="py-3 px-4 font-semibold">{j.conversionRate}</td>
+
+[showing lines 1-2000 of 2015; use offset=2001 with limit to continue reading]

@@ -88,6 +88,7 @@ export function toCandidateDTO(c: {
   experienceYears: number;
   education: string | null;
   savedJobIds: string;
+  openToWork: boolean;
   createdAt: Date;
   updatedAt: Date;
 }): CandidateProfileDTO {
@@ -107,6 +108,7 @@ export function toCandidateDTO(c: {
     experienceYears: c.experienceYears,
     education: parseJson<EducationEntry[] | null>(c.education, null),
     savedJobIds: parseJson<string[]>(c.savedJobIds, []),
+    openToWork: c.openToWork,
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
   };

@@ -21,6 +21,13 @@ model User {
   verifyToken  String?  @unique
   resetToken   String?  @unique
   resetTokenExp DateTime?
+  // Google OAuth
+  googleId     String?  @unique
+  image        String?  // profile photo URL (Google or upload)
+  // TOTP 2FA
+  totpEnabled  Boolean  @default(false)
+  totpSecret   String?
+  backupCodes  String?  // JSON string array of hashed backup codes
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -28,6 +35,7 @@ model User {
   company        CompanyProfile?
   notifications  Notification[]
   contactSubmissions ContactSubmission[]
+  jobAlerts      JobAlert[]
 }
 
 model CandidateProfile {
@@ -48,6 +56,7 @@ model CandidateProfile {
   education       String?  // JSON string
   savedJobIds     String   @default("[]") // JSON string array
   resumeData      String?  // JSON: full resume builder data (EN+JP)
+  openToWork      Boolean  @default(true) // "Open to Work" toggle (LinkedIn-style)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -168,4 +177,23 @@ model ContactSubmission {
   userId    String?
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
+}
+
+/// Saved job search alert (LinkedIn-style). Candidates set criteria;
+/// new matching jobs generate a notification.
+model JobAlert {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String   // user-facing label, e.g. "Tokyo N3 React jobs"
+  search      String?  // search keyword
+  location    String?  // location filter
+  jobType     String?  // FULL_TIME | PART_TIME | INTERNSHIP | CONTRACT
+  jlptLevel   String?  // N1|N2|N3|N4|N5|NONE
+  salaryMin   Int?
+  isActive    Boolean  @default(true)
+  lastChecked DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
 }

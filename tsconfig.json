@@ -18,6 +18,7 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
+    "types": [],
     "plugins": [
       {
         "name": "next"
@@ -31,12 +32,16 @@
   },
   "include": [
     "next-env.d.ts",
+    "types/**/*.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "examples",
+    "skills",
+    "prisma"
   ]
 }

@@ -66,6 +66,7 @@ export default function Page() {
             {view === "about" && <StaticPage kind="about" />}
             {view === "for-companies" && <StaticPage kind="for-companies" />}
             {view === "companies" && <StaticPage kind="companies" />}
+            {view === "contact" && <StaticPage kind="contact" />}
           </motion.div>
         </AnimatePresence>
       </div>

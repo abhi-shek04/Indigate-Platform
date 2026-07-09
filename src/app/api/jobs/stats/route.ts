@@ -13,9 +13,9 @@ export async function GET() {
 
     return ok({
       jobCount,
-      candidateCount: candidateCount + 1847, // base for demo realism
+      candidateCount,
       companyCount,
-      placementCount: placementCount + 312,
+      placementCount,
     });
   } catch (e) {
     return handleError(e);

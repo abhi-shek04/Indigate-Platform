@@ -478,7 +478,7 @@ export function LandingPage() {
                   { icon: ShieldCheck, title: "Visa & relocation support", desc: "Every listed job comes with visa sponsorship. Our partners handle paperwork, housing, and onboarding." },
                   { icon: Globe2, title: "Bilingual by design", desc: "Browse jobs in English or Japanese. Companies can post in both languages." },
                   { icon: Heart, title: "Human-reviewed employers", desc: "Every company is vetted by the Indobox team before they can post a single role." },
-                  { icon: Star, title: "Real placement outcomes", desc: "300+ professionals placed across IT, engineering, design, and finance in Japan." },
+                  { icon: Star, title: "End-to-end support", desc: "From job matching to visa application and relocation — we support you at every step." },
                 ].map((item, i) => (
                   <motion.li
                     key={i}

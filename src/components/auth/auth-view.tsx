@@ -448,42 +448,6 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
               </button>
             )}
           </div>
-
-          {/* Demo accounts — subtle, less prominent */}
-          {mode === "login" && (
-            <div className="mt-8 rounded-xl border border-border/70 bg-muted/30 p-3.5">
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80 mb-2.5 px-1">
-                <ShieldCheck className="h-3 w-3" />
-                {t("auth.demo")}
-              </div>
-              <div className="space-y-1">
-                <DemoLine
-                  label="Candidate"
-                  email="arjun@example.com"
-                  pw="candidate123"
-                  onPick={() =>
-                    setForm({ ...form, email: "arjun@example.com", password: "candidate123" })
-                  }
-                />
-                <DemoLine
-                  label="Company"
-                  email="hr@technova.jp"
-                  pw="company123"
-                  onPick={() =>
-                    setForm({ ...form, email: "hr@technova.jp", password: "company123" })
-                  }
-                />
-                <DemoLine
-                  label="Admin"
-                  email="admin@indigate.work"
-                  pw="admin123"
-                  onPick={() =>
-                    setForm({ ...form, email: "admin@indigate.work", password: "admin123" })
-                  }
-                />
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </main>
@@ -547,34 +511,6 @@ function RoleCard({
       </div>
       <p className="font-semibold text-sm">{title}</p>
       <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
-    </button>
-  );
-}
-
-function DemoLine({
-  label,
-  email,
-  pw,
-  onPick,
-}: {
-  label: string;
-  email: string;
-  pw: string;
-  onPick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onPick}
-      className="w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 hover:bg-background transition-colors group text-left"
-    >
-      <span className="inline-flex items-center gap-2 font-medium text-xs text-foreground/80">
-        <span className="h-1.5 w-1.5 rounded-full bg-saffron/70 group-hover:bg-saffron transition-colors" />
-        {label}
-      </span>
-      <span className="text-[11px] text-muted-foreground font-mono group-hover:text-foreground/80 transition-colors">
-        {email} · {pw}
-      </span>
     </button>
   );
 }

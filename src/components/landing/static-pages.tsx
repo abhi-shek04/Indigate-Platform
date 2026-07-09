@@ -25,12 +25,13 @@ import {
   Building2,
 } from "lucide-react";
 
-export function StaticPage({ kind }: { kind: "privacy" | "terms" | "about" | "for-companies" | "companies" | "contact" }) {
+export function StaticPage({ kind }: { kind: "privacy" | "terms" | "about" | "for-companies" | "companies" | "contact" | "how-it-works" }) {
   if (kind === "privacy") return <Privacy />;
   if (kind === "terms") return <Terms />;
   if (kind === "about") return <About />;
   if (kind === "for-companies") return <ForCompanies />;
   if (kind === "contact") return <Contact />;
+  if (kind === "how-it-works") return <HowItWorks />;
   return <Companies />;
 }
 
@@ -921,6 +922,127 @@ function Contact() {
             </form>
           )}
         </div>
+      </div>
+    </main>
+  );
+}
+
+function HowItWorks() {
+  const navigate = useApp((s) => s.navigate);
+  return (
+    <main className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+      <div className="text-center max-w-2xl mx-auto">
+        <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
+          <Plane className="mr-1 h-3 w-3" />
+          How It Works
+        </Badge>
+        <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+          Three simple steps to your Japan career
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          From browsing jobs to landing in Tokyo — IndiGate handles the rest.
+        </p>
+      </div>
+
+      <div className="mt-12 space-y-6">
+        {/* Step 1 */}
+        <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
+          <div className="flex items-start gap-4">
+            <div className="grid place-items-center h-12 w-12 rounded-xl bg-brand-gradient text-white font-display text-xl font-extrabold shrink-0">
+              1
+            </div>
+            <div className="flex-1">
+              <h2 className="font-display text-xl font-bold">Browse hand-picked roles</h2>
+              <p className="mt-1 text-foreground/80 leading-relaxed">
+                Every job on IndiGate is from a vetted Japanese employer with visa
+                sponsorship. Filter by JLPT level, location, salary, and job type to
+                find roles that match your skills and preferences.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4 font-semibold"
+                onClick={() => navigate("jobs")}
+              >
+                <Briefcase className="mr-1.5 h-3.5 w-3.5" />
+                Browse Jobs
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Step 2 */}
+        <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
+          <div className="flex items-start gap-4">
+            <div className="grid place-items-center h-12 w-12 rounded-xl bg-brand-gradient text-white font-display text-xl font-extrabold shrink-0">
+              2
+            </div>
+            <div className="flex-1">
+              <h2 className="font-display text-xl font-bold">Build your resume & apply</h2>
+              <p className="mt-1 text-foreground/80 leading-relaxed">
+                Create a professional resume in both English and Japanese (履歴書) format
+                using our Resume Builder. Upload your PDF, apply to jobs with one click,
+                and track your application status in real time.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4 font-semibold"
+                onClick={() => navigate("register")}
+              >
+                <ArrowRight className="mr-1.5 h-3.5 w-3.5" />
+                Create your profile
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Step 3 */}
+        <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
+          <div className="flex items-start gap-4">
+            <div className="grid place-items-center h-12 w-12 rounded-xl bg-brand-gradient text-white font-display text-xl font-extrabold shrink-0">
+              3
+            </div>
+            <div className="flex-1">
+              <h2 className="font-display text-xl font-bold">Relocate to Japan</h2>
+              <p className="mt-1 text-foreground/80 leading-relaxed">
+                IndiGate handles all documentation, coordination with the Japanese
+                Immigration Bureau, and pre-departure guidance. We support you
+                through visa application, relocation, and post-arrival follow-up.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Badge variant="secondary" className="gap-1">
+                  <ShieldCheck className="h-3 w-3" />
+                  Visa support
+                </Badge>
+                <Badge variant="secondary" className="gap-1">
+                  <Globe2 className="h-3 w-3" />
+                  Bilingual platform
+                </Badge>
+                <Badge variant="secondary" className="gap-1">
+                  <Heart className="h-3 w-3" />
+                  Human support
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* For companies CTA */}
+      <div className="mt-10 rounded-2xl border border-saffron/30 bg-saffron/5 p-6 sm:p-8 text-center">
+        <h2 className="font-display text-xl font-bold">Hiring Indian talent?</h2>
+        <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
+          Companies can post jobs, search candidate profiles, and manage applications
+          — all with bilingual support and full visa guidance.
+        </p>
+        <Button
+          className="mt-4 bg-brand-gradient text-white hover:opacity-90 font-semibold"
+          onClick={() => navigate("for-companies")}
+        >
+          For Companies
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
       </div>
     </main>
   );

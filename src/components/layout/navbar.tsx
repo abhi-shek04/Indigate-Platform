@@ -37,6 +37,7 @@ export function Navbar() {
   const navItems: { label: string; view: View; external?: boolean }[] = [
     { label: t("nav.home"), view: "home" },
     { label: t("nav.jobs"), view: "jobs" },
+    { label: "How it works", view: "how-it-works" },
     { label: t("nav.forCompanies"), view: "for-companies" },
     { label: t("nav.about"), view: "about" },
     { label: t("nav.contact"), view: "contact" },

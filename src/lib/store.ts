@@ -24,7 +24,8 @@ export type View =
   | "about"
   | "companies"
   | "for-companies"
-  | "contact";
+  | "contact"
+  | "how-it-works";
 
 export interface AppState {
   // Auth
@@ -36,7 +37,7 @@ export interface AppState {
   view: View;
   selectedJobId: string | null;
   // candidate dashboard tab
-  candidateTab: "overview" | "applications" | "profile" | "resume" | "saved" | "builder" | "alerts";
+  candidateTab: "overview" | "applications" | "profile" | "resume" | "saved" | "builder" | "alerts" | "settings";
   // company dashboard tab
   companyTab:
     | "overview"
@@ -55,7 +56,8 @@ export interface AppState {
     | "companies"
     | "applications"
     | "testimonials"
-    | "contacts";
+    | "contacts"
+    | "users";
   // locale
   locale: Locale;
   // TOTP 2FA

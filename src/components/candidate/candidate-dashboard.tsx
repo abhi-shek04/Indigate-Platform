@@ -53,6 +53,7 @@ import { JobCard } from "@/components/jobs/job-card";
 import { CandidateAvatar } from "@/components/brand/logo";
 import { ResumeBuilder } from "@/components/candidate/resume-builder";
 import { JobAlerts } from "@/components/candidate/tabs/alerts";
+import { AccountSettings } from "@/components/candidate/tabs/settings";
 import { toast } from "sonner";
 import {
   LayoutDashboard,
@@ -74,6 +75,7 @@ import {
   FileEdit,
   Bell,
   CircleDot,
+  Settings,
 } from "lucide-react";
 import type {
   ApplicationDTO,
@@ -97,6 +99,7 @@ const NAV: NavItem[] = [
   { key: "resume", label: "Upload Resume", icon: Upload },
   { key: "saved", label: "Saved Jobs", icon: Bookmark },
   { key: "alerts", label: "Job Alerts", icon: Bell },
+  { key: "settings", label: "Account Settings", icon: Settings },
 ];
 
 export function CandidateDashboard() {
@@ -167,6 +170,7 @@ export function CandidateDashboard() {
       {tab === "resume" && <Resume />}
       {tab === "saved" && <Saved />}
       {tab === "alerts" && <JobAlerts />}
+      {tab === "settings" && <AccountSettings />}
     </DashboardShell>
   );
 }

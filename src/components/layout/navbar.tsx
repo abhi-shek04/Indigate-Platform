@@ -85,7 +85,7 @@ export function Navbar() {
                 return (
                   <a
                     key={item.label}
-                    href="https://indobox-academy.com"
+                    href="https://www.indobox-academy.in"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="relative px-3.5 py-2 text-sm font-medium rounded-lg transition-all text-foreground/70 hover:text-foreground hover:bg-accent/60 inline-flex items-center gap-1"
@@ -232,7 +232,7 @@ export function Navbar() {
                           initial={{ opacity: 0, x: 20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1], delay: 0.04 + i * 0.04 }}
-                          href="https://indobox-academy.com"
+                          href="https://www.indobox-academy.in"
                           target="_blank"
                           rel="noopener noreferrer"
                           className="relative text-left px-3.5 py-3 rounded-xl text-sm font-medium transition-all flex items-center gap-3 text-foreground/80 hover:bg-accent hover:text-foreground"

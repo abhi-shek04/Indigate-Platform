@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { ok, err, handleError, notify } from "@/lib/api";
+import { ok, err, handleError } from "@/lib/api";
+import { sendEmail, emails } from "@/lib/email";
 import { z } from "zod";
 
 const schema = z.object({ code: z.string().length(6) });
@@ -35,39 +36,32 @@ export async function PUT() {
   try {
     const session = await getSession();
     if (!session) return err("Unauthorized.", 401);
+
+    const user = await db.user.findUnique({
+      where: { id: session.id },
+      select: { email: true },
+    });
+    if (!user) return err("User not found.", 404);
+
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     await db.user.update({
       where: { id: session.id },
       data: { verifyToken: code },
     });
-    await notify(
-      session.id,
-      "New verification code",
-      `Your new IndiGate verification code is ${code}.`,
-    );
 
-    // In dev mode (no RESEND_API_KEY), send the code via email + return it.
-    // In production, only send via email (don't expose in response).
+    // ALWAYS send the OTP via email (not website notifications)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://indigate.work";
+    const verifyUrl = `${appUrl}/?view=verify`;
+    void sendEmail({
+      to: user.email,
+      ...emails.emailVerification(verifyUrl, code),
+    });
+
+    // In dev mode (no RESEND_API_KEY), also return the code so the
+    // frontend can display it (since email won't actually be delivered).
     const isDev = !process.env.RESEND_API_KEY;
     if (isDev) {
       return ok({ sent: true, devCode: code });
-    }
-
-    // Production: send the actual email with the OTP code
-    const { sendEmail, emails } = await import("@/lib/email");
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://indigate.work";
-    const user = await db.user.findUnique({
-      where: { id: session.id },
-      select: { email: true },
-    });
-    if (user) {
-      void sendEmail({
-        to: user.email,
-        ...emails.emailVerification(
-          `${appUrl}/?view=verify`,
-          code,
-        ),
-      });
     }
     return ok({ sent: true });
   } catch (e) {

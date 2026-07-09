@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { ok, err, handleError, notify } from "@/lib/api";
+import { parseBody, ok, err, handleError, notify } from "@/lib/api";
+import { rateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const schema = z.object({
@@ -13,7 +14,11 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => null);
+    const ip = getClientIp(req.headers);
+    if (!rateLimit(`contact:${ip}`, RATE_LIMITS.CONTACT.max, RATE_LIMITS.CONTACT.windowMs)) {
+      return err("Too many messages. Please try again later.", 429);
+    }
+    const body = await parseBody(req);
     const parsed = schema.safeParse(body);
     if (!parsed.success)
       return err(parsed.error.issues[0]?.message ?? "Invalid input.", 422);

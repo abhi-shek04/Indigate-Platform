@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import {
+  parseBody,
   ok,
   err,
   handleError,
@@ -229,7 +230,7 @@ export async function PATCH(
     if (!session || session.role !== "ADMIN")
       return err("Admin access required.", 403);
 
-    const body = await req.json().catch(() => null);
+    const body = await parseBody<{ id?: string }>(req);
     if (resource === "testimonials" && body?.id) {
       const t = await db.testimonial.findUnique({ where: { id: body.id } });
       if (!t) return err("Not found.", 404);

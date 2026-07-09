@@ -5,6 +5,7 @@ import type { Role, SessionUser } from "@/lib/types";
 const SESSION_COOKIE = "indigate_session";
 const SECRET =
   process.env.SESSION_SECRET ?? "indigate-dev-secret-change-in-dotenv";
+const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 if (
   process.env.NODE_ENV === "production" &&
@@ -44,7 +45,11 @@ async function verify(token: string): Promise<Record<string, unknown> | null> {
   const expected = await hmac(body, SECRET);
   if (sig !== expected) return null;
   try {
-    return JSON.parse(Buffer.from(body, "base64url").toString("utf-8"));
+    const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf-8"));
+    // Validate token expiry — reject tokens older than SESSION_MAX_AGE_MS
+    if (typeof payload.iat !== "number") return null;
+    if (Date.now() - payload.iat > SESSION_MAX_AGE_MS) return null;
+    return payload;
   } catch {
     return null;
   }

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { ok, err, handleError, toJobDTO } from "@/lib/api";
+import { parseBody, ok, err, handleError, toJobDTO } from "@/lib/api";
 import { z } from "zod";
 
 export async function GET() {
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const session = await getSession();
     if (!session || session.role !== "CANDIDATE")
       return err("Unauthorized.", 401);
-    const body = await req.json().catch(() => null);
+    const body = await parseBody(req);
     const parsed = schema.safeParse(body);
     if (!parsed.success) return err("Invalid job id.", 422);
 

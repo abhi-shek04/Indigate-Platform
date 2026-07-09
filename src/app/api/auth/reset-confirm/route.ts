@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { createSession } from "@/lib/auth";
-import { ok, err, handleError } from "@/lib/api";
+import { parseBody, ok, err, handleError } from "@/lib/api";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -13,7 +13,7 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => null);
+    const body = await parseBody(req);
     const parsed = schema.safeParse(body);
     if (!parsed.success) return err("Invalid input.", 422);
 

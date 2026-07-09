@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { ok, err, handleError, toJobDTO } from "@/lib/api";
+import { parseBody, ok, err, handleError, toJobDTO } from "@/lib/api";
 import { z } from "zod";
 
 export async function GET(
@@ -53,7 +53,7 @@ export async function PUT(
       job.company.userId === session.id || session.role === "ADMIN";
     if (!isOwner) return err("You don't own this job.", 403);
 
-    const body = await req.json().catch(() => null);
+    const body = await parseBody(req);
     const parsed = updateSchema.safeParse(body);
     if (!parsed.success)
       return err(parsed.error.issues[0]?.message ?? "Invalid input.", 422);

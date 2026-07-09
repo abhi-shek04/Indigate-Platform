@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
-import { ok, err, handleError } from "@/lib/api";
+import { parseBody, ok, err, handleError } from "@/lib/api";
 
 /** GET /api/admin/users — list all users (admin only) */
 export async function GET() {
@@ -34,7 +34,7 @@ export async function PATCH(req: NextRequest) {
     const id = searchParams.get("id");
     if (!id) return err("Missing user id.", 400);
 
-    const body = await req.json().catch(() => null);
+    const body = await parseBody<{ role?: string; isVerified?: boolean }>(req);
     if (!body) return err("Invalid body.", 400);
 
     const data: { role?: string; isVerified?: boolean } = {};

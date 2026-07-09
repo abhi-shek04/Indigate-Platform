@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import type {
   ApplicationDTO,
@@ -11,7 +11,7 @@ import type {
   TestimonialDTO,
 } from "@/lib/types";
 
-export function ok(data: unknown, status = 200) {
+export function ok<T>(data: T, status = 200) {
   return NextResponse.json(data, { status });
 }
 
@@ -19,6 +19,11 @@ export function err(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
 }
 
+/**
+ * Map thrown errors to HTTP responses. Recognises sentinel messages
+ * "UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND" thrown by `requireSession` /
+ * `requireRole` and maps them to the appropriate status codes.
+ */
 export function handleError(e: unknown) {
   if (e instanceof Error) {
     if (e.message === "UNAUTHORIZED")
@@ -29,6 +34,20 @@ export function handleError(e: unknown) {
     return err(e.message, 400);
   }
   return err("Internal server error", 500);
+}
+
+/**
+ * Safely parse a request body as JSON. Returns `null` if the body is missing
+ * or not valid JSON.
+ */
+export async function parseBody<T = unknown>(
+  req: NextRequest,
+): Promise<T | null> {
+  try {
+    return (await req.json()) as T;
+  } catch {
+    return null;
+  }
 }
 
 function parseJson<T = unknown>(v: string | null, fallback: T): T {

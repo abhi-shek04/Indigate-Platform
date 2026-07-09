@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { createSession } from "@/lib/auth";
-import { ok, err, handleError } from "@/lib/api";
+import { parseBody, ok, err, handleError } from "@/lib/api";
 import { verifyTotpToken, verifyBackupCode, consumeBackupCode } from "@/lib/totp";
 import { z } from "zod";
 
@@ -18,7 +18,7 @@ const schema = z.object({
 // exists and 2FA is enabled, then verify the TOTP/backup code.
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => null);
+    const body = await parseBody(req);
     const parsed = schema.safeParse(body);
     if (!parsed.success) return err("Invalid request.", 422);
 

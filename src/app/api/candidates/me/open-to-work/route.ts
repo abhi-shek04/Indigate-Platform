@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { ok, err, handleError } from "@/lib/api";
+import { parseBody, ok, err, handleError } from "@/lib/api";
 import { z } from "zod";
 
 /**
@@ -17,7 +17,7 @@ export async function PATCH(req: NextRequest) {
     if (!session || session.role !== "CANDIDATE")
       return err("Unauthorized.", 401);
 
-    const body = await req.json().catch(() => null);
+    const body = await parseBody(req);
     const parsed = schema.safeParse(body);
     if (!parsed.success)
       return err("openToWork (boolean) is required.", 422);

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { createSession } from "@/lib/auth";
-import { ok, err, handleError, notify } from "@/lib/api";
+import { parseBody, ok, err, handleError, notify } from "@/lib/api";
 import { sendEmail, emails } from "@/lib/email";
 import { rateLimit } from "@/lib/rate-limit";
 import bcrypt from "bcryptjs";
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     if (!rateLimit(`register:${ip}`, 5, 60 * 60 * 1000)) {
       return err("Too many registration attempts. Try again later.", 429);
     }
-    const body = await req.json().catch(() => null);
+    const body = await parseBody(req);
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
       return err(parsed.error.issues[0]?.message ?? "Invalid input", 422);

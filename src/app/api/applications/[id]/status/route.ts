@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { ok, err, handleError, toApplicationDTO, notify } from "@/lib/api";
+import { parseBody, ok, err, handleError, toApplicationDTO, notify } from "@/lib/api";
 import { sendEmail, emails } from "@/lib/email";
 import { z } from "zod";
 
@@ -37,7 +37,7 @@ export async function PATCH(
     const session = await getSession();
     if (!session) return err("Unauthorized.", 401);
 
-    const body = await req.json().catch(() => null);
+    const body = await parseBody(req);
     const parsed = schema.safeParse(body);
     if (!parsed.success)
       return err(parsed.error.issues[0]?.message ?? "Invalid input.", 422);

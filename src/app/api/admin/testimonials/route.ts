@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
-import { ok, err, handleError, toTestimonialDTO } from "@/lib/api";
+import { parseBody, ok, err, handleError, toTestimonialDTO } from "@/lib/api";
 import { z } from "zod";
 
 // GET — all testimonials (admin)
@@ -32,7 +32,7 @@ const createSchema = z.object({
 export async function POST(req: NextRequest) {
   try {
     await requireRole("ADMIN");
-    const body = await req.json().catch(() => null);
+    const body = await parseBody(req);
     const parsed = createSchema.safeParse(body);
     if (!parsed.success)
       return err(parsed.error.issues[0]?.message ?? "Invalid input.", 422);

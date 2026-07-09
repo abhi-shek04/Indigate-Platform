@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { ok, err, handleError, toJobDTO } from "@/lib/api";
+import { parseBody, ok, err, handleError, toJobDTO } from "@/lib/api";
 import { z } from "zod";
 
 export async function GET(req: NextRequest) {
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     if (session.role !== "COMPANY" && session.role !== "ADMIN")
       return err("Only companies and admins can post jobs.", 403);
 
-    const body = await req.json().catch(() => null);
+    const body = await parseBody(req);
     const parsed = createSchema.safeParse(body);
     if (!parsed.success)
       return err(parsed.error.issues[0]?.message ?? "Invalid input.", 422);

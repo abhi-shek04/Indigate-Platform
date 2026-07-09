@@ -1,18 +1,29 @@
 // Resume builder data model — Japanese 履歴書 (Rirekisho) + English resume.
 // Includes dropdown option lists for gender, nationality, Indian states.
+//
+// Form policy: the candidate only fills in ENGLISH fields. The Japanese PDF
+// is generated from the English data — section headers, column names, and
+// labels are translated in the template; data values fall back to the English
+// string. The `*Ja` fields below remain in the type for backward compatibility
+// with previously-saved resumes (and for the optional Katakana reading on the
+// name), but they are NOT shown in the resume-builder form anymore.
 
 export interface ResumeEducation {
-  year: string;
-  degree: string;
+  year: string; // e.g. "2026"
+  month?: string; // e.g. "6" (graduation month)
+  degree: string; // EN: combined degree text shown in the "Degree" column
+  // (e.g. "Bachelors in Technology with Major in Computer Science.")
+  // JP: degree level (e.g. "コンピュータサイエンスとエンジニアリングの理学士")
   degreeJa?: string;
-  field: string;
+  field: string; // EN: (kept for backward compat) JP: school/department field
   fieldJa?: string;
-  institution: string;
+  institution: string; // EN: school name. JP: university name
   institutionJa?: string;
 }
 
 export interface ResumeProject {
-  period: string;
+  year?: string; // e.g. "2025" (used by the EN Projects table)
+  period: string; // EN: month range (e.g. "2-5"); JP: full period text
   name: string;
   nameJa?: string;
   description: string;
@@ -21,8 +32,9 @@ export interface ResumeProject {
 }
 
 export interface ResumeActivity {
-  period: string;
-  duration?: string;
+  year?: string; // e.g. "2025" (used by the EN Work Experience table)
+  period: string; // EN: month range (e.g. "1-5"); JP: full period text
+  duration?: string; // JP duration display, e.g. "9か月"
   organization: string;
   organizationJa?: string;
   role: string;
@@ -33,6 +45,7 @@ export interface ResumeActivity {
 
 export interface ResumeAward {
   year: string;
+  month?: string; // e.g. "4" (used by the EN Certifications table)
   title: string;
   titleJa?: string;
   description: string;
@@ -41,9 +54,27 @@ export interface ResumeAward {
   organizationJa?: string;
 }
 
+// Skill with proficiency flags — matches the sample resume's "Skills" table:
+// Skill | Learned in class | Can operate alone | Can teach others
+export interface ResumeSkill {
+  name: string;
+  learnedInClass: boolean;
+  canOperate: boolean;
+  canTeach: boolean;
+}
+
+// "More About Why You Want to Work in Japan" — 3 Q&A fields.
+export interface ResumeJapanMotivation {
+  whyJapan?: string;
+  careerInJapan?: string;
+  challenges?: string;
+}
+
+export type JlptLevel = "N1" | "N2" | "N3" | "N4" | "N5" | "";
+
 export interface ResumeData {
   name: string;
-  nameJa?: string;
+  nameJa?: string; // optional Katakana reading (kept; not in the EN-only form)
   dob?: string;
   gender?: string; // "male" | "female" | "other" | ""
   email: string;
@@ -52,7 +83,26 @@ export interface ResumeData {
   nationality?: string; // "India" | "Japan" | ...
   placeOfOrigin?: string; // Indian state name
   languages: string[];
-  languagesJa: string[];
+  languagesJa: string[]; // synced from `languages` via LANGUAGE_OPTIONS map
+
+  // Header extras (English resume "Current Degree being Pursued" + "Expected time of Graduation")
+  currentDegree?: string;
+  expectedGraduation?: string;
+
+  // Skills with proficiency flags + free-text "Skills in Which I Excel" bullet list
+  skills: ResumeSkill[];
+  skillsExcelSummary?: string[];
+
+  // Japanese proficiency (current + expected by graduation)
+  currentJlpt?: JlptLevel;
+  expectedJlpt?: JlptLevel;
+
+  // "Other languages" line on the English resume (e.g. "English, Telugu, Hindi")
+  otherLanguages?: string;
+
+  // "More About Why You Want to Work in Japan" — 3 Q&A
+  japanMotivation?: ResumeJapanMotivation;
+
   education: ResumeEducation[];
   projects: ResumeProject[];
   activities: ResumeActivity[];
@@ -75,6 +125,18 @@ export const EMPTY_RESUME: ResumeData = {
   placeOfOrigin: "",
   languages: [],
   languagesJa: [],
+  currentDegree: "",
+  expectedGraduation: "",
+  skills: [],
+  skillsExcelSummary: [],
+  currentJlpt: "",
+  expectedJlpt: "",
+  otherLanguages: "",
+  japanMotivation: {
+    whyJapan: "",
+    careerInJapan: "",
+    challenges: "",
+  },
   education: [],
   projects: [],
   activities: [],
@@ -167,6 +229,8 @@ export const LANGUAGE_OPTIONS = [
   { value: "Spanish", labelJa: "スペイン語" },
 ] as const;
 
+export const JLPT_OPTIONS: JlptLevel[] = ["N1", "N2", "N3", "N4", "N5"];
+
 // Japanese translation map for states (for the JP resume)
 export const STATE_JA: Record<string, string> = {
   "Andhra Pradesh": "アーンドラ・プラデーシュ",
@@ -203,3 +267,15 @@ export const STATE_JA: Record<string, string> = {
   Puducherry: "プドゥッチェリー",
   Chandigarh: "チャンディーガル",
 };
+
+// Compute age from a DOB string (YYYY-MM-DD). Returns "" if invalid.
+export function computeAge(dob?: string): string {
+  if (!dob) return "";
+  const d = new Date(dob);
+  if (isNaN(d.getTime())) return "";
+  const now = new Date();
+  let age = now.getFullYear() - d.getFullYear();
+  const m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+  return String(age);
+}

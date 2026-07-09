@@ -2,10 +2,16 @@
 
 import {
   GENDER_OPTIONS,
+  JLPT_OPTIONS,
   NATIONALITY_OPTIONS,
   STATE_JA,
+  computeAge,
   type ResumeData,
+  type ResumeSkill,
 } from "@/lib/resume-types";
+
+const CHECKED = "☒";
+const UNCHECKED = "☐";
 
 export function ResumePreview({ data, lang }: { data: ResumeData; lang: "en" | "ja" }) {
   if (lang === "ja") return <JapaneseResume data={data} />;
@@ -23,17 +29,39 @@ function nationalityJa(n: string | undefined): string {
   return NATIONALITY_OPTIONS.find((o) => o.value === n)?.labelJa ?? n;
 }
 function stateJa(s: string | undefined): string {
-  if (!s) return "—";
+  if (!s) return "同上";
   return STATE_JA[s] ?? s;
+}
+
+function formatDobEn(dob?: string): string {
+  if (!dob) return "";
+  const d = new Date(dob);
+  if (isNaN(d.getTime())) return dob;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+function formatDobJa(dob?: string): string {
+  if (!dob) return "—";
+  const d = new Date(dob);
+  if (isNaN(d.getTime())) return dob;
+  return `${d.getFullYear()}年 ${String(d.getMonth() + 1).padStart(2, "0")}月 ${String(d.getDate()).padStart(2, "0")}日`;
+}
+function todayDdmmyyyy(): string {
+  const d = new Date();
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
 }
 
 // ----- Japanese 履歴書 -----
 function JapaneseResume({ data }: { data: ResumeData }) {
-  const formatDobJa = (dob?: string) => {
-    if (!dob) return "—";
-    const d = new Date(dob);
-    if (isNaN(d.getTime())) return dob;
-    return `${d.getFullYear()}年 ${String(d.getMonth() + 1).padStart(2, "0")}月 ${String(d.getDate()).padStart(2, "0")}日`;
+  const skillTier = (s: ResumeSkill) => {
+    if (s.canTeach) return "advanced";
+    if (s.canOperate) return "intermediate";
+    return "beginner";
   };
 
   return (
@@ -43,12 +71,12 @@ function JapaneseResume({ data }: { data: ResumeData }) {
       <table className="resume-table">
         <tbody>
           <tr>
-            <th className="w-24">氏名</th>
-            <td className="font-bold text-lg">
-              {data.nameJa || data.name || "—"}
-              {data.name && <span className="ml-2 text-sm text-gray-600">（{data.name}）</span>}
+            <th className="w-32">氏名</th>
+            <td className="font-bold">
+              {data.name || "—"}
+              {data.nameJa && <span className="ml-2 text-gray-600">（{data.nameJa}）</span>}
             </td>
-            <th className="w-24">生年月日</th>
+            <th className="w-32">生年月日</th>
             <td>{formatDobJa(data.dob)}</td>
           </tr>
           <tr>
@@ -74,7 +102,9 @@ function JapaneseResume({ data }: { data: ResumeData }) {
             <td colSpan={3}>
               {data.languagesJa.length > 0
                 ? data.languagesJa.join("、")
-                : "—"}
+                : data.languages.length > 0
+                  ? data.languages.join("、")
+                  : "—"}
             </td>
           </tr>
         </tbody>
@@ -87,19 +117,20 @@ function JapaneseResume({ data }: { data: ResumeData }) {
               <tr>
                 <th className="w-24">年/月</th>
                 <th className="w-32">程度</th>
-                <th>学校 / 学部 / 学科</th>
+                <th className="w-40">学校 / 学部 / 学科</th>
+                <th>大学</th>
               </tr>
             </thead>
             <tbody>
               {data.education.map((edu, i) => (
                 <tr key={i}>
-                  <td>{edu.year}</td>
-                  <td>{edu.degreeJa || edu.degree}</td>
                   <td>
-                    {edu.fieldJa || edu.field}
-                    <br />
-                    <span className="text-gray-700">{edu.institutionJa || edu.institution}</span>
+                    {edu.year}
+                    {edu.month ? ` / ${edu.month}` : ""}
                   </td>
+                  <td>{edu.degreeJa || edu.degree || "—"}</td>
+                  <td>{edu.fieldJa || edu.field || "—"}</td>
+                  <td>{edu.institutionJa || edu.institution || "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -112,22 +143,81 @@ function JapaneseResume({ data }: { data: ResumeData }) {
           <table className="resume-table">
             <thead>
               <tr>
-                <th className="w-28">期間</th>
-                <th className="w-40">プロジェクト名</th>
+                <th className="w-28">年 / 月</th>
+                <th className="w-44">プロジェクト名</th>
                 <th>プロジェクトの内容 / 担当</th>
               </tr>
             </thead>
             <tbody>
-              {data.projects.map((proj, i) => (
+              {data.projects.map((p, i) => (
                 <tr key={i}>
-                  <td>{proj.period}</td>
+                  <td>{p.period || p.year || ""}</td>
                   <td>
-                    {proj.nameJa || proj.name}
-                    {proj.techStack && (
-                      <div className="text-xs text-gray-600 mt-1">{proj.techStack}</div>
+                    {p.nameJa || p.name || "—"}
+                    {p.techStack && <div className="text-xs text-gray-600 mt-1">技術: {p.techStack}</div>}
+                  </td>
+                  <td>{p.descriptionJa || p.description || ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Section>
+      )}
+
+      {data.skills.length > 0 && (
+        <Section title="ITスキル">
+          <table className="resume-table">
+            <thead>
+              <tr>
+                <th>スキル名</th>
+                <th className="text-center w-20">初心者</th>
+                <th className="text-center w-20">中級</th>
+                <th className="text-center w-20">高度な</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.skills.map((s, i) => {
+                const tier = skillTier(s);
+                return (
+                  <tr key={i}>
+                    <td>{s.name}</td>
+                    <td className="text-center">{tier === "beginner" ? CHECKED : UNCHECKED}</td>
+                    <td className="text-center">{tier === "intermediate" ? CHECKED : UNCHECKED}</td>
+                    <td className="text-center">{tier === "advanced" ? CHECKED : UNCHECKED}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Section>
+      )}
+
+      {data.awards.length > 0 && (
+        <Section title="免許・資格">
+          <table className="resume-table">
+            <thead>
+              <tr>
+                <th className="w-24">年 / 月</th>
+                <th className="w-44">タイトル</th>
+                <th>機関 / 組織 / 内容</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.awards.map((aw, i) => (
+                <tr key={i}>
+                  <td>
+                    {aw.year}
+                    {aw.month ? ` / ${aw.month}` : ""}
+                  </td>
+                  <td>{aw.titleJa || aw.title || "—"}</td>
+                  <td>
+                    {aw.organizationJa || aw.organization || ""}
+                    {(aw.descriptionJa || aw.description) && (
+                      <div className="text-xs text-gray-700 mt-1">
+                        {aw.descriptionJa || aw.description}
+                      </div>
                     )}
                   </td>
-                  <td>{proj.descriptionJa || proj.description}</td>
                 </tr>
               ))}
             </tbody>
@@ -136,28 +226,30 @@ function JapaneseResume({ data }: { data: ResumeData }) {
       )}
 
       {data.activities.length > 0 && (
-        <Section title="課外活動 / クラブ活動">
+        <Section title="インターンシップ / 実務経験">
           <table className="resume-table">
             <thead>
               <tr>
-                <th className="w-24">期間</th>
+                <th className="w-28">年 / 月</th>
                 <th>会社名・団体名</th>
                 <th className="w-48">担当 / 仕事内容</th>
+                <th className="w-20">期間</th>
               </tr>
             </thead>
             <tbody>
-              {data.activities.map((act, i) => (
+              {data.activities.map((a, i) => (
                 <tr key={i}>
+                  <td>{a.period || a.year || ""}</td>
                   <td>
-                    {act.period}
-                    {act.duration && <div className="text-xs text-gray-600">{act.duration}</div>}
+                    {a.organizationJa || a.organization || "—"}
+                    {(a.roleJa || a.role) && (
+                      <div className="text-xs text-gray-700 mt-1">
+                        {a.roleJa || a.role}
+                      </div>
+                    )}
                   </td>
-                  <td>
-                    {act.organizationJa || act.organization}
-                    <br />
-                    <span className="text-gray-700">{act.roleJa || act.role}</span>
-                  </td>
-                  <td>{act.dutiesJa || act.duties}</td>
+                  <td>{a.dutiesJa || a.duties || ""}</td>
+                  <td>{a.duration || ""}</td>
                 </tr>
               ))}
             </tbody>
@@ -165,38 +257,17 @@ function JapaneseResume({ data }: { data: ResumeData }) {
         </Section>
       )}
 
-      {data.awards.length > 0 && (
-        <Section title="賞 / 実績">
-          <table className="resume-table">
-            <thead>
-              <tr>
-                <th className="w-20">年</th>
-                <th className="w-40">タイトル</th>
-                <th>詳細</th>
-                <th className="w-36">機関</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.awards.map((aw, i) => (
-                <tr key={i}>
-                  <td>{aw.year}</td>
-                  <td>{aw.titleJa || aw.title}</td>
-                  <td>{aw.descriptionJa || aw.description}</td>
-                  <td>{aw.organizationJa || aw.organization}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Section>
-      )}
-
-      {(data.selfPrJa || data.selfPr) && (
+      {(data.selfPrJa || data.selfPr || data.hobbiesJa || data.hobbies) && (
         <Section title="趣味 / 興味 / 自己PR">
-          <p className="resume-text whitespace-pre-wrap">
-            {data.selfPrJa || data.selfPr}
-          </p>
-          {data.hobbiesJa && (
-            <p className="resume-text mt-2 text-sm text-gray-700">趣味: {data.hobbiesJa}</p>
+          {(data.selfPrJa || data.selfPr) && (
+            <p className="resume-text whitespace-pre-wrap">
+              {data.selfPrJa || data.selfPr}
+            </p>
+          )}
+          {(data.hobbiesJa || data.hobbies) && (
+            <p className="resume-text mt-2 text-sm text-gray-700">
+              趣味: {data.hobbiesJa || data.hobbies}
+            </p>
           )}
         </Section>
       )}
@@ -208,7 +279,7 @@ function JapaneseResume({ data }: { data: ResumeData }) {
         </p>
         <div className="mt-4 flex justify-end">
           <span className="border-b border-black px-8 py-0.5">
-            氏名: {data.nameJa || data.name}
+            氏名: {data.nameJa || data.name || "—"}
           </span>
         </div>
       </div>
@@ -218,115 +289,260 @@ function JapaneseResume({ data }: { data: ResumeData }) {
 
 // ----- English resume -----
 function EnglishResume({ data }: { data: ResumeData }) {
-  const formatDobEn = (dob?: string) => {
-    if (!dob) return "";
-    const d = new Date(dob);
-    if (isNaN(d.getTime())) return dob;
-    return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-  };
+  const age = computeAge(data.dob);
+  const dobDisplay = formatDobEn(data.dob);
+  const dobWithAge = dobDisplay
+    ? `${dobDisplay}${age ? ` (Age: ${age})` : ""}`
+    : "";
 
   return (
     <div className="resume-page resume-en mx-auto bg-white text-black print:shadow-none shadow-premium">
-      <header className="resume-header">
-        <h1 className="resume-name">{data.name || "Your Name"}</h1>
-        <div className="resume-contact">
-          {data.email && <span>{data.email}</span>}
-          {data.phone && <span> · {data.phone}</span>}
-          {data.address && <span> · {data.address}</span>}
-        </div>
-        <div className="resume-meta">
-          {data.dob && <span>DOB: {formatDobEn(data.dob)}</span>}
-          {data.gender && <span> · {genderEn(data.gender)}</span>}
-          {data.nationality && <span> · Nationality: {data.nationality}</span>}
-          {data.placeOfOrigin && <span> · {data.placeOfOrigin}</span>}
-          {data.languages.length > 0 && <span> · Languages: {data.languages.join(", ")}</span>}
-        </div>
-      </header>
+      {/* Title row */}
+      <div className="flex items-baseline justify-between border-b-2 border-black pb-2 mb-4">
+        <h1 className="text-2xl font-extrabold tracking-wide">Resume</h1>
+        <span className="text-sm text-gray-600">Date: {todayDdmmyyyy()}</span>
+      </div>
 
-      {data.education.length > 0 && (
-        <SectionEn title="Education">
-          {data.education.map((edu, i) => (
-            <div key={i} className="resume-entry">
-              <div className="resume-entry-header">
-                <span className="font-bold">{edu.institution}</span>
-                <span className="text-gray-600">{edu.year}</span>
-              </div>
-              <div className="text-sm">
-                {edu.degree} — {edu.field}
-              </div>
-            </div>
-          ))}
-        </SectionEn>
-      )}
+      {/* Personal info block */}
+      <div className="mb-4 space-y-1 text-sm">
+        <div className="flex">
+          <span className="font-bold w-36">Your Name :</span>
+          <span className="flex-1">{data.name || "—"}</span>
+        </div>
+        <div className="flex">
+          <span className="flex-1">
+            {dobWithAge}
+            {data.gender && <span className="ml-4">{genderEn(data.gender)}</span>}
+          </span>
+        </div>
+        <div className="flex">
+          <span className="font-bold w-36">E-Mail :</span>
+          <span className="flex-1">{data.email || "—"}</span>
+          <span className="font-bold w-36">Telephone Number:</span>
+          <span className="flex-1">{data.phone || "—"}</span>
+        </div>
+        <div className="flex">
+          <span className="font-bold w-36">Address :</span>
+          <span className="flex-1">{data.address || "—"}</span>
+        </div>
+        <div className="flex">
+          <span className="font-bold w-44">Current Degree being Pursued:</span>
+          <span className="flex-1">{data.currentDegree || "—"}</span>
+        </div>
+        <div className="flex">
+          <span className="font-bold w-44">Expected time of Graduation:</span>
+          <span className="flex-1">{data.expectedGraduation || "—"}</span>
+        </div>
+      </div>
 
-      {data.projects.length > 0 && (
-        <SectionEn title="Projects">
-          {data.projects.map((proj, i) => (
-            <div key={i} className="resume-entry">
-              <div className="resume-entry-header">
-                <span className="font-bold">{proj.name}</span>
-                <span className="text-gray-600">{proj.period}</span>
-              </div>
-              <p className="text-sm mt-1">{proj.description}</p>
-              {proj.techStack && (
-                <p className="text-xs text-gray-600 mt-1">
-                  <span className="font-medium">Tech:</span> {proj.techStack}
-                </p>
-              )}
-            </div>
-          ))}
-        </SectionEn>
-      )}
+      {/* Education */}
+      <SectionEn title="Education">
+        <table className="resume-table">
+          <thead>
+            <tr>
+              <th className="w-16">Year</th>
+              <th className="w-16">Month</th>
+              <th>School</th>
+              <th className="w-1/3">Degree</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.education.length === 0 ? (
+              <tr><td colSpan={4} className="text-gray-400 italic">No education entries.</td></tr>
+            ) : (
+              data.education.map((edu, i) => (
+                <tr key={i}>
+                  <td>{edu.year}</td>
+                  <td>{edu.month ?? ""}</td>
+                  <td>{edu.institution || "—"}</td>
+                  <td>{edu.degree || edu.field || "—"}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </SectionEn>
 
       {data.activities.length > 0 && (
-        <SectionEn title="Activities & Leadership">
-          {data.activities.map((act, i) => (
-            <div key={i} className="resume-entry">
-              <div className="resume-entry-header">
-                <span className="font-bold">{act.role} — {act.organization}</span>
-                <span className="text-gray-600">{act.period}</span>
-              </div>
-              <p className="text-sm mt-1">{act.duties}</p>
-            </div>
-          ))}
+        <SectionEn title="Work Experience (Apprenticeship/Internship)">
+          <table className="resume-table">
+            <thead>
+              <tr>
+                <th className="w-16">Year</th>
+                <th className="w-16">Month</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.activities.map((a, i) => (
+                <tr key={i}>
+                  <td>{a.year ?? ""}</td>
+                  <td>{a.period || ""}</td>
+                  <td>
+                    {a.role || a.organization ? (
+                      <span className="font-medium">
+                        {a.role ? `${a.role} at ` : ""}{a.organization || ""}
+                        {(a.role || a.organization) && " — "}
+                      </span>
+                    ) : null}
+                    {a.duties || ""}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </SectionEn>
       )}
 
       {data.awards.length > 0 && (
-        <SectionEn title="Awards & Achievements">
-          {data.awards.map((aw, i) => (
-            <div key={i} className="resume-entry">
-              <div className="resume-entry-header">
-                <span className="font-bold">{aw.title}</span>
-                <span className="text-gray-600">{aw.year}</span>
-              </div>
-              <p className="text-sm mt-1">{aw.description}</p>
-              <p className="text-xs text-gray-600">{aw.organization}</p>
-            </div>
+        <SectionEn title="Certifications / Achievements">
+          <table className="resume-table">
+            <thead>
+              <tr>
+                <th className="w-16">Year</th>
+                <th className="w-16">Month</th>
+                <th className="w-1/3">Title</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.awards.map((aw, i) => (
+                <tr key={i}>
+                  <td>{aw.year}</td>
+                  <td>{aw.month ?? ""}</td>
+                  <td>
+                    {aw.title}
+                    {aw.organization && <div className="text-xs text-gray-600">{aw.organization}</div>}
+                  </td>
+                  <td>{aw.description || ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </SectionEn>
+      )}
+
+      {data.projects.length > 0 && (
+        <SectionEn title="Projects / Co-Curricular Activities">
+          <table className="resume-table">
+            <thead>
+              <tr>
+                <th className="w-16">Year</th>
+                <th className="w-16">Month</th>
+                <th>Project / Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.projects.map((p, i) => (
+                <tr key={i}>
+                  <td>{p.year ?? ""}</td>
+                  <td>{p.period || ""}</td>
+                  <td>
+                    <span className="font-medium">{p.name}</span>
+                    {p.techStack && <div className="text-xs text-gray-600">Tech Stack: {p.techStack}</div>}
+                    {p.description && <div className="text-sm mt-1">{p.description}</div>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </SectionEn>
+      )}
+
+      {data.skills.length > 0 && (
+        <SectionEn title="Skills">
+          <table className="resume-table">
+            <thead>
+              <tr>
+                <th>Skill Name</th>
+                <th className="text-center w-28">Learned in class</th>
+                <th className="text-center w-28">Can operate alone</th>
+                <th className="text-center w-28">Can teach others</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.skills.map((s, i) => (
+                <tr key={i}>
+                  <td>{s.name}</td>
+                  <td className="text-center">{s.learnedInClass ? CHECKED : UNCHECKED}</td>
+                  <td className="text-center">{s.canOperate ? CHECKED : UNCHECKED}</td>
+                  <td className="text-center">{s.canTeach ? CHECKED : UNCHECKED}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </SectionEn>
+      )}
+
+      {data.skillsExcelSummary && data.skillsExcelSummary.length > 0 && (
+        <SectionEn title="Skills in Which I Excel">
+          <ol className="list-decimal pl-6 space-y-2 text-sm">
+            {data.skillsExcelSummary.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ol>
+        </SectionEn>
+      )}
+
+      <SectionEn title="Current Japanese Proficiency Level">
+        <div className="flex justify-between px-6 py-2 text-base">
+          {JLPT_OPTIONS.map((lvl) => (
+            <span key={lvl}>
+              {lvl} {data.currentJlpt === lvl ? CHECKED : UNCHECKED}
+            </span>
           ))}
-        </SectionEn>
-      )}
-
-      {data.selfPr && (
-        <SectionEn title="Professional Summary">
-          <p className="text-sm whitespace-pre-wrap">{data.selfPr}</p>
-          {data.hobbies && (
-            <p className="text-sm mt-2">
-              <span className="font-medium">Hobbies:</span> {data.hobbies}
-            </p>
-          )}
-        </SectionEn>
-      )}
-
-      <div className="resume-declaration-en">
-        <p className="text-xs text-gray-600 italic">
-          I declare that the information provided above is true to the best of my knowledge.
-          I understand that I am responsible for any legal consequences of falsification.
-        </p>
-        <div className="mt-4 flex justify-end">
-          <span className="border-b border-black px-8 py-0.5 text-sm">{data.name}</span>
         </div>
-      </div>
+      </SectionEn>
+
+      <SectionEn title="Expected Japanese Proficiency Level to be Achieved by Graduation Time">
+        <div className="flex justify-between px-6 py-2 text-base">
+          {JLPT_OPTIONS.map((lvl) => (
+            <span key={lvl}>
+              {lvl} {data.expectedJlpt === lvl ? CHECKED : UNCHECKED}
+            </span>
+          ))}
+        </div>
+      </SectionEn>
+
+      {data.otherLanguages ? (
+        <SectionEn title="Other languages">
+          <p className="text-center text-sm py-1">{data.otherLanguages}</p>
+        </SectionEn>
+      ) : null}
+
+      {data.japanMotivation && (data.japanMotivation.whyJapan || data.japanMotivation.careerInJapan || data.japanMotivation.challenges) && (
+        <SectionEn title="More About Why You Want to Work in Japan">
+          <div className="space-y-3">
+            {data.japanMotivation.whyJapan && (
+              <QAItem
+                question="Why do you want to work in Japan? (日本で働きたい理由は何ですか？)"
+                answer={data.japanMotivation.whyJapan}
+              />
+            )}
+            {data.japanMotivation.careerInJapan && (
+              <QAItem
+                question="What kind of career would you like to create in Japan? (日本でどのようなキャリアを作りたいと思いますか？)"
+                answer={data.japanMotivation.careerInJapan}
+              />
+            )}
+            {data.japanMotivation.challenges && (
+              <QAItem
+                question="What challenges do you foresee in adjusting to life in Japan, and how would you address them? (日本生活への適応において、どのような課題を予想し、どう対処しますか？)"
+                answer={data.japanMotivation.challenges}
+              />
+            )}
+          </div>
+        </SectionEn>
+      )}
+    </div>
+  );
+}
+
+function QAItem({ question, answer }: { question: string; answer: string }) {
+  return (
+    <div className="border border-gray-300 p-2 rounded">
+      <p className="font-bold text-sm mb-1">{question}</p>
+      <p className="text-sm whitespace-pre-wrap">{answer}</p>
     </div>
   );
 }
@@ -343,8 +559,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function SectionEn({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="resume-section-en">
-      <h2 className="resume-section-title-en">{title}</h2>
-      <div className="space-y-3">{children}</div>
+      <h2 className="resume-section-title-en text-center">{title}</h2>
+      <div className="space-y-2">{children}</div>
     </div>
   );
 }

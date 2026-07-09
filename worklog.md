@@ -251,3 +251,89 @@ Stage Summary:
   - `src/app/api/candidates/me/open-to-work/route.ts` — replaced non-existent `parseBody` import with `req.json().catch(() => null)` (matches the pattern in `resume/route.ts`). Bug fix only — no logic/contract change.
   - `src/app/api/candidates/me/alerts/route.ts` — same `parseBody` → `req.json()` fix in the POST handler.
 - All 3 features verified end-to-end via Agent Browser (desktop + mobile) and direct curl API calls. Zero console errors. Lint + tsc clean (modulo pre-existing `bcryptjs` types error).
+
+---
+Task ID: RESUME-REWRITE
+Agent: general-purpose (resume template rewrite)
+Task: Rewrite EN + JP resume PDF templates to match professional samples (Abhishek_EN_Resume.pdf / Abhishek_JP_Resume.pdf). Extracted exact text from both sample PDFs via `pdftotext -layout` before writing.
+
+Work Log:
+- Read all 4 target files (`src/lib/resume-types.ts`, both PDF templates in `src/lib/pdf-templates/`, `src/components/candidate/resume-builder.tsx`) plus the in-browser HTML preview (`src/components/candidate/resume-preview.tsx`), the resume PUT/GET API route (`src/app/api/candidates/me/resume/route.ts`), and the sample PDFs in `upload/`.
+- Extracted the exact text of both sample PDFs with `pdftotext -layout` to understand the precise column layout and section order for EN (Resume / Date header → personal info block → Education table → Work Experience table → Certifications table → Projects table → Skills table with ☒/☐ checkmarks → "Skills in Which I Excel" numbered list → Current JLPT (N1–N5) → Expected JLPT → Other languages → "More About Why You Want to Work in Japan" 3 Q&A) and JP (履歴書 → 氏名/生年月日/性別/メールアドレス/国籍/本籍地/既習言語 → 教育 (4-col) → プロジェクト (3-col) → ITスキル (4-col with 初心者/中級/高度な checkboxes) → 免許・資格 (3-col) → インターンシップ/実務経験 (4-col) → 趣味/興味/自己PR → 宣言).
+- Updated `src/lib/resume-types.ts`:
+  - Added `month?` to `ResumeEducation` (EN Education table has separate Year | Month columns).
+  - Added `year?` to `ResumeProject` and `ResumeActivity` (EN Work Experience / Projects tables have separate Year column).
+  - Added `month?` to `ResumeAward` (EN Certifications table has separate Year | Month columns).
+  - Added new types: `ResumeSkill` (name + 3 boolean proficiency flags), `ResumeJapanMotivation` (whyJapan/careerInJapan/challenges), `JlptLevel` union.
+  - Added new top-level fields on `ResumeData`: `currentDegree`, `expectedGraduation`, `skills: ResumeSkill[]`, `skillsExcelSummary: string[]`, `currentJlpt`, `expectedJlpt`, `otherLanguages`, `japanMotivation`.
+  - Updated `EMPTY_RESUME` to initialize all new fields with sensible defaults (skills=[], skillsExcelSummary=[], japanMotivation={…}, etc.).
+  - Added `JLPT_OPTIONS = ["N1"…"N5"]` constant.
+  - Added `computeAge(dob)` helper used by the EN PDF/preview to render "(Age: 21)" next to the DOB.
+- Updated `src/app/api/candidates/me/resume/route.ts` zod schema to accept all new fields (month/year on existing entries, currentDegree, expectedGraduation, skills, skillsExcelSummary, currentJlpt, expectedJlpt, otherLanguages, japanMotivation). Verified round-trip: PUT a fully-populated test resume → GET returns it unchanged.
+- Rewrote `src/lib/pdf-templates/english-resume-pdf.tsx` end-to-end:
+  - "Resume" title row + "Date: DD/MM/YYYY" (auto-generated) at the top.
+  - Personal-info block exactly matching the sample: "Your Name :", DOB as "DD/MM/YYYY (Age: NN)" + gender, "E-Mail :" + "Telephone Number:" on the same row, "Address :", "Current Degree being Pursued:", "Expected time of Graduation:".
+  - Education table (Year | Month | School | Degree) using `flexDirection: "row"` with `width: "12% / 12% / 40% / 36%"` columns.
+  - Work Experience table (Year | Month | Description) — combines role + organization + duties into the Description cell.
+  - Certifications / Achievements table (Year | Month | Title | Description) — title cell stacks the organization under the title.
+  - Projects / Co-Curricular Activities table (Year | Month | Project / Description) — cell stacks name + tech stack + description.
+  - Skills table (Skill Name | Learned in class | Can operate alone | Can teach others) with ☒/☐ Unicode glyphs.
+  - "Skills in Which I Excel" numbered list (1./2./3.) rendered from `skillsExcelSummary[]`.
+  - "Current Japanese Proficiency Level" — N1–N5 row with one checkbox selected based on `currentJlpt`.
+  - "Expected Japanese Proficiency Level to be Achieved by Graduation Time" — same pattern with `expectedJlpt`.
+  - "Other languages" centered line.
+  - "More About Why You Want to Work in Japan" — 3 bordered Q&A cards with the bilingual question text (English + Japanese in parentheses) and the candidate's answer.
+- Rewrote `src/lib/pdf-templates/japanese-resume-pdf.tsx` end-to-end (NotoSansJP font already registered):
+  - 履歴書 title (centered, letter-spacing 6).
+  - Personal-info table (氏名 | value | 生年月日 | value) × 4 rows + (既習言語 spanning) — 本籍地 shows "同上" when placeOfOrigin is empty (matches sample convention).
+  - 教育 table (年/月 | 程度 | 学校/学部/学科 | 大学) — falls back to English data when the `*Ja` variant is absent.
+  - プロジェクト table (年/月 | プロジェクト名 | プロジェクトの内容/担当).
+  - ITスキル table (スキル名 | 初心者 | 中級 | 高度な) — maps the EN 3-flag proficiency (learnedInClass/canOperate/canTeach) onto JP tiers via heuristic (canTeach → 高度な, canOperate → 中級, else 初心者) with ☒/☐ glyphs.
+  - 免許・資格 table (年/月 | タイトル | 機関/組織/内容).
+  - インターンシップ/実務経験 table (年/月 | 会社名・団体名 | 担当部署/仕事内容 | 期間).
+  - 趣味 / 興味 / 自己PR free-text section + 宣言 signature block.
+- Rewrote `src/components/candidate/resume-preview.tsx` (in-browser HTML preview) to mirror both new PDF layouts (EN: title row + personal-info rows + 4 tables + skills-with-checkboxes table + numbered excel list + JLPT rows + other-languages + 3 Q&A cards; JP: 履歴書 + personal info + 教育 + プロジェクト + ITスキル + 免許・資格 + インターンシップ + 自己PR + 宣言). Uses the same ☒/☐ glyphs and the same JLPT/skill-tier mapping as the PDFs so the preview matches the downloaded PDF.
+- Rewrote `src/components/candidate/resume-builder.tsx` form:
+  - REMOVED all Japanese input fields: nameJa, degreeJa, fieldJa, institutionJa, nameJa, descriptionJa, organizationJa, roleJa, dutiesJa, titleJa, descriptionJa, organizationJa, selfPrJa, hobbiesJa (all 13 Japanese fields). The form is now English-only — the JP PDF is auto-generated from the English data with Japanese labels/structure.
+  - The `languagesJa` array is still synced automatically from `languages` via `LANGUAGE_OPTIONS` (the candidate only ever picks English language names; the JP label is looked up).
+  - Expanded `SECTIONS` sidebar nav from 6 → 10 entries: Personal Info / Education / Work Experience / Certifications / Projects / Skills / Skills I Excel In / Japanese & Languages / Why Japan? / Self-PR & Hobbies.
+  - Updated `computeProgress()` to check all 10 sections.
+  - Personal Info: added "Current degree being pursued" and "Expected time of graduation" inputs.
+  - Education: split Year + Month into separate inputs; degree is now "combined text shown in PDF" (matches sample).
+  - Work Experience: split Year + Month(period) + Duration + Role + Organization + Description (English only).
+  - Certifications: Year + Month + Organization + Title + Description (English only).
+  - Projects: Year + Month(period) + Name + Tech stack + Description (English only).
+  - NEW Skills section: each row has Skill name + 3 shadcn Checkboxes (Learned in class / Can operate alone / Can teach others).
+  - NEW "Skills in Which I Excel" section: dynamic numbered bullet list with add/remove.
+  - NEW "Japanese Proficiency & Other Languages" section: 2 Select dropdowns (current JLPT, expected JLPT) + "Other languages" comma-separated input.
+  - NEW "More About Why You Want to Work in Japan" section: 3 Textareas for the bilingual Q&A.
+  - Self-PR & Hobbies: kept (English-only).
+  - `load()` now merges saved data with `EMPTY_RESUME` (and deep-merges `japanMotivation`) so previously-saved resumes without the new sub-objects still load cleanly.
+  - Added new lucide-react icons: `Code2` (Projects, Skills), `Languages` (Japanese & Languages), `MapPin` (Why Japan?), `ListChecks` (Skills I Excel In).
+  - Added `Checkbox` import from `@/components/ui/checkbox` for the proficiency flags.
+  - Updated the header PDF-download filenames to use `data.name` (no longer falls back to `nameJa`).
+- Verification:
+  - `npx tsc --noEmit`: clean (exit 0).
+  - `bun run lint`: ZERO issues (exit 0).
+  - Dev server (already running on :3000) hot-reloaded all 5 modified files cleanly; no compile errors.
+  - API round-trip test via curl: PUT a fully-populated test resume with all new fields → 200 `{saved:true}` → GET returns it unchanged (including skills array, japanMotivation object, JLPT levels, currentDegree/expectedGraduation).
+  - Agent-browser smoke test (logged in as candidate):
+    - Resume Builder Edit tab: all 10 sidebar sections render; new fields visible (Current degree, Expected time of graduation, JLPT dropdowns, Skills-with-checkboxes, 3 Why-Japan textareas). No Japanese input fields remain.
+    - Filled Personal Info + 1 Skill (all 3 checkboxes ticked) → Save → 200 OK → API GET confirms the new fields persisted (name=Abhishek, currentDegree=Bachelors in Technology…, expectedGraduation=06/2026, skills=[{name:'HTML, CSS, JavaScript', learnedInClass:true, canOperate:true, canTeach:true}], japanMotivation object present).
+    - English Resume preview: renders the new title row + personal info block + 4-column Education table header. No console errors (only the pre-existing `ShieldCheck is not defined` error from `admin-dashboard.tsx`, unrelated to resume work).
+    - 日本語 履歴書 preview: renders 履歴書 title + personal-info table with 氏名/生年月日/性別/メールアドレス/国籍(インド)/本籍地(同上)/電話番号/住所/既習言語(英語) + ITスキル table with skill "HTML, CSS, JavaScript" → ☐ ☐ ☒ (高度な, because canTeach=true). All Japanese labels rendered correctly via NotoSansJP.
+  - Restored testuser's resume to minimal state after testing so no test data remains in the DB.
+
+Stage Summary:
+- 5 files modified:
+  1. `src/lib/resume-types.ts` — added `month?` (education/awards), `year?` (projects/activities), new `ResumeSkill` + `ResumeJapanMotivation` + `JlptLevel` types, new top-level fields (`currentDegree`, `expectedGraduation`, `skills`, `skillsExcelSummary`, `currentJlpt`, `expectedJlpt`, `otherLanguages`, `japanMotivation`), updated `EMPTY_RESUME`, added `JLPT_OPTIONS` and `computeAge()` helper.
+  2. `src/app/api/candidates/me/resume/route.ts` — extended zod schema with all new fields (backward compatible — all new fields are optional or default to `[]`).
+  3. `src/lib/pdf-templates/english-resume-pdf.tsx` — full rewrite matching the EN sample: Resume+Date title row, personal-info block with all 6 sample rows, Education/Work Experience/Certifications/Projects tables with the right column widths, Skills proficiency table with ☒/☐ glyphs, "Skills in Which I Excel" numbered list, JLPT N1–N5 checkbox rows (current + expected), Other languages line, "More About Why You Want to Work in Japan" 3 bordered Q&A cards. Uses @react-pdf/renderer `Document`/`Page`/`View`/`Text` only — tables built from `flexDirection:"row"` + percentage widths.
+  4. `src/lib/pdf-templates/japanese-resume-pdf.tsx` — full rewrite matching the JP sample: 履歴書 title, personal-info table (氏名/生年月日/性別/メールアドレス/国籍/本籍地/電話番号/住所/既習言語 with "同上" fallback), 教育 (4-col), プロジェクト (3-col), ITスキル (4-col with 初心者/中級/高度な checkboxes — proficiency mapped from the EN 3-flag shape), 免許・資格 (3-col), インターンシップ/実務経験 (4-col), 趣味/自己PR + 宣言 block. NotoSansJP font used throughout.
+  5. `src/components/candidate/resume-builder.tsx` — full rewrite of the form: removed ALL 13 Japanese input fields (form is now English-only), expanded from 6 → 10 sidebar sections, added new editors for Skills (3-checkbox proficiency), Skills I Excel In (numbered list), JLPT levels (2 dropdowns), Other languages, Japan motivation (3 textareas). `load()` deep-merges with `EMPTY_RESUME` for backward compat. New lucide icons imported (Code2, Languages, MapPin, ListChecks) + `Checkbox` from shadcn.
+- 1 additional file modified for consistency:
+  6. `src/components/candidate/resume-preview.tsx` — full rewrite of the in-browser HTML preview to mirror both new PDF layouts exactly (same column structure, same ☒/☐ glyphs, same JLPT/skill-tier mapping). The browser preview now matches what the candidate will see when they download the PDF.
+
+Backward compatibility: previously-saved resumes (without `skills`, `japanMotivation`, etc.) continue to load and render — `EMPTY_RESUME` defaults + zod `default([])` on the API ensure missing arrays/objects are filled in. Existing `*Ja` optional fields remain in the type so old data isn't lost; the form simply doesn't expose them anymore.
+
+Known unrelated issue (NOT introduced by this task): `src/components/admin/admin-dashboard.tsx` references `ShieldCheck` which is not imported from lucide-react — this throws a `ReferenceError` during SSR and falls back to client rendering. It affects only the admin dashboard, not the candidate resume builder. Pre-existing on arrival.

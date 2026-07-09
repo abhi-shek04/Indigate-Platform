@@ -27,6 +27,7 @@ export async function GET() {
 
 const educationSchema = z.object({
   year: z.string(),
+  month: z.string().optional(),
   degree: z.string(),
   degreeJa: z.string().optional(),
   field: z.string(),
@@ -36,6 +37,7 @@ const educationSchema = z.object({
 });
 
 const projectSchema = z.object({
+  year: z.string().optional(),
   period: z.string(),
   name: z.string(),
   nameJa: z.string().optional(),
@@ -45,6 +47,7 @@ const projectSchema = z.object({
 });
 
 const activitySchema = z.object({
+  year: z.string().optional(),
   period: z.string(),
   duration: z.string().optional(),
   organization: z.string(),
@@ -57,12 +60,26 @@ const activitySchema = z.object({
 
 const awardSchema = z.object({
   year: z.string(),
+  month: z.string().optional(),
   title: z.string(),
   titleJa: z.string().optional(),
   description: z.string(),
   descriptionJa: z.string().optional(),
   organization: z.string(),
   organizationJa: z.string().optional(),
+});
+
+const skillSchema = z.object({
+  name: z.string(),
+  learnedInClass: z.boolean(),
+  canOperate: z.boolean(),
+  canTeach: z.boolean(),
+});
+
+const japanMotivationSchema = z.object({
+  whyJapan: z.string().optional(),
+  careerInJapan: z.string().optional(),
+  challenges: z.string().optional(),
 });
 
 const resumeSchema = z.object({
@@ -77,6 +94,14 @@ const resumeSchema = z.object({
   placeOfOrigin: z.string().optional(),
   languages: z.array(z.string()).default([]),
   languagesJa: z.array(z.string()).default([]),
+  currentDegree: z.string().optional(),
+  expectedGraduation: z.string().optional(),
+  skills: z.array(skillSchema).default([]),
+  skillsExcelSummary: z.array(z.string()).default([]),
+  currentJlpt: z.string().optional(),
+  expectedJlpt: z.string().optional(),
+  otherLanguages: z.string().optional(),
+  japanMotivation: japanMotivationSchema.optional(),
   education: z.array(educationSchema).default([]),
   projects: z.array(projectSchema).default([]),
   activities: z.array(activitySchema).default([]),

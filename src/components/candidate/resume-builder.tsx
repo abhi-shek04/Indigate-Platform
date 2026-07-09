@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -34,6 +35,10 @@ import {
   Loader2,
   X,
   Download,
+  Code2,
+  Languages,
+  MapPin,
+  ListChecks,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -47,12 +52,14 @@ import {
   NATIONALITY_OPTIONS,
   INDIAN_STATES,
   LANGUAGE_OPTIONS,
-  STATE_JA,
+  JLPT_OPTIONS,
   type ResumeData,
   type ResumeEducation,
   type ResumeProject,
   type ResumeActivity,
   type ResumeAward,
+  type ResumeSkill,
+  type JlptLevel,
 } from "@/lib/resume-types";
 import { ResumePreview } from "./resume-preview";
 
@@ -66,10 +73,14 @@ const SECTIONS: {
 }[] = [
   { id: "section-personal", icon: User, label: "Personal Info" },
   { id: "section-education", icon: GraduationCap, label: "Education" },
-  { id: "section-projects", icon: Briefcase, label: "Projects" },
-  { id: "section-activities", icon: Heart, label: "Activities" },
-  { id: "section-awards", icon: Award, label: "Awards" },
-  { id: "section-selfpr", icon: Sparkles, label: "Self-PR" },
+  { id: "section-experience", icon: Briefcase, label: "Work Experience" },
+  { id: "section-certifications", icon: Award, label: "Certifications" },
+  { id: "section-projects", icon: Code2, label: "Projects" },
+  { id: "section-skills", icon: Code2, label: "Skills" },
+  { id: "section-excel", icon: ListChecks, label: "Skills I Excel In" },
+  { id: "section-jlpt", icon: Languages, label: "Japanese & Languages" },
+  { id: "section-japan", icon: MapPin, label: "Why Japan?" },
+  { id: "section-selfpr", icon: Sparkles, label: "Self-PR & Hobbies" },
 ];
 
 /**
@@ -80,10 +91,16 @@ function computeProgress(data: ResumeData): number {
   const filled: boolean[] = [
     !!(data.name?.trim() || data.email?.trim() || data.phone?.trim()),
     data.education.length > 0,
-    data.projects.length > 0,
     data.activities.length > 0,
     data.awards.length > 0,
-    !!(data.selfPr?.trim() || data.selfPrJa?.trim() || data.hobbies?.trim()),
+    data.projects.length > 0,
+    data.skills.length > 0,
+    (data.skillsExcelSummary?.length ?? 0) > 0,
+    !!(data.currentJlpt || data.expectedJlpt || data.otherLanguages?.trim()),
+    !!(data.japanMotivation?.whyJapan?.trim() ||
+      data.japanMotivation?.careerInJapan?.trim() ||
+      data.japanMotivation?.challenges?.trim()),
+    !!(data.selfPr?.trim() || data.hobbies?.trim()),
   ];
   return Math.round(
     (filled.filter(Boolean).length / filled.length) * 100,
@@ -140,7 +157,16 @@ export function ResumeBuilder() {
         "/api/candidates/me/resume",
       );
       if (res.resumeData) {
-        setData({ ...EMPTY_RESUME, ...res.resumeData });
+        // Merge with EMPTY_RESUME so new sub-objects (`japanMotivation`,
+        // `skills`, …) always exist even on previously-saved resumes.
+        setData({
+          ...EMPTY_RESUME,
+          ...res.resumeData,
+          japanMotivation: {
+            ...EMPTY_RESUME.japanMotivation,
+            ...(res.resumeData.japanMotivation ?? {}),
+          },
+        });
       } else if (candidate) {
         setData({
           ...EMPTY_RESUME,
@@ -186,7 +212,8 @@ export function ResumeBuilder() {
     setData((prev) => ({ ...prev, [key]: value }));
   }
 
-  // Language tag management
+  // Language tag management — the JP labels are auto-synced from the EN list
+  // via LANGUAGE_OPTIONS so the candidate never types Japanese.
   function addLanguage(lang: string) {
     if (!lang.trim()) return;
     const opt = LANGUAGE_OPTIONS.find((l) => l.value === lang);
@@ -210,7 +237,7 @@ export function ResumeBuilder() {
   function addEducation() {
     update("education", [
       ...data.education,
-      { year: "", degree: "", field: "", institution: "" },
+      { year: "", month: "", degree: "", field: "", institution: "" },
     ]);
   }
   function updateEducation(i: number, patch: Partial<ResumeEducation>) {
@@ -224,7 +251,7 @@ export function ResumeBuilder() {
   function addProject() {
     update("projects", [
       ...data.projects,
-      { period: "", name: "", description: "", techStack: "" },
+      { year: "", period: "", name: "", description: "", techStack: "" },
     ]);
   }
   function updateProject(i: number, patch: Partial<ResumeProject>) {
@@ -234,11 +261,11 @@ export function ResumeBuilder() {
     update("projects", data.projects.filter((_, j) => j !== i));
   }
 
-  // Activities
+  // Activities (Work Experience)
   function addActivity() {
     update("activities", [
       ...data.activities,
-      { period: "", organization: "", role: "", duties: "" },
+      { year: "", period: "", duration: "", organization: "", role: "", duties: "" },
     ]);
   }
   function updateActivity(i: number, patch: Partial<ResumeActivity>) {
@@ -248,11 +275,11 @@ export function ResumeBuilder() {
     update("activities", data.activities.filter((_, j) => j !== i));
   }
 
-  // Awards
+  // Awards (Certifications)
   function addAward() {
     update("awards", [
       ...data.awards,
-      { year: "", title: "", description: "", organization: "" },
+      { year: "", month: "", title: "", description: "", organization: "" },
     ]);
   }
   function updateAward(i: number, patch: Partial<ResumeAward>) {
@@ -260,6 +287,52 @@ export function ResumeBuilder() {
   }
   function removeAward(i: number) {
     update("awards", data.awards.filter((_, j) => j !== i));
+  }
+
+  // Skills
+  function addSkill() {
+    update("skills", [
+      ...data.skills,
+      { name: "", learnedInClass: false, canOperate: false, canTeach: false },
+    ]);
+  }
+  function updateSkill(i: number, patch: Partial<ResumeSkill>) {
+    update("skills", data.skills.map((s, j) => (j === i ? { ...s, ...patch } : s)));
+  }
+  function removeSkill(i: number) {
+    update("skills", data.skills.filter((_, j) => j !== i));
+  }
+
+  // Skills in Which I Excel — dynamic bullet list
+  function addExcelItem() {
+    update("skillsExcelSummary", [...(data.skillsExcelSummary ?? []), ""]);
+  }
+  function updateExcelItem(i: number, value: string) {
+    update(
+      "skillsExcelSummary",
+      (data.skillsExcelSummary ?? []).map((s, j) => (j === i ? value : s)),
+    );
+  }
+  function removeExcelItem(i: number) {
+    update(
+      "skillsExcelSummary",
+      (data.skillsExcelSummary ?? []).filter((_, j) => j !== i),
+    );
+  }
+
+  // Japan motivation
+  function updateJapan<K extends keyof NonNullable<ResumeData["japanMotivation"]>>(
+    key: K,
+    value: string,
+  ) {
+    setData((prev) => ({
+      ...prev,
+      japanMotivation: {
+        ...EMPTY_RESUME.japanMotivation,
+        ...(prev.japanMotivation ?? {}),
+        [key]: value,
+      },
+    }));
   }
 
   if (loading) {
@@ -289,7 +362,7 @@ export function ResumeBuilder() {
             Resume Builder
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create a professional resume in both English and Japanese 履歴書 format.
+            Create a professional resume in both English and Japanese 履歴書 format. Fill in English — the Japanese PDF is auto-generated.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -310,7 +383,7 @@ export function ResumeBuilder() {
           </PDFDownloadLink>
           <PDFDownloadLink
             document={<JapaneseResumePDF data={data} />}
-            fileName={`${data.nameJa || data.name || "resume"}_JP.pdf`}
+            fileName={`${data.name || "resume"}_JP.pdf`}
           >
             {({ loading }) => (
               <Button variant="outline" size="sm" disabled={loading} className="font-semibold h-9">
@@ -413,16 +486,13 @@ export function ResumeBuilder() {
               </div>
             </aside>
 
-            {/* Content — existing form sections */}
+            {/* Content — form sections (English only) */}
             <div className="space-y-6 lg:min-w-0">
           {/* Personal Info */}
           <Section id="section-personal" icon={User} title="Personal Information" desc="Your basic details — selectable fields make it faster">
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="Full name (English)">
+              <Field label="Full name">
                 <Input value={data.name} onChange={(e) => update("name", e.target.value)} placeholder="Abhishek" />
-              </Field>
-              <Field label="氏名 (Katakana reading)">
-                <Input value={data.nameJa ?? ""} onChange={(e) => update("nameJa", e.target.value)} placeholder="アビシェーク" />
               </Field>
               <Field label="Date of birth">
                 <Input type="date" value={data.dob ?? ""} onChange={(e) => update("dob", e.target.value)} />
@@ -435,7 +505,7 @@ export function ResumeBuilder() {
                   <SelectContent>
                     {GENDER_OPTIONS.map((g) => (
                       <SelectItem key={g.value} value={g.value}>
-                        {g.labelEn} ({g.labelJa})
+                        {g.labelEn}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -455,7 +525,7 @@ export function ResumeBuilder() {
                   <SelectContent>
                     {NATIONALITY_OPTIONS.map((n) => (
                       <SelectItem key={n.value} value={n.value}>
-                        {n.value} ({n.labelJa})
+                        {n.value}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -480,7 +550,13 @@ export function ResumeBuilder() {
                 </Select>
               </Field>
               <Field label="Address" className="sm:col-span-2">
-                <Input value={data.address ?? ""} onChange={(e) => update("address", e.target.value)} placeholder="Mangalagiri, Andhra Pradesh" />
+                <Input value={data.address ?? ""} onChange={(e) => update("address", e.target.value)} placeholder="Nellore, Andhra Pradesh, 524344, India" />
+              </Field>
+              <Field label="Current degree being pursued" className="sm:col-span-2">
+                <Input value={data.currentDegree ?? ""} onChange={(e) => update("currentDegree", e.target.value)} placeholder="Bachelors in Technology, Computer Science Engineering" />
+              </Field>
+              <Field label="Expected time of graduation" className="sm:col-span-2">
+                <Input value={data.expectedGraduation ?? ""} onChange={(e) => update("expectedGraduation", e.target.value)} placeholder="06/2026" />
               </Field>
               <Field label="Languages known" className="sm:col-span-2">
                 <div className="space-y-2">
@@ -492,7 +568,7 @@ export function ResumeBuilder() {
                       <SelectContent>
                         {LANGUAGE_OPTIONS.filter((l) => !data.languages.includes(l.value)).map((l) => (
                           <SelectItem key={l.value} value={l.value}>
-                            {l.value} ({l.labelJa})
+                            {l.value}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -503,9 +579,6 @@ export function ResumeBuilder() {
                       {data.languages.map((lang, i) => (
                         <Badge key={i} variant="secondary" className="px-3 py-1.5 gap-1.5">
                           {lang}
-                          <span className="text-xs text-muted-foreground">
-                            {data.languagesJa[i]}
-                          </span>
                           <button
                             onClick={() => removeLanguage(i)}
                             className="ml-1 hover:text-destructive"
@@ -529,148 +602,264 @@ export function ResumeBuilder() {
               {data.education.map((edu, i) => (
                 <Card key={i} onRemove={() => removeEducation(i)}>
                   <div className="grid sm:grid-cols-2 gap-3">
-                    <Field label="Year / Month (graduation)">
+                    <Field label="Year (graduation)">
                       <Input value={edu.year} onChange={(e) => updateEducation(i, { year: e.target.value })} placeholder="2026" />
                     </Field>
-                    <Field label="Degree (English)">
-                      <Input value={edu.degree} onChange={(e) => updateEducation(i, { degree: e.target.value })} placeholder="B.Tech" />
+                    <Field label="Month">
+                      <Input value={edu.month ?? ""} onChange={(e) => updateEducation(i, { month: e.target.value })} placeholder="6" />
                     </Field>
-                    <Field label="Degree (Japanese)">
-                      <Input value={edu.degreeJa ?? ""} onChange={(e) => updateEducation(i, { degreeJa: e.target.value })} placeholder="理学士" />
+                    <Field label="Institution (School / University)" className="sm:col-span-2">
+                      <Input value={edu.institution} onChange={(e) => updateEducation(i, { institution: e.target.value })} placeholder="SRM UNIVERSITY AP, India" />
                     </Field>
-                    <Field label="Field (English)">
+                    <Field label="Degree (combined text shown in PDF)" className="sm:col-span-2">
+                      <Input value={edu.degree} onChange={(e) => updateEducation(i, { degree: e.target.value })} placeholder="Bachelors in Technology with Major in Computer Science." />
+                    </Field>
+                    <Field label="Field / Specialization" className="sm:col-span-2">
                       <Input value={edu.field} onChange={(e) => updateEducation(i, { field: e.target.value })} placeholder="Computer Science" />
                     </Field>
-                    <Field label="Field (Japanese)">
-                      <Input value={edu.fieldJa ?? ""} onChange={(e) => updateEducation(i, { fieldJa: e.target.value })} placeholder="コンピュータサイエンス" />
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </Section>
+
+          {/* Work Experience */}
+          <Section id="section-experience" icon={Briefcase} title="Work Experience (Apprenticeship/Internship)" desc="Internships, apprenticeships, and other work experience" action={<AddButton onClick={addActivity} />}>
+            <div className="space-y-4">
+              {data.activities.length === 0 && <EmptyHint text="No work experience yet. Click Add to start." />}
+              {data.activities.map((act, i) => (
+                <Card key={i} onRemove={() => removeActivity(i)}>
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    <Field label="Year">
+                      <Input value={act.year ?? ""} onChange={(e) => updateActivity(i, { year: e.target.value })} placeholder="2025" />
                     </Field>
-                    <Field label="Institution (English)">
-                      <Input value={edu.institution} onChange={(e) => updateEducation(i, { institution: e.target.value })} placeholder="SRM University" />
+                    <Field label="Month (range)">
+                      <Input value={act.period} onChange={(e) => updateActivity(i, { period: e.target.value })} placeholder="1-5" />
                     </Field>
-                    <Field label="Institution (Japanese)">
-                      <Input value={edu.institutionJa ?? ""} onChange={(e) => updateEducation(i, { institutionJa: e.target.value })} placeholder="SRM大学" />
+                    <Field label="Duration (for JP resume, e.g. '9 months')">
+                      <Input value={act.duration ?? ""} onChange={(e) => updateActivity(i, { duration: e.target.value })} placeholder="9 months" />
+                    </Field>
+                    <Field label="Role">
+                      <Input value={act.role} onChange={(e) => updateActivity(i, { role: e.target.value })} placeholder="Research Intern" />
+                    </Field>
+                    <Field label="Organization" className="sm:col-span-2">
+                      <Input value={act.organization} onChange={(e) => updateActivity(i, { organization: e.target.value })} placeholder="SRM University AP" />
                     </Field>
                   </div>
+                  <Field label="Description (what you did)" className="mt-3">
+                    <Textarea rows={3} value={act.duties} onChange={(e) => updateActivity(i, { duties: e.target.value })} placeholder="Engineered an automated skin disease prediction system using Deep Learning..." />
+                  </Field>
+                </Card>
+              ))}
+            </div>
+          </Section>
+
+          {/* Certifications / Awards */}
+          <Section id="section-certifications" icon={Award} title="Certifications / Achievements" desc="Professional certifications and honors" action={<AddButton onClick={addAward} />}>
+            <div className="space-y-4">
+              {data.awards.length === 0 && <EmptyHint text="No certifications yet. Click Add to start." />}
+              {data.awards.map((aw, i) => (
+                <Card key={i} onRemove={() => removeAward(i)}>
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    <Field label="Year">
+                      <Input value={aw.year} onChange={(e) => updateAward(i, { year: e.target.value })} placeholder="2025" />
+                    </Field>
+                    <Field label="Month">
+                      <Input value={aw.month ?? ""} onChange={(e) => updateAward(i, { month: e.target.value })} placeholder="4" />
+                    </Field>
+                    <Field label="Organization / Issuer">
+                      <Input value={aw.organization} onChange={(e) => updateAward(i, { organization: e.target.value })} placeholder="MongoDB, Inc." />
+                    </Field>
+                    <Field label="Title" className="sm:col-span-3">
+                      <Input value={aw.title} onChange={(e) => updateAward(i, { title: e.target.value })} placeholder="MongoDB Certified Associate Developer" />
+                    </Field>
+                  </div>
+                  <Field label="Description (details / credential ID / tasks)" className="mt-3">
+                    <Textarea rows={2} value={aw.description} onChange={(e) => updateAward(i, { description: e.target.value })} placeholder="Issued: April 2025. Credential ID: MDB4amndwj352" />
+                  </Field>
                 </Card>
               ))}
             </div>
           </Section>
 
           {/* Projects */}
-          <Section id="section-projects" icon={Briefcase} title="Projects" desc="Your technical projects" action={<AddButton onClick={addProject} />}>
+          <Section id="section-projects" icon={Code2} title="Projects / Co-Curricular Activities" desc="Technical projects and co-curricular work" action={<AddButton onClick={addProject} />}>
             <div className="space-y-4">
               {data.projects.length === 0 && <EmptyHint text="No projects yet. Click Add to start." />}
               {data.projects.map((proj, i) => (
                 <Card key={i} onRemove={() => removeProject(i)}>
                   <div className="grid sm:grid-cols-2 gap-3">
-                    <Field label="Period">
-                      <Input value={proj.period} onChange={(e) => updateProject(i, { period: e.target.value })} placeholder="2024 Sep – 2024 Dec" />
-                    </Field>
-                    <Field label="Project name (English)">
-                      <Input value={proj.name} onChange={(e) => updateProject(i, { name: e.target.value })} placeholder="Collaboration Learning Platform" />
-                    </Field>
-                    <Field label="Project name (Japanese)">
-                      <Input value={proj.nameJa ?? ""} onChange={(e) => updateProject(i, { nameJa: e.target.value })} placeholder="コラボ学習プラットフォーム" />
-                    </Field>
-                    <Field label="Tech stack">
-                      <Input value={proj.techStack ?? ""} onChange={(e) => updateProject(i, { techStack: e.target.value })} placeholder="React.js, Node.js, Firebase, Tailwind CSS" />
-                    </Field>
-                  </div>
-                  <Field label="Description (English)" className="mt-3">
-                    <Textarea rows={3} value={proj.description} onChange={(e) => updateProject(i, { description: e.target.value })} placeholder="Developed a real-time learning platform with chat, live sessions, and auth..." />
-                  </Field>
-                  <Field label="Description (Japanese)" className="mt-2">
-                    <Textarea rows={3} value={proj.descriptionJa ?? ""} onChange={(e) => updateProject(i, { descriptionJa: e.target.value })} placeholder="チャット機能やライブセッション、認証機能を実装したリアルタイム学習プラットフォーム..." />
-                  </Field>
-                </Card>
-              ))}
-            </div>
-          </Section>
-
-          {/* Activities */}
-          <Section id="section-activities" icon={Heart} title="Activities / Clubs" desc="Extracurricular and volunteer work" action={<AddButton onClick={addActivity} />}>
-            <div className="space-y-4">
-              {data.activities.length === 0 && <EmptyHint text="No activities yet. Click Add to start." />}
-              {data.activities.map((act, i) => (
-                <Card key={i} onRemove={() => removeActivity(i)}>
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    <Field label="Period">
-                      <Input value={act.period} onChange={(e) => updateActivity(i, { period: e.target.value })} placeholder="9 months" />
-                    </Field>
-                    <Field label="Duration (Japanese)">
-                      <Input value={act.duration ?? ""} onChange={(e) => updateActivity(i, { duration: e.target.value })} placeholder="9か月" />
-                    </Field>
-                    <Field label="Organization (English)">
-                      <Input value={act.organization} onChange={(e) => updateActivity(i, { organization: e.target.value })} placeholder="Wellness Club" />
-                    </Field>
-                    <Field label="Organization (Japanese)">
-                      <Input value={act.organizationJa ?? ""} onChange={(e) => updateActivity(i, { organizationJa: e.target.value })} placeholder="ウェルネスクラブ" />
-                    </Field>
-                    <Field label="Role (English)">
-                      <Input value={act.role} onChange={(e) => updateActivity(i, { role: e.target.value })} placeholder="Member" />
-                    </Field>
-                    <Field label="Role (Japanese)">
-                      <Input value={act.roleJa ?? ""} onChange={(e) => updateActivity(i, { roleJa: e.target.value })} placeholder="メンバー" />
-                    </Field>
-                  </div>
-                  <Field label="Duties (English)" className="mt-3">
-                    <Textarea rows={2} value={act.duties} onChange={(e) => updateActivity(i, { duties: e.target.value })} placeholder="Organized stress-relief activities and fitness workshops..." />
-                  </Field>
-                  <Field label="Duties (Japanese)" className="mt-2">
-                    <Textarea rows={2} value={act.dutiesJa ?? ""} onChange={(e) => updateActivity(i, { dutiesJa: e.target.value })} placeholder="ストレス解消活動を企画・推進..." />
-                  </Field>
-                </Card>
-              ))}
-            </div>
-          </Section>
-
-          {/* Awards */}
-          <Section id="section-awards" icon={Award} title="Awards / Achievements" desc="Honors and accomplishments" action={<AddButton onClick={addAward} />}>
-            <div className="space-y-4">
-              {data.awards.length === 0 && <EmptyHint text="No awards yet. Click Add to start." />}
-              {data.awards.map((aw, i) => (
-                <Card key={i} onRemove={() => removeAward(i)}>
-                  <div className="grid sm:grid-cols-2 gap-3">
                     <Field label="Year">
-                      <Input value={aw.year} onChange={(e) => updateAward(i, { year: e.target.value })} placeholder="2025" />
+                      <Input value={proj.year ?? ""} onChange={(e) => updateProject(i, { year: e.target.value })} placeholder="2025" />
                     </Field>
-                    <Field label="Title (English)">
-                      <Input value={aw.title} onChange={(e) => updateAward(i, { title: e.target.value })} placeholder="Research Day Participant" />
+                    <Field label="Month (range)">
+                      <Input value={proj.period} onChange={(e) => updateProject(i, { period: e.target.value })} placeholder="2-5" />
                     </Field>
-                    <Field label="Title (Japanese)">
-                      <Input value={aw.titleJa ?? ""} onChange={(e) => updateAward(i, { titleJa: e.target.value })} placeholder="第9回リサーチデイ参加" />
+                    <Field label="Project name" className="sm:col-span-2">
+                      <Input value={proj.name} onChange={(e) => updateProject(i, { name: e.target.value })} placeholder="CollabLearn – Online Collaborative Learning Platform" />
                     </Field>
-                    <Field label="Organization (English)">
-                      <Input value={aw.organization} onChange={(e) => updateAward(i, { organization: e.target.value })} placeholder="SRM University" />
-                    </Field>
-                    <Field label="Organization (Japanese)">
-                      <Input value={aw.organizationJa ?? ""} onChange={(e) => updateAward(i, { organizationJa: e.target.value })} placeholder="SRM大学" />
+                    <Field label="Tech stack" className="sm:col-span-2">
+                      <Input value={proj.techStack ?? ""} onChange={(e) => updateProject(i, { techStack: e.target.value })} placeholder="React.js, Tailwind CSS, Firebase, JavaScript" />
                     </Field>
                   </div>
-                  <Field label="Description (English)" className="mt-3">
-                    <Textarea rows={2} value={aw.description} onChange={(e) => updateAward(i, { description: e.target.value })} placeholder="Participated in the 9th Research Day at SRM University-AP..." />
-                  </Field>
-                  <Field label="Description (Japanese)" className="mt-2">
-                    <Textarea rows={2} value={aw.descriptionJa ?? ""} onChange={(e) => updateAward(i, { descriptionJa: e.target.value })} placeholder="第9回リサーチデイに参加し、学術研究への関心を示した..." />
+                  <Field label="Description" className="mt-3">
+                    <Textarea rows={3} value={proj.description} onChange={(e) => updateProject(i, { description: e.target.value })} placeholder="Built a real-time learning portal with Firebase authentication..." />
                   </Field>
                 </Card>
               ))}
             </div>
           </Section>
 
-          {/* Self-PR */}
-          <Section id="section-selfpr" icon={Sparkles} title="Self-PR & Hobbies" desc="Your personal statement and interests">
+          {/* Skills */}
+          <Section id="section-skills" icon={Code2} title="Skills" desc="Mark your proficiency for each skill" action={<AddButton onClick={addSkill} />}>
+            <div className="space-y-3">
+              {data.skills.length === 0 && <EmptyHint text="No skills yet. Click Add to start." />}
+              {data.skills.map((s, i) => (
+                <div key={i} className="relative rounded-xl border border-border bg-background p-4">
+                  <button
+                    onClick={() => removeSkill(i)}
+                    className="absolute top-3 right-3 grid place-items-center h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
+                    aria-label="Remove"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                  <div className="grid sm:grid-cols-[1fr_auto_auto_auto] items-center gap-4">
+                    <Field label="Skill name">
+                      <Input value={s.name} onChange={(e) => updateSkill(i, { name: e.target.value })} placeholder="HTML, CSS, JavaScript, React..." />
+                    </Field>
+                    <CheckboxField
+                      label="Learned in class"
+                      checked={s.learnedInClass}
+                      onChange={(v) => updateSkill(i, { learnedInClass: v })}
+                    />
+                    <CheckboxField
+                      label="Can operate alone"
+                      checked={s.canOperate}
+                      onChange={(v) => updateSkill(i, { canOperate: v })}
+                    />
+                    <CheckboxField
+                      label="Can teach others"
+                      checked={s.canTeach}
+                      onChange={(v) => updateSkill(i, { canTeach: v })}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          {/* Skills in Which I Excel */}
+          <Section id="section-excel" icon={ListChecks} title="Skills in Which I Excel" desc="Numbered summary of strengths and growth areas" action={<AddButton onClick={addExcelItem} />}>
+            <div className="space-y-3">
+              {(data.skillsExcelSummary ?? []).length === 0 && <EmptyHint text="No summary points yet. Click Add to start." />}
+              {(data.skillsExcelSummary ?? []).map((line, i) => (
+                <div key={i} className="relative rounded-xl border border-border bg-background p-4 pr-12">
+                  <button
+                    onClick={() => removeExcelItem(i)}
+                    className="absolute top-3 right-3 grid place-items-center h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
+                    aria-label="Remove"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                  <div className="flex gap-3">
+                    <span className="grid place-items-center h-7 w-7 rounded-full bg-saffron/10 text-saffron font-bold text-sm shrink-0">
+                      {i + 1}
+                    </span>
+                    <Textarea
+                      rows={2}
+                      value={line}
+                      onChange={(e) => updateExcelItem(i, e.target.value)}
+                      placeholder="I have developed strong expertise in web development technologies, including HTML, CSS, JavaScript and React..."
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          {/* Japanese Proficiency & Other Languages */}
+          <Section id="section-jlpt" icon={Languages} title="Japanese Proficiency & Other Languages" desc="JLPT levels and additional languages">
+            <div className="space-y-4">
+              <Field label="Current Japanese Proficiency Level (JLPT)">
+                <Select
+                  value={data.currentJlpt ?? ""}
+                  onValueChange={(v) => update("currentJlpt", v as JlptLevel)}
+                >
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="Select current JLPT level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {JLPT_OPTIONS.map((lvl) => (
+                      <SelectItem key={lvl} value={lvl}>
+                        {lvl}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Expected JLPT level by graduation time">
+                <Select
+                  value={data.expectedJlpt ?? ""}
+                  onValueChange={(v) => update("expectedJlpt", v as JlptLevel)}
+                >
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="Select expected JLPT level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {JLPT_OPTIONS.map((lvl) => (
+                      <SelectItem key={lvl} value={lvl}>
+                        {lvl}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Other languages (comma-separated, e.g. 'English, Telugu, Hindi')">
+                <Input
+                  value={data.otherLanguages ?? ""}
+                  onChange={(e) => update("otherLanguages", e.target.value)}
+                  placeholder="English, Telugu, Hindi"
+                />
+              </Field>
+            </div>
+          </Section>
+
+          {/* Why Japan? */}
+          <Section id="section-japan" icon={MapPin} title="More About Why You Want to Work in Japan" desc="Three short essays — these appear on the English resume only">
+            <Field label="Why do you want to work in Japan? (日本で働きたい理由は何ですか？)">
+              <Textarea
+                rows={4}
+                value={data.japanMotivation?.whyJapan ?? ""}
+                onChange={(e) => updateJapan("whyJapan", e.target.value)}
+                placeholder="Japan is known for its hard work, focus on quality, and constant improvement..."
+              />
+            </Field>
+            <Field label="What kind of career would you like to create in Japan? (日本でどのようなキャリアを作りたいと思いますか？)" className="mt-4">
+              <Textarea
+                rows={4}
+                value={data.japanMotivation?.careerInJapan ?? ""}
+                onChange={(e) => updateJapan("careerInJapan", e.target.value)}
+                placeholder="Aspire to build a career in Japan by contributing to innovative, socially impactful projects..."
+              />
+            </Field>
+            <Field label="What challenges do you foresee in adjusting to life in Japan, and how would you address them? (日本生活への適応において、どのような課題を予想し、どう対処しますか？)" className="mt-4">
+              <Textarea
+                rows={4}
+                value={data.japanMotivation?.challenges ?? ""}
+                onChange={(e) => updateJapan("challenges", e.target.value)}
+                placeholder="Challenges: Adaptation to Work Practices..."
+              />
+            </Field>
+          </Section>
+
+          {/* Self-PR & Hobbies */}
+          <Section id="section-selfpr" icon={Sparkles} title="Self-PR & Hobbies" desc="Personal statement and interests (shown on the JP resume)">
             <Field label="Self-PR (English)">
               <Textarea rows={5} value={data.selfPr ?? ""} onChange={(e) => update("selfPr", e.target.value)} placeholder="I am a Computer Science student passionate about full-stack development and AI..." />
             </Field>
-            <Field label="自己PR (Japanese)" className="mt-3">
-              <Textarea rows={5} value={data.selfPrJa ?? ""} onChange={(e) => update("selfPrJa", e.target.value)} placeholder="コンピュータサイエンスを専攻する学生です。フルスタック開発やAIプロジェクトに取り組む中で..." />
-            </Field>
-            <Field label="Hobbies (English)" className="mt-3">
+            <Field label="Hobbies" className="mt-3">
               <Input value={data.hobbies ?? ""} onChange={(e) => update("hobbies", e.target.value)} placeholder="Badminton, Fitness, Reading" />
-            </Field>
-            <Field label="趣味 (Japanese)" className="mt-2">
-              <Input value={data.hobbiesJa ?? ""} onChange={(e) => update("hobbiesJa", e.target.value)} placeholder="バドミントン、フィットネス、読書" />
             </Field>
           </Section>
 
@@ -759,6 +948,23 @@ function Field({
     <label className={cn("block", className)}>
       <span className="text-xs font-medium text-muted-foreground mb-1 block">{label}</span>
       {children}
+    </label>
+  );
+}
+
+function CheckboxField({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center gap-2 cursor-pointer select-none mt-5">
+      <Checkbox checked={checked} onCheckedChange={(v) => onChange(!!v)} />
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
     </label>
   );
 }

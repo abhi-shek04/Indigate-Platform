@@ -40,6 +40,7 @@ import { Users, Search, Download } from "lucide-react";
 import { JLPT_LEVELS, JLPT_BADGE } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CandidateRow, ExportCsvButton } from "../shared";
+import type { ResumeData } from "@/lib/resume-types";
 
 export function CandidatesTab() {
   const { t, locale } = useT();
@@ -229,14 +230,13 @@ function CandidateEditorSheet({
   candidate: CandidateRow | null;
   onClose: () => void;
 }) {
-  const { locale } = useT();
-  const [resumeData, setResumeData] = useState<any>(null);
+  const [resumeData, setResumeData] = useState<ResumeData | null>(null);
 
   useEffect(() => {
     if (!candidate) return;
     (async () => {
       try {
-        const res = await api<{ resumeData: any }>(
+        const res = await api<{ resumeData: ResumeData }>(
           `/api/admin/list/candidates?userId=${candidate.userId}`,
         );
         setResumeData(res.resumeData);

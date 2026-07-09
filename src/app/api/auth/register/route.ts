@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
       });
       // Log the code only in development (in production, only email is sent)
       if (process.env.NODE_ENV !== "production") {
-        console.log(`[Email verification] Code for ${email}: ${verifyCode}`);
+        console.warn(`[Email verification] Code for ${email}: ${verifyCode}`);
       }
     } else {
       await db.companyProfile.create({

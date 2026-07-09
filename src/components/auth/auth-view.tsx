@@ -32,7 +32,6 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
   });
   const [resetCode, setResetCode] = useState("");
   const [resetEmail, setResetEmail] = useState("");
-  const [returnedCode, setReturnedCode] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

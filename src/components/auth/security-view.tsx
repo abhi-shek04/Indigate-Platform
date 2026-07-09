@@ -20,13 +20,12 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 type Step = "idle" | "qr" | "backup" | "done";
 
 export function SecurityView() {
   const { t } = useT();
-  const { user, candidate, company, navigate, refreshAuth } = useApp();
+  const { user, navigate, refreshAuth } = useApp();
   const [step, setStep] = useState<Step>("idle");
   const [qr, setQr] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);

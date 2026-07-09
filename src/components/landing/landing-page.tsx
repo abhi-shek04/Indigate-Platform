@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/store";
 import { useT } from "@/lib/use-t";
-import { api, formatRelative } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CompanyAvatar } from "@/components/brand/logo";
@@ -14,7 +14,6 @@ import {
   RevealGroup,
   staggerItem,
   fadeUp,
-  fadeUp as fadeUpVariant,
   motion,
   easeOutExpo,
 } from "@/lib/motion";
@@ -28,7 +27,6 @@ import {
   CheckCircle2,
   Quote,
   Mail,
-  MapPin,
   Briefcase,
   Globe2,
   ShieldCheck,
@@ -40,7 +38,6 @@ import {
   HelpCircle,
   Users,
   Award,
-  TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { JobDTO, TestimonialDTO } from "@/lib/types";

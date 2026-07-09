@@ -53,7 +53,6 @@ function computeCompletion(c: CandidateProfileDTO | null): number {
 export function Overview() {
   const candidate = useApp((s) => s.candidate);
   const setTab = useApp((s) => s.setCandidateTab);
-  const navigate = useApp((s) => s.navigate);
   const { t, locale } = useT();
   const [apps, setApps] = useState<ApplicationDTO[] | null>(null);
   const [loading, setLoading] = useState(true);

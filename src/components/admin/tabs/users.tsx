@@ -23,8 +23,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+/** User row shape returned by GET /api/admin/users (matches the prisma select). */
+interface AdminUserRow {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string;
+  isVerified: boolean;
+  googleId: string | null;
+  totpEnabled: boolean;
+  createdAt: string;
+}
+
 export function UsersTab() {
-  const [users, setUsers] = useState<any[] | null>(null);
+  const [users, setUsers] = useState<AdminUserRow[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editRole, setEditRole] = useState("");
@@ -32,7 +44,7 @@ export function UsersTab() {
   async function load() {
     setLoading(true);
     try {
-      const res = await api<{ users: any[] }>("/api/admin/users");
+      const res = await api<{ users: AdminUserRow[] }>("/api/admin/users");
       setUsers(res.users);
     } catch {
       setUsers([]);
@@ -54,7 +66,7 @@ export function UsersTab() {
       toast.success("User role updated.");
       setEditingId(null);
       load();
-    } catch (e) {
+    } catch {
       toast.error("Failed to update user.");
     }
   }

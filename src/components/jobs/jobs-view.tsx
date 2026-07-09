@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useApp } from "@/lib/store";
 import { useT } from "@/lib/use-t";
 import { api } from "@/lib/api-client";
 import { JobCard } from "@/components/jobs/job-card";
 import { Button } from "@/components/ui/button";
-import { Reveal, RevealGroup, staggerItem, motion } from "@/lib/motion";
+import { RevealGroup, staggerItem, motion } from "@/lib/motion";
 import {
   Select,
   SelectContent,
@@ -37,7 +36,6 @@ const LOCATIONS = [
 
 export function JobsView() {
   const { t } = useT();
-  const navigate = useApp((s) => s.navigate);
   const [data, setData] = useState<JobsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");

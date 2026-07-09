@@ -34,7 +34,9 @@ export async function POST(req: NextRequest) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://indigate.work";
     const resetUrl = `${appUrl}/?view=reset&email=${encodeURIComponent(user.email)}&token=${token}`;
     void sendEmail({ to: user.email, ...emails.passwordReset(resetUrl) });
-    console.log(`[Password reset] Code for ${user.email}: ${token}`);
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(`[Password reset] Code for ${user.email}: ${token}`);
+    }
     return ok({ sent: true });
   } catch (e) {
     return handleError(e);

@@ -9,7 +9,6 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { JobCard } from "@/components/jobs/job-card";
 import type { JobDTO } from "@/lib/types";
 import {
   ArrowRight,
@@ -241,7 +240,6 @@ function Privacy() {
 }
 
 function Terms() {
-  const { t } = useT();
   return (
     <PageShell title="Terms of Service" subtitle="Website Terms of Use & Service Conditions">
       <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 space-y-4">

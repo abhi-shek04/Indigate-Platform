@@ -395,3 +395,54 @@ Files verified-but-unchanged (already correct from prior split; left as-is):
 - `src/components/admin/tabs/applications.tsx`
 - `src/components/admin/tabs/testimonials.tsx`
 - `src/components/admin/tabs/contacts.tsx`
+
+---
+Task ID: LINT-FIX
+Agent: sub-agent (general-purpose)
+Task: Fix all 40 ESLint warnings reported by `bun run lint`.
+
+Summary:
+- Final state: `bun run lint` → 0 errors / 0 warnings. `npx tsc --noEmit` → 0 errors.
+- No logic changes. Only removed unused imports/vars, replaced `any` with proper types, and converted `console.log` → `console.warn` (only where dev-wrapping already exists or where the rule allowed `warn`/`error`).
+
+Work Log (warning → fix):
+
+API routes (batch 1):
+- `src/app/api/admin/audit-log/route.ts` — removed unused `err` import.
+- `src/app/api/admin/companies/[id]/verify/route.ts` — removed unused `notify` import.
+- `src/app/api/admin/stats/route.ts` — removed unused `NextRequest` import.
+- `src/app/api/auth/register/route.ts` — `console.log` → `console.warn` (was already wrapped in dev check on line 83).
+- `src/app/api/auth/reset-request/route.ts` — wrapped `console.log` in `if (process.env.NODE_ENV !== "production")` AND changed to `console.warn`.
+- `src/app/api/auth/totp/setup/route.ts` — removed unused `NextRequest` import.
+- `src/app/api/candidates/me/route.ts` — removed unused `toJobDTO` import.
+- `src/app/api/notifications/route.ts` — removed unused `notify` import.
+
+Admin tab components (batch 2):
+- `src/components/admin/tabs/candidates.tsx` — removed unused `const { locale } = useT();` in `CandidateEditorSheet`; replaced `useState<any>(null)` and `api<{ resumeData: any }>` with `ResumeData | null` and `api<{ resumeData: ResumeData }>` (added `import type { ResumeData } from "@/lib/resume-types"`).
+- `src/components/admin/tabs/companies.tsx` — removed unused `cn` import.
+- `src/components/admin/tabs/users.tsx` — introduced `AdminUserRow` interface (matches prisma `select` shape) and used it for both `useState<AdminUserRow[] | null>` and the api response type; removed unused `e` from the `catch (e)` clause in `updateRole`.
+
+Auth components (batch 3):
+- `src/components/auth/auth-view.tsx` — removed unused `const [returnedCode, setReturnedCode] = useState<string | null>(null);` line entirely.
+- `src/components/auth/security-view.tsx` — removed unused `cn` import; removed `candidate` and `company` from the `useApp()` destructuring (kept `user`, `navigate`, `refreshAuth`).
+- `src/components/auth/totp-challenge.tsx` — removed unused `cn` import; deleted the entire never-called `verify()` function (the active flow uses `submitChallenge()`).
+
+Candidate / dashboard / jobs / landing / footer components (batch 4):
+- `src/components/candidate/candidate-dashboard.tsx` — removed unused `const navigate = useApp((s) => s.navigate);` in the inner `Overview()` function (the body uses `useApp.getState().navigate("jobs")` directly).
+- `src/components/candidate/resume-builder.tsx` — removed unused `Label` import and unused `Heart` lucide icon.
+- `src/components/candidate/tabs/overview.tsx` — removed unused `const navigate = useApp((s) => s.navigate);` (body uses `useApp.getState().navigate("jobs")`).
+- `src/components/dashboard/widgets.tsx` — removed unused `Input` import.
+- `src/components/jobs/jobs-view.tsx` — removed unused `Reveal` from `@/lib/motion` import (kept `RevealGroup`); removed unused `const navigate = useApp(...)` line AND the now-orphaned `useApp` import + `JobCard` is still used so kept.
+- `src/components/landing/landing-page.tsx` — removed `formatRelative` from `@/lib/api-client` import; removed `fadeUp as fadeUpVariant` alias (kept `fadeUp`); removed unused `MapPin` and `TrendingUp` lucide icons.
+- `src/components/landing/static-pages.tsx` — removed unused `JobCard` import; removed unused `const { t } = useT();` line in the `Terms()` function (other functions still use `useT`).
+- `src/components/layout/footer.tsx` — removed unused `MapPin` and `ArrowRight` from the lucide import (kept `Mail`, `ExternalLink`).
+
+Hooks / lib (batch 5):
+- `src/hooks/use-toast.ts` — the runtime `const actionTypes = {…} as const` was only ever used via `typeof actionTypes` for the `ActionType` type alias. Converted it directly to a `type ActionType = { ADD_TOAST: "ADD_TOAST"; UPDATE_TOAST: "UPDATE_TOAST"; DISMISS_TOAST: "DISMISS_TOAST"; REMOVE_TOAST: "REMOVE_TOAST" }` declaration so the runtime const is gone but the type-level usage (`ActionType["ADD_TOAST"]` etc.) continues to work — no eslint-disable needed.
+- `src/lib/email.ts` — `console.log("[EMAIL SKIPPED …]")` → `console.warn("[EMAIL SKIPPED …]")` (rule allows `warn` and `error`; this is the dev/sandbox fallback path so `warn` is semantically appropriate).
+- `src/lib/use-t.ts` — removed unused `import type { Locale } from "@/lib/types"`.
+
+Verification:
+- `bun run lint` → exit 0, "✓ 0 problems".
+- `npx tsc --noEmit` → exit 0, no output (0 errors).
+

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
-import { parseBody, ok, err, handleError, notify } from "@/lib/api";
+import { parseBody, ok, err, handleError } from "@/lib/api";
 import { audit } from "@/lib/audit";
 import { z } from "zod";
 

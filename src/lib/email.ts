@@ -24,7 +24,7 @@ export interface EmailOptions {
 export async function sendEmail({ to, subject, html }: EmailOptions) {
   const r = client();
   if (!r) {
-    console.log("[EMAIL SKIPPED — no RESEND_API_KEY]", { to, subject });
+    console.warn("[EMAIL SKIPPED — no RESEND_API_KEY]", { to, subject });
     return;
   }
   const from = process.env.EMAIL_FROM ?? "IndiGate <noreply@indigate.work>";

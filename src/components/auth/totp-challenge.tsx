@@ -9,7 +9,6 @@ import { Logo } from "@/components/brand/logo";
 import { ArrowLeft, ShieldCheck, Smartphone, KeyRound } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 export function TotpChallenge() {
   const { t } = useT();
@@ -22,31 +21,6 @@ export function TotpChallenge() {
   if (!pendingTwoFactorEmail) {
     navigate("login");
     return null;
-  }
-
-  async function verify() {
-    setLoading(true);
-    try {
-      const res = await api<{ id: string; role: string } & { requiresTwoFactor?: boolean }>(
-        "/api/auth/login",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            email: pendingTwoFactorEmail,
-            // password isn't needed again — the server already validated it
-            // in the previous step. But our API requires password, so we re-send
-            // a sentinel. Actually the login route requires password >= 1 char.
-            // The pendingTwoFactorEmail flow stores the verified password
-            // server-side. To keep this simple, we require the client to send
-            // password again. Instead, we use a dedicated verify endpoint.
-          }),
-        },
-      );
-      void res;
-    } catch {
-      // fall through to dedicated endpoint
-    }
-    setLoading(false);
   }
 
   // Dedicated 2FA verification endpoint (avoids re-entering password)

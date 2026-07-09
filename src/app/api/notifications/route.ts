@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { ok, err, handleError, notify } from "@/lib/api";
+import { ok, err, handleError } from "@/lib/api";
 
 export async function GET() {
   try {

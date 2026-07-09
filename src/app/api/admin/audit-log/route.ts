@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
-import { ok, err, handleError } from "@/lib/api";
+import { ok, handleError } from "@/lib/api";
 
 /** GET /api/admin/audit-log — list all audit log entries (admin only) */
 export async function GET(req: NextRequest) {

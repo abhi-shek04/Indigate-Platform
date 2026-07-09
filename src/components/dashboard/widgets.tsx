@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type KeyboardEvent } from "react";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";

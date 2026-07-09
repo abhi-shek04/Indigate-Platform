@@ -28,7 +28,6 @@ import {
 import { CompanyAvatar } from "@/components/brand/logo";
 import { toast } from "sonner";
 import { Building2, CheckCircle2, XCircle, Hourglass } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { CompanyRow, ExportCsvButton } from "../shared";
 
 /* ============== Companies tab ============== */

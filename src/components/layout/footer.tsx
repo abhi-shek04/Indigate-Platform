@@ -2,7 +2,7 @@
 
 import { useApp } from "@/lib/store";
 import { Logo } from "@/components/brand/logo";
-import { Mail, MapPin, ExternalLink, ArrowRight } from "lucide-react";
+import { Mail, ExternalLink } from "lucide-react";
 
 export function Footer() {
   const navigate = useApp((s) => s.navigate);

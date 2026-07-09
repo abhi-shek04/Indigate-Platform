@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { parseBody, ok, err, handleError, toCandidateDTO, toJobDTO } from "@/lib/api";
+import { parseBody, ok, err, handleError, toCandidateDTO } from "@/lib/api";
 import { z } from "zod";
 
 export async function GET() {

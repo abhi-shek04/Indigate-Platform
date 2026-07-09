@@ -2,7 +2,6 @@
 
 import { useApp } from "@/lib/store";
 import { translate } from "@/lib/i18n";
-import type { Locale } from "@/lib/types";
 
 export function useT() {
   const locale = useApp((s) => s.locale);

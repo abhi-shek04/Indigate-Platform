@@ -186,13 +186,24 @@ export const emails = {
     }),
   }),
 
-  emailVerification: (verifyUrl: string) => ({
-    subject: "Verify your IndiGate email",
+  emailVerification: (verifyUrl: string, code?: string) => ({
+    subject: `Your IndiGate verification code: ${code ?? ""}`,
     html: buildEmail({
       title: "Verify Email",
       heading: "Verify your email address",
-      body: "<p>Click the button below to verify your email address and activate your IndiGate account.</p>",
-      cta: { label: "Verify Email", url: verifyUrl },
+      body: code
+        ? `<p>Welcome to IndiGate! Use the verification code below to activate your account:</p>
+           <div style="text-align:center;margin:24px 0;">
+             <div style="display:inline-block;font-size:32px;font-weight:800;letter-spacing:8px;
+                  padding:16px 32px;border-radius:12px;background:#f59e0b1a;color:#b45309;
+                  border:2px dashed #f59e0b;">${code}</div>
+           </div>
+           <p style="text-align:center;color:#666;font-size:13px;">This code expires in 7 days. Enter it on the verification page to complete your registration.</p>
+           <p style="text-align:center;margin-top:16px;">
+             <a href="${verifyUrl}" style="color:#f59e0b;font-weight:600;">Or click here to verify automatically</a>
+           </p>`
+        : "<p>Click the button below to verify your email address and activate your IndiGate account.</p>",
+      cta: code ? undefined : { label: "Verify Email", url: verifyUrl },
     }),
   }),
 

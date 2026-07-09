@@ -45,7 +45,31 @@ export async function PUT() {
       "New verification code",
       `Your new IndiGate verification code is ${code}.`,
     );
-    return ok({ code });
+
+    // In dev mode (no RESEND_API_KEY), send the code via email + return it.
+    // In production, only send via email (don't expose in response).
+    const isDev = !process.env.RESEND_API_KEY;
+    if (isDev) {
+      return ok({ sent: true, devCode: code });
+    }
+
+    // Production: send the actual email with the OTP code
+    const { sendEmail, emails } = await import("@/lib/email");
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://indigate.work";
+    const user = await db.user.findUnique({
+      where: { id: session.id },
+      select: { email: true },
+    });
+    if (user) {
+      void sendEmail({
+        to: user.email,
+        ...emails.emailVerification(
+          `${appUrl}/?view=verify`,
+          code,
+        ),
+      });
+    }
+    return ok({ sent: true });
   } catch (e) {
     return handleError(e);
   }

@@ -60,12 +60,18 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
         else {
           payload.companyName = form.companyName || form.name;
         }
-        await api("/api/auth/register", {
+        const res = await api<{ devCode?: string }>("/api/auth/register", {
           method: "POST",
           body: JSON.stringify(payload),
         });
         // Account created with isVerified=false — go to verify mode
-        toast.success("Account created! Check your email for a verification code.");
+        if (res.devCode) {
+          // Dev mode — no email configured, show code to user
+          toast.success(`Account created! Your verification code is: ${res.devCode}`, { duration: 10000 });
+          setForm({ ...form, code: res.devCode });
+        } else {
+          toast.success("Account created! Check your email for a 6-digit verification code.");
+        }
         setMode("verify");
       } else if (mode === "forgot") {
         await api("/api/auth/reset-request", {
@@ -420,8 +426,13 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
             {mode === "verify" && (
               <button
                 onClick={async () => {
-                  await api("/api/auth/verify", { method: "PUT" });
-                  toast.success("New code sent to your email.");
+                  const res = await api<{ devCode?: string }>("/api/auth/verify", { method: "PUT" });
+                  if (res.devCode) {
+                    toast.success(`New verification code: ${res.devCode}`, { duration: 10000 });
+                    setForm({ ...form, code: res.devCode });
+                  } else {
+                    toast.success("New code sent to your email.");
+                  }
                 }}
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >

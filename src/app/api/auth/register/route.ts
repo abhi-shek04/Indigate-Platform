@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
       const verifyUrl = `${appUrl}/?view=verify&email=${encodeURIComponent(email)}`;
       void sendEmail({
         to: email,
-        ...emails.emailVerification(verifyUrl),
+        ...emails.emailVerification(verifyUrl, verifyCode),
       });
       // Log the code for dev/testing (in production, only email is sent)
       console.log(`[Email verification] Code for ${email}: ${verifyCode}`);
@@ -122,6 +122,10 @@ export async function POST(req: NextRequest) {
       isVerified: user.isVerified,
     });
 
+    // In dev mode (no RESEND_API_KEY), return the verification code so the
+    // frontend can display it. In production, the code is only sent via email.
+    const isDev = !process.env.RESEND_API_KEY;
+
     return ok(
       {
         id: user.id,
@@ -129,6 +133,7 @@ export async function POST(req: NextRequest) {
         name: user.name,
         role: user.role,
         isVerified: user.isVerified,
+        ...(isDev && { devCode: verifyCode }),
       },
       201,
     );

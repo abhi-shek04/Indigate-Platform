@@ -57,6 +57,14 @@ model CandidateProfile {
   savedJobIds     String   @default("[]") // JSON string array
   resumeData      String?  // JSON: full resume builder data (EN+JP)
   openToWork      Boolean  @default(true) // "Open to Work" toggle (LinkedIn-style)
+  // Document verification (for visa process)
+  docStatus       String   @default("UNVERIFIED") // UNVERIFIED | PENDING | VERIFIED | REJECTED
+  passportUrl     String?  // passport scan
+  jlptCertUrl     String?  // JLPT certificate
+  degreeCertUrl   String?  // degree certificate
+  docRejectReason String?  // reason if rejected
+  docReviewedAt   DateTime?
+  docReviewedBy   String?  // admin user ID
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -76,6 +84,12 @@ model CompanyProfile {
   employeeCount String?
   isApproved    Boolean   @default(false)
   approvedAt    DateTime?
+  // Company verification (business license, etc.)
+  licenseUrl    String?   // business license / 営業許可証 upload
+  regCertUrl    String?   // company registration certificate
+  isVerified    Boolean   @default(false) // verified badge
+  verifiedAt    DateTime?
+  verifiedBy    String?   // admin user ID
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -196,4 +210,22 @@ model JobAlert {
   createdAt   DateTime @default(now())
 
   @@index([userId])
+}
+
+/// Audit log — tracks all admin actions for APPI compliance.
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorId     String   // admin user ID
+  actorEmail  String   // admin email (denormalized for quick display)
+  action      String   // e.g. "APPROVE_COMPANY", "DELETE_USER", "VERIFY_CANDIDATE"
+  targetType  String   // "User" | "Company" | "Candidate" | "Job" | "Application"
+  targetId    String?  // ID of the affected entity
+  targetName  String?  // human-readable name (e.g. company name, user email)
+  details     String?  // JSON string with before/after values
+  ipAddress   String?  // admin's IP address
+  createdAt   DateTime @default(now())
+
+  @@index([actorId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
 }

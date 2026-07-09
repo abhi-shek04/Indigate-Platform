@@ -57,7 +57,8 @@ export interface AppState {
     | "applications"
     | "testimonials"
     | "contacts"
-    | "users";
+    | "users"
+    | "audit";
   // locale
   locale: Locale;
   // TOTP 2FA

@@ -15,6 +15,7 @@ import { ApplicationsTab } from "@/components/admin/tabs/applications";
 import { TestimonialsTab } from "@/components/admin/tabs/testimonials";
 import { ContactsTab } from "@/components/admin/tabs/contacts";
 import { UsersTab } from "@/components/admin/tabs/users";
+import { AuditLogTab } from "@/components/admin/tabs/audit";
 
 export function AdminDashboard() {
   const user = useApp((s) => s.user);
@@ -50,6 +51,7 @@ export function AdminDashboard() {
       {tab === "testimonials" && <TestimonialsTab />}
       {tab === "contacts" && <ContactsTab />}
       {tab === "users" && <UsersTab />}
+      {tab === "audit" && <AuditLogTab />}
     </DashboardShell>
   );
 }

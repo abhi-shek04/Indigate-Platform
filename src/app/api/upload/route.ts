@@ -23,8 +23,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing file or kind" }, { status: 400 });
     }
 
-    if (kind !== "resume" && kind !== "logo") {
-      return NextResponse.json({ error: "Invalid upload kind. Only 'resume' and 'logo' are allowed." }, { status: 400 });
+    // Validate kind — allow resume, logo, and document types
+    const ALLOWED_KINDS = ["resume", "logo", "passport", "jlpt-cert", "degree-cert", "license", "reg-cert"];
+    if (!ALLOWED_KINDS.includes(kind)) {
+      return NextResponse.json(
+        { error: "Invalid upload kind." },
+        { status: 400 },
+      );
     }
 
     if (kind === "resume") {
@@ -74,6 +79,31 @@ export async function POST(req: NextRequest) {
       await db.companyProfile.update({
         where: { userId: session.id },
         data: { logoUrl: url },
+      });
+    } else if (kind === "passport") {
+      await db.candidateProfile.update({
+        where: { userId: session.id },
+        data: { passportUrl: url, docStatus: "PENDING" },
+      });
+    } else if (kind === "jlpt-cert") {
+      await db.candidateProfile.update({
+        where: { userId: session.id },
+        data: { jlptCertUrl: url, docStatus: "PENDING" },
+      });
+    } else if (kind === "degree-cert") {
+      await db.candidateProfile.update({
+        where: { userId: session.id },
+        data: { degreeCertUrl: url, docStatus: "PENDING" },
+      });
+    } else if (kind === "license") {
+      await db.companyProfile.update({
+        where: { userId: session.id },
+        data: { licenseUrl: url },
+      });
+    } else if (kind === "reg-cert") {
+      await db.companyProfile.update({
+        where: { userId: session.id },
+        data: { regCertUrl: url },
       });
     }
 

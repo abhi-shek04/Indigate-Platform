@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { LayoutDashboard, Briefcase, Users, Building2, FileText, Quote, Mail, Download, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Briefcase, Users, Building2, FileText, Quote, Mail, Download, ShieldCheck, ScrollText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useT } from "@/lib/use-t";
@@ -18,6 +18,7 @@ export const NAV: NavItem[] = [
   { key: "testimonials", label: "Testimonials", icon: Quote },
   { key: "contacts", label: "Enquiries", icon: Mail },
   { key: "users", label: "Users & Roles", icon: ShieldCheck },
+  { key: "audit", label: "Audit Log", icon: ScrollText },
 ];
 
 /** Status → chart color mapping for the Overview donut chart. */

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { parseBody, ok, err, handleError } from "@/lib/api";
+import { audit } from "@/lib/audit";
 
 /** GET /api/admin/users — list all users (admin only) */
 export async function GET() {
@@ -29,7 +30,7 @@ export async function GET() {
 /** PATCH /api/admin/users?id=... — update a user's role or verified status */
 export async function PATCH(req: NextRequest) {
   try {
-    await requireRole("ADMIN");
+    const session = await requireRole("ADMIN");
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     if (!id) return err("Missing user id.", 400);
@@ -50,6 +51,18 @@ export async function PATCH(req: NextRequest) {
       data,
       select: { id: true, email: true, name: true, role: true, isVerified: true },
     });
+
+    await audit({
+      actorId: session.id,
+      actorEmail: session.email,
+      action: "UPDATE_USER",
+      targetType: "User",
+      targetId: updated.id,
+      targetName: updated.email,
+      details: data,
+      req,
+    });
+
     return ok(updated);
   } catch (e) {
     return handleError(e);
@@ -59,12 +72,28 @@ export async function PATCH(req: NextRequest) {
 /** DELETE /api/admin/users?id=... — delete a user (admin only) */
 export async function DELETE(req: NextRequest) {
   try {
-    await requireRole("ADMIN");
+    const session = await requireRole("ADMIN");
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     if (!id) return err("Missing user id.", 400);
 
+    const user = await db.user.findUnique({
+      where: { id },
+      select: { email: true },
+    });
+
     await db.user.delete({ where: { id } });
+
+    await audit({
+      actorId: session.id,
+      actorEmail: session.email,
+      action: "DELETE_USER",
+      targetType: "User",
+      targetId: id,
+      targetName: user?.email ?? id,
+      req,
+    });
+
     return ok({ ok: true });
   } catch (e) {
     return handleError(e);

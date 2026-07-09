@@ -1,12 +1,37 @@
-// Thin fetch wrapper for JSON APIs with error handling.
+// Thin fetch wrapper for JSON APIs with error handling + CSRF protection.
+
+let _csrfToken: string | null = null;
+
+/** Fetch (or return cached) CSRF token for state-changing requests. */
+async function getCsrfToken(): Promise<string | null> {
+  if (_csrfToken) return _csrfToken;
+  try {
+    const res = await fetch("/api/auth/csrf");
+    const data = await res.json();
+    _csrfToken = data.token ?? null;
+  } catch {
+    _csrfToken = null;
+  }
+  return _csrfToken;
+}
+
 export async function api<T = unknown>(
   url: string,
   opts?: RequestInit,
 ): Promise<T> {
-  const res = await fetch(url, {
-    headers: { "Content-Type": "application/json", ...(opts?.headers || {}) },
-    ...opts,
-  });
+  const method = (opts?.method ?? "GET").toUpperCase();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(opts?.headers as Record<string, string> || {}),
+  };
+
+  // Attach CSRF token to all state-changing requests
+  if (method !== "GET" && method !== "HEAD") {
+    const token = await getCsrfToken();
+    if (token) headers["X-CSRF-Token"] = token;
+  }
+
+  const res = await fetch(url, { ...opts, headers });
   const text = await res.text();
   let data: unknown = null;
   if (text) {

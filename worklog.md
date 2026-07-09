@@ -337,3 +337,61 @@ Stage Summary:
 Backward compatibility: previously-saved resumes (without `skills`, `japanMotivation`, etc.) continue to load and render — `EMPTY_RESUME` defaults + zod `default([])` on the API ensure missing arrays/objects are filled in. Existing `*Ja` optional fields remain in the type so old data isn't lost; the form simply doesn't expose them anymore.
 
 Known unrelated issue (NOT introduced by this task): `src/components/admin/admin-dashboard.tsx` references `ShieldCheck` which is not imported from lucide-react — this throws a `ReferenceError` during SSR and falls back to client rendering. It affects only the admin dashboard, not the candidate resume builder. Pre-existing on arrival.
+
+---
+Task ID: RE-SPLIT-COMPANY
+Agent: sub (general-purpose)
+Task: Re-split `src/components/company/company-dashboard.tsx` (had regressed back to 2014 lines with all tab functions inline) into focused tab files under `src/components/company/tabs/`.
+
+Work Log:
+- Read full 2014-line `company-dashboard.tsx` plus all 7 existing `tabs/*.tsx` files and `shared.tsx`.
+- Verified each tab file already contained the verbatim extraction of its inline counterpart from the monolith (Overview 269 lines, Jobs 227, NewJob 267, Applicants 592 incl. ApplicantDetail, TalentSearch 236 incl. CandidateTalentCard + CandidateDetailPanel, Analytics 108, Profile 227). All seven files were `("use client")`, exported their public function with the original name/signature, imported `useCompanyJobs`/`useCompanyApps` from `../shared`, and pulled only the UI primitives/types/icons they actually used.
+- Confirmed `shared.tsx` already exports `NAV`, `useCompanyJobs`, `useCompanyApps`, `PendingState` (104 lines).
+- Rewrote `company-dashboard.tsx` from 2014 → 100 lines as a slim orchestrator. The new file imports `NAV` + `PendingState` from `./shared` and the seven tab components from `./tabs/*`, then renders the same `DashboardShell` wrapper, the same auth/loading/pending guards, the same avatar/topbarActions, and the same `tab === "..."` switch as before. All JSX preserved verbatim; no logic, styling, or props changed.
+- Ran `bun run lint` → 0 errors (45 pre-existing warnings in unrelated files; none in `src/components/company/`). Ran `npx tsc --noEmit` → exit 0, clean.
+- No files outside `src/components/company/` were touched. `auth.ts`, API routes, store, types — untouched.
+
+Files modified (1):
+- `src/components/company/company-dashboard.tsx` — rewritten as slim orchestrator (2014 → 100 lines).
+
+Files verified-but-unchanged (already correct from prior split; left as-is):
+- `src/components/company/shared.tsx`
+- `src/components/company/tabs/overview.tsx`
+- `src/components/company/tabs/jobs.tsx`
+- `src/components/company/tabs/new-job.tsx`
+- `src/components/company/tabs/applicants.tsx`
+- `src/components/company/tabs/talent-search.tsx`
+- `src/components/company/tabs/analytics.tsx`
+- `src/components/company/tabs/profile.tsx`
+
+---
+Task ID: RE-SPLIT-ADMIN
+Agent: sub (general-purpose)
+Task: Re-split `src/components/admin/admin-dashboard.tsx` (had regressed back to 2555 lines with all tab functions inline) into focused tab files under `src/components/admin/tabs/`.
+
+Work Log:
+- Read full 2555-line `admin-dashboard.tsx` plus all 7 existing `tabs/*.tsx` files and `shared.tsx`.
+- Mapped the monolith's structure: orchestrator `AdminDashboard` (lines 172-208) + inline `Overview`, `ExportCsvButton`, `FormField`, `JobsTab` + `JobEditorSheet`, `CandidatesTab` + `CandidateEditorSheet`, `CompaniesTab`, `ApplicationsTab`, `TestimonialsTab` + `TestimonialEditorSheet`, `ContactsTab`, `UsersTab`, plus shared `NAV`/`AdminStats`/`CandidateRow`/`CompanyRow`/`TestimonialRow`/`STATUS_COLORS` declarations.
+- Verified existing tab extractions against the in-dashboard source for: `overview.tsx` (386 lines, ✓), `jobs.tsx` (627 lines incl. `JobEditorSheet`, ✓), `companies.tsx` (218 lines, ✓), `applications.tsx` (150 lines, ✓), `testimonials.tsx` (438 lines incl. `TestimonialEditorSheet`, ✓), `contacts.tsx` (219 lines, ✓). All six were already `"use client"`, exported their function with the original name/signature, imported only what they used, and pulled `AdminStats`/`STATUS_COLORS`/`CandidateRow`/`CompanyRow`/`TestimonialRow`/`ExportCsvButton`/`FormField` from `../shared`. Left them unchanged.
+- Found `tabs/candidates.tsx` was STALE — it predated the addition of the "View & PDF" button + `CandidateEditorSheet`. Rewrote it (195 → 351 lines) by extracting `CandidatesTab` + `CandidateEditorSheet` verbatim from the monolith (incl. PDFDownloadLink for EN/JP resume PDFs, resumeData fetch, uploaded-PDF download). `CandidateEditorSheet` lives only in `candidates.tsx` (not exported). Removed the unused `toast` import that the monolith had carried for unrelated tabs; the rest of the body is byte-identical to the in-dashboard source.
+- Created `tabs/users.tsx` (212 lines) — extracted `UsersTab` verbatim from the monolith (incl. role-edit inline Select, verified toggle, delete confirm, 2FA badge, Google/Password login badges). The previous split had missed this tab entirely; the orchestrator was rendering `<UsersTab />` from an inline function only. New file exports `UsersTab`.
+- Updated `shared.tsx`: added `ShieldCheck` to the lucide-react import and appended `{ key: "users", label: "Users & Roles", icon: ShieldCheck }` to `NAV`. This also resolves the pre-existing `ReferenceError: ShieldCheck is not defined` SSR crash noted in the RE-RESUME-2025 worklog (the orchestrator's old inline NAV referenced `ShieldCheck` without importing it). No other exports touched — `NAV`, `STATUS_COLORS`, `AdminStats`, `CandidateRow`, `CompanyRow`, `TestimonialRow`, `ExportCsvButton`, `FormField` all unchanged.
+- Rewrote `admin-dashboard.tsx` from 2555 → 55 lines as a slim orchestrator. The new file imports `NAV` from `./shared` and the eight tab components from `./tabs/*`, then renders the same `DashboardShell` wrapper, the same `RoleGuard` early return, the same avatar/topbarActions, and the same `tab === "..."` switch as before. All JSX preserved verbatim; no logic, styling, or props changed.
+- Ran `npx tsc --noEmit` → exit 0, clean. Ran `bun run lint` → 0 errors (38 pre-existing warnings in unrelated files; the only new warnings in `tabs/candidates.tsx` and `tabs/users.tsx` are inherited from the in-dashboard source — `any` types in `resumeData`/`users` state, an unused `locale` destructure in `CandidateEditorSheet`, an unused `e` in `updateRole`'s catch — all preserved verbatim per the "zero behavior change" rule).
+- No files outside `src/components/admin/` were touched. `auth.ts`, API routes, store, types, PDF templates — untouched.
+
+Files modified (3):
+- `src/components/admin/admin-dashboard.tsx` — rewritten as slim orchestrator (2555 → 55 lines).
+- `src/components/admin/shared.tsx` — added `ShieldCheck` import + `users` NAV entry (also fixes pre-existing SSR crash).
+- `src/components/admin/tabs/candidates.tsx` — rewrote to include the missing `CandidateEditorSheet` + "View & PDF" button column (195 → 351 lines).
+
+Files created (1):
+- `src/components/admin/tabs/users.tsx` — new file, exports `UsersTab`.
+
+Files verified-but-unchanged (already correct from prior split; left as-is):
+- `src/components/admin/tabs/overview.tsx`
+- `src/components/admin/tabs/jobs.tsx`
+- `src/components/admin/tabs/companies.tsx`
+- `src/components/admin/tabs/applications.tsx`
+- `src/components/admin/tabs/testimonials.tsx`
+- `src/components/admin/tabs/contacts.tsx`

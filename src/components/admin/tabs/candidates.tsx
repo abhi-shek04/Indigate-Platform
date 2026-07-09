@@ -8,6 +8,7 @@ import {
   SectionCard,
   CardSkeleton,
 } from "@/components/dashboard/dashboard-shell";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -25,8 +26,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { CandidateAvatar } from "@/components/brand/logo";
-import { Users, Search } from "lucide-react";
+import { PDFDownloadLink } from "@react-pdf/renderer";
+import { EnglishResumePDF } from "@/lib/pdf-templates/english-resume-pdf";
+import { JapaneseResumePDF } from "@/lib/pdf-templates/japanese-resume-pdf";
+import { Users, Search, Download } from "lucide-react";
 import { JLPT_LEVELS, JLPT_BADGE } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CandidateRow, ExportCsvButton } from "../shared";
@@ -37,6 +47,7 @@ export function CandidatesTab() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [jlpt, setJlpt] = useState<string>("all");
+  const [editingCandidate, setEditingCandidate] = useState<CandidateRow | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -123,6 +134,7 @@ export function CandidatesTab() {
                   <TableHead className="hidden sm:table-cell pr-5 sm:pr-6 text-right">
                     Joined
                   </TableHead>
+                  <TableHead className="text-right pr-5 sm:pr-6">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -183,6 +195,16 @@ export function CandidatesTab() {
                     <TableCell className="hidden sm:table-cell pr-5 sm:pr-6 text-sm text-muted-foreground text-right">
                       {formatDate(c.createdAt, locale)}
                     </TableCell>
+                    <TableCell className="pr-5 sm:pr-6 text-right">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs"
+                        onClick={() => setEditingCandidate(c)}
+                      >
+                        View & PDF
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -190,6 +212,140 @@ export function CandidatesTab() {
           </div>
         </SectionCard>
       )}
+
+      {/* Candidate Editor Sheet */}
+      <CandidateEditorSheet
+        candidate={editingCandidate}
+        onClose={() => setEditingCandidate(null)}
+      />
     </div>
+  );
+}
+
+function CandidateEditorSheet({
+  candidate,
+  onClose,
+}: {
+  candidate: CandidateRow | null;
+  onClose: () => void;
+}) {
+  const { locale } = useT();
+  const [resumeData, setResumeData] = useState<any>(null);
+
+  useEffect(() => {
+    if (!candidate) return;
+    (async () => {
+      try {
+        const res = await api<{ resumeData: any }>(
+          `/api/admin/list/candidates?userId=${candidate.userId}`,
+        );
+        setResumeData(res.resumeData);
+      } catch {
+        setResumeData(null);
+      }
+    })();
+  }, [candidate]);
+
+  if (!candidate) return null;
+
+  return (
+    <Sheet open={!!candidate} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent className="w-[600px] sm:max-w-none overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Candidate Editor</SheetTitle>
+        </SheetHeader>
+        <div className="mt-6 space-y-4">
+          {/* Profile info */}
+          <div className="rounded-xl border border-border p-4 space-y-2">
+            <div className="flex items-center gap-3">
+              <CandidateAvatar
+                name={candidate.fullName}
+                photoUrl={candidate.photoUrl}
+                size={48}
+              />
+              <div>
+                <p className="font-display font-bold text-lg">{candidate.fullName}</p>
+                <p className="text-sm text-muted-foreground">{candidate.email}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm mt-3">
+              <div>
+                <span className="text-muted-foreground">JLPT:</span>{" "}
+                <Badge variant="outline" className={cn("font-semibold", JLPT_BADGE[candidate.jlptLevel])}>
+                  {candidate.jlptLevel}
+                </Badge>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Experience:</span> {candidate.experienceYears}y
+              </div>
+              <div>
+                <span className="text-muted-foreground">Location:</span> {candidate.location || "—"}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Phone:</span> {candidate.phone || "—"}
+              </div>
+            </div>
+            {candidate.bio && (
+              <p className="text-sm text-muted-foreground mt-2">{candidate.bio}</p>
+            )}
+            {candidate.skills.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {candidate.skills.map((s) => (
+                  <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Resume data */}
+          {resumeData && (
+            <div className="rounded-xl border border-border p-4">
+              <p className="font-semibold text-sm mb-2">Resume Data (EN + JP)</p>
+              <pre className="text-xs bg-muted rounded-lg p-3 overflow-x-auto max-h-40">
+                {JSON.stringify(resumeData, null, 2)}
+              </pre>
+            </div>
+          )}
+
+          {/* PDF export */}
+          <div className="flex gap-2">
+            {resumeData && (
+              <>
+                <PDFDownloadLink
+                  document={<EnglishResumePDF data={resumeData} />}
+                  fileName={`${candidate.fullName}_EN.pdf`}
+                >
+                  {({ loading }) => (
+                    <Button variant="outline" size="sm" disabled={loading} className="font-semibold">
+                      <Download className="h-3.5 w-3.5 mr-1.5" />
+                      {loading ? "Generating..." : "EN PDF"}
+                    </Button>
+                  )}
+                </PDFDownloadLink>
+                <PDFDownloadLink
+                  document={<JapaneseResumePDF data={resumeData} />}
+                  fileName={`${candidate.fullName}_JP.pdf`}
+                >
+                  {({ loading }) => (
+                    <Button variant="outline" size="sm" disabled={loading} className="font-semibold">
+                      <Download className="h-3.5 w-3.5 mr-1.5" />
+                      {loading ? "生成中..." : "履歴書 PDF"}
+                    </Button>
+                  )}
+                </PDFDownloadLink>
+              </>
+            )}
+            {candidate.resumeUrl && (
+              <Button variant="outline" size="sm" asChild className="font-semibold">
+                <a href={candidate.resumeUrl} target="_blank" rel="noopener noreferrer">
+                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                  Uploaded PDF
+                </a>
+              </Button>
+            )}
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

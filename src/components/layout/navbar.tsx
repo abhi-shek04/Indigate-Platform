@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, LogOut, LayoutDashboard, Briefcase, Building2, ShieldCheck } from "lucide-react";
+import { Menu, LogOut, LayoutDashboard, Briefcase, Building2, ShieldCheck, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { View } from "@/lib/store";
 import { motion } from "framer-motion";
@@ -34,12 +34,13 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const navItems: { label: string; view: View }[] = [
+  const navItems: { label: string; view: View; external?: boolean }[] = [
     { label: t("nav.home"), view: "home" },
     { label: t("nav.jobs"), view: "jobs" },
     { label: t("nav.forCompanies"), view: "for-companies" },
     { label: t("nav.about"), view: "about" },
     { label: t("nav.contact"), view: "contact" },
+    { label: "Indobox Academy", view: "home", external: true },
   ];
 
   function go(v: View) {
@@ -79,7 +80,21 @@ export function Navbar() {
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => {
-              const isActive = view === item.view;
+              const isActive = !item.external && view === item.view;
+              if (item.external) {
+                return (
+                  <a
+                    key={item.label}
+                    href="https://indobox-academy.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative px-3.5 py-2 text-sm font-medium rounded-lg transition-all text-foreground/70 hover:text-foreground hover:bg-accent/60 inline-flex items-center gap-1"
+                  >
+                    {item.label}
+                    <ExternalLink className="h-3 w-3 opacity-50" />
+                  </a>
+                );
+              }
               return (
                 <button
                   key={item.label}
@@ -209,7 +224,25 @@ export function Navbar() {
                 </SheetHeader>
                 <div className="mt-4 px-3 flex flex-col gap-1">
                   {navItems.map((item, i) => {
-                    const isActive = view === item.view;
+                    const isActive = !item.external && view === item.view;
+                    if (item.external) {
+                      return (
+                        <motion.a
+                          key={item.label}
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1], delay: 0.04 + i * 0.04 }}
+                          href="https://indobox-academy.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="relative text-left px-3.5 py-3 rounded-xl text-sm font-medium transition-all flex items-center gap-3 text-foreground/80 hover:bg-accent hover:text-foreground"
+                        >
+                          <span className="font-mono text-[10px] text-muted-foreground/70">0{i + 1}</span>
+                          {item.label}
+                          <ExternalLink className="h-3 w-3 ml-auto opacity-50" />
+                        </motion.a>
+                      );
+                    }
                     return (
                       <motion.button
                         key={item.label}

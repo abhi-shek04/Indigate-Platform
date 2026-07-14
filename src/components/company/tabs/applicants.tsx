@@ -45,7 +45,18 @@ import {
 } from "@/components/ui/sheet";
 import { CandidateAvatar } from "@/components/brand/logo";
 import { toast } from "sonner";
-import { Users, Briefcase, Eye, Star, Trophy, XCircle, CalendarClock, Download } from "lucide-react";
+import {
+  Users,
+  Briefcase,
+  Eye,
+  Star,
+  Trophy,
+  XCircle,
+  CalendarClock,
+  Download,
+  MessageSquare,
+  Send,
+} from "lucide-react";
 import type {
   ApplicationDTO,
   ApplicationStatus,
@@ -346,10 +357,16 @@ function ApplicantDetail({
 }) {
   const { t, locale } = useT();
   const c = app.candidate;
+  const setActiveConversation = useApp((s) => s.setActiveConversation);
+  const setCompanyTab = useApp((s) => s.setCompanyTab);
   // Interview scheduling dialog state
   const [showSchedule, setShowSchedule] = useState(false);
   const [intDate, setIntDate] = useState("");
   const [intNotes, setIntNotes] = useState("");
+  // Message Candidate dialog state
+  const [showMessage, setShowMessage] = useState(false);
+  const [msgDraft, setMsgDraft] = useState("");
+  const [sendingMsg, setSendingMsg] = useState(false);
   if (!c) {
     return (
       <div className="p-5">
@@ -358,6 +375,31 @@ function ApplicantDetail({
         </p>
       </div>
     );
+  }
+
+  async function sendMessage() {
+    if (!c) return;
+    if (!msgDraft.trim() || sendingMsg) return;
+    setSendingMsg(true);
+    try {
+      const res = await api<{ conversationId: string }>("/api/messages", {
+        method: "POST",
+        body: JSON.stringify({
+          candidateId: c.id,
+          jobId: app.jobId,
+          firstMessage: msgDraft.trim(),
+        }),
+      });
+      toast.success(t("dash.messages.send"));
+      setShowMessage(false);
+      setMsgDraft("");
+      setActiveConversation(res.conversationId);
+      setCompanyTab("messages");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send message.");
+    } finally {
+      setSendingMsg(false);
+    }
   }
 
   const actions: { label: string; status: ApplicationStatus; icon: typeof Star; accent: string }[] = [
@@ -376,7 +418,7 @@ function ApplicantDetail({
           photoUrl={c.photoUrl}
           size={56}
         />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="font-display font-bold text-lg truncate">
             {c.fullName}
           </p>
@@ -384,6 +426,27 @@ function ApplicantDetail({
             {c.location ?? "—"}
           </p>
         </div>
+        {c.openToWork ? (
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setShowMessage(true)}
+            className="bg-brand-gradient text-white hover:opacity-90 shadow-glow-brand shrink-0"
+          >
+            <MessageSquare className="h-4 w-4" />
+            <span className="hidden sm:inline">
+              {t("dash.messages.start")}
+            </span>
+          </Button>
+        ) : (
+          <Badge
+            variant="outline"
+            className="shrink-0 border-muted-foreground/30 text-muted-foreground"
+            title={t("dash.messages.no.contact")}
+          >
+            {t("dash.messages.no.contact")}
+          </Badge>
+        )}
       </div>
 
       {/* Status pill */}
@@ -583,6 +646,49 @@ function ApplicantDetail({
             >
               <CalendarClock className="mr-2 h-4 w-4" />
               Schedule Interview
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Message candidate dialog */}
+      <Dialog open={showMessage} onOpenChange={setShowMessage}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("dash.messages.start")}</DialogTitle>
+            <DialogDescription>
+              {t("dash.messages.regarding")}: {app.job?.title ?? "—"} ·{" "}
+              {c.fullName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Textarea
+              rows={5}
+              value={msgDraft}
+              onChange={(e) => setMsgDraft(e.target.value)}
+              placeholder={t("dash.messages.placeholder")}
+              className="resize-none"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowMessage(false);
+                setMsgDraft("");
+              }}
+              disabled={sendingMsg}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              disabled={!msgDraft.trim() || sendingMsg}
+              onClick={() => void sendMessage()}
+              className="bg-brand-gradient text-white hover:opacity-90 font-semibold"
+            >
+              <Send className="mr-2 h-4 w-4" />
+              {t("dash.messages.send")}
             </Button>
           </DialogFooter>
         </DialogContent>

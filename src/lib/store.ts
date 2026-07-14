@@ -37,7 +37,7 @@ export interface AppState {
   view: View;
   selectedJobId: string | null;
   // candidate dashboard tab
-  candidateTab: "overview" | "applications" | "profile" | "resume" | "saved" | "builder" | "alerts" | "settings";
+  candidateTab: "overview" | "applications" | "profile" | "resume" | "saved" | "builder" | "alerts" | "messages" | "settings";
   // company dashboard tab
   companyTab:
     | "overview"
@@ -46,6 +46,7 @@ export interface AppState {
     | "applicants"
     | "talent"
     | "analytics"
+    | "messages"
     | "profile";
   companyApplicantsJobId: string | null;
   // admin dashboard tab
@@ -63,6 +64,9 @@ export interface AppState {
   locale: Locale;
   // TOTP 2FA
   pendingTwoFactorEmail: string | null;
+  // Messaging
+  activeConversationId: string | null;
+  messageUnreadCount: number;
   // actions
   setAuth: (data: {
     user: SessionUser | null;
@@ -80,6 +84,8 @@ export interface AppState {
   setAdminTab: (t: AppState["adminTab"]) => void;
   setLocale: (l: Locale) => void;
   setPendingTwoFactorEmail: (email: string | null) => void;
+  setActiveConversation: (id: string | null) => void;
+  setMessageUnreadCount: (n: number) => void;
 }
 
 export const useApp = create<AppState>((set, get) => ({
@@ -95,6 +101,8 @@ export const useApp = create<AppState>((set, get) => ({
   adminTab: "overview",
   locale: "en",
   pendingTwoFactorEmail: null,
+  activeConversationId: null,
+  messageUnreadCount: 0,
 
   setAuth: ({ user, candidate, company }) =>
     set({
@@ -145,4 +153,6 @@ export const useApp = create<AppState>((set, get) => ({
   setAdminTab: (t) => set({ adminTab: t }),
   setLocale: (l) => set({ locale: l }),
   setPendingTwoFactorEmail: (email) => set({ pendingTwoFactorEmail: email }),
+  setActiveConversation: (id) => set({ activeConversationId: id }),
+  setMessageUnreadCount: (n) => set({ messageUnreadCount: n }),
 }));

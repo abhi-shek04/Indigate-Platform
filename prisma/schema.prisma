@@ -69,6 +69,7 @@ model CandidateProfile {
   updatedAt       DateTime @updatedAt
 
   applications Application[]
+  conversations Conversation[]
 }
 
 model CompanyProfile {
@@ -94,6 +95,7 @@ model CompanyProfile {
   updatedAt     DateTime  @updatedAt
 
   jobs Job[]
+  conversations Conversation[]
 }
 
 model Job {
@@ -119,6 +121,7 @@ model Job {
 
   applications Application[]
   views         JobView[]
+  conversations Conversation[]
 
   @@index([isActive, postedAt])
   @@index([companyId])
@@ -228,4 +231,34 @@ model AuditLog {
   @@index([actorId])
   @@index([targetType, targetId])
   @@index([createdAt])
+}
+
+model Conversation {
+  id          String   @id @default(cuid())
+  candidateId String
+  candidate   CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  companyId   String
+  company     CompanyProfile   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  jobId       String?
+  job         Job?             @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  messages    Message[]
+
+  @@unique([candidateId, companyId, jobId])
+  @@index([candidateId])
+  @@index([companyId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String       // User.id
+  body           String
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
 }

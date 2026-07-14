@@ -112,6 +112,20 @@ const en: Dict = {
   "dash.apps.empty": "You haven't applied to any jobs yet.",
   "dash.apps.apply": "Find jobs to apply",
 
+  // Messages
+  "dash.messages": "Messages",
+  "dash.messages.new": "New message",
+  "dash.messages.send": "Send",
+  "dash.messages.placeholder": "Write a message...",
+  "dash.messages.regarding": "Regarding",
+  "dash.messages.you": "You",
+  "dash.messages.empty": "No conversations yet",
+  "dash.messages.empty.sub": "Start a conversation from Applicants or Find Talent.",
+  "dash.messages.select": "Select a conversation",
+  "dash.messages.start": "Message Candidate",
+  "dash.messages.no.contact": "Not open to messages",
+  "dash.messages.search": "Search conversations...",
+
   // Company dashboard
   "dash.company.welcome": "Welcome, {name}",
   "dash.company.overview": "Overview",
@@ -394,6 +408,20 @@ const ja: Dict = {
   "dash.saved.empty": "保存した求人はありません。求人を開いてブックマークアイコンを押してください。",
   "dash.apps.empty": "まだ応募した求人はありません。",
   "dash.apps.apply": "求人を探して応募",
+
+  // Messages
+  "dash.messages": "メッセージ",
+  "dash.messages.new": "新しいメッセージ",
+  "dash.messages.send": "送信",
+  "dash.messages.placeholder": "メッセージを入力...",
+  "dash.messages.regarding": "件名",
+  "dash.messages.you": "あなた",
+  "dash.messages.empty": "会話がありません",
+  "dash.messages.empty.sub": "応募者または人材検索から会話を始めてください。",
+  "dash.messages.select": "会話を選択してください",
+  "dash.messages.start": "メッセージを送る",
+  "dash.messages.no.contact": "メッセージを受け付けていません",
+  "dash.messages.search": "会話を検索...",
 
   "dash.company.welcome": "ようこそ、{name}さん",
   "dash.company.overview": "概要",

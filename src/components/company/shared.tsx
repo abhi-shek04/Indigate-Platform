@@ -13,11 +13,14 @@ import {
   Building2,
   BarChart2,
   Clock,
+  MessageSquare,
 } from "lucide-react";
 import type { NavItem } from "@/components/dashboard/dashboard-shell";
 import type { ApplicationDTO, JobDTO } from "@/lib/types";
 
-/** Company sidebar navigation config. */
+/** Company sidebar navigation config. The `messages` entry uses a static
+ *  English label here for module-level constancy; the orchestrator
+ *  (company-dashboard.tsx) overlays the i18n label + unread badge at runtime. */
 export const NAV: NavItem[] = [
   { key: "overview", label: "Overview", icon: LayoutDashboard },
   { key: "jobs", label: "My Jobs", icon: Briefcase },
@@ -25,6 +28,7 @@ export const NAV: NavItem[] = [
   { key: "applicants", label: "Applicants", icon: Users },
   { key: "talent", label: "Find Talent", icon: Users2 },
   { key: "analytics", label: "Analytics", icon: BarChart2 },
+  { key: "messages", label: "Messages", icon: MessageSquare },
   { key: "profile", label: "Company Profile", icon: Building2 },
 ];
 

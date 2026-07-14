@@ -187,3 +187,29 @@ export const STATUS_BADGE: Record<ApplicationStatus, string> = {
   WITHDRAWN:
     "bg-muted text-muted-foreground border-border",
 };
+
+export interface ConversationDTO {
+  id: string;
+  candidateId: string;
+  candidateName: string;
+  candidatePhoto: string | null;
+  companyId: string;
+  companyName: string;
+  companyLogo: string | null;
+  jobId: string | null;
+  jobTitle: string | null;
+  lastMessage: string | null;
+  lastMessageAt: string | null;
+  lastMessageSenderId: string | null;
+  unreadCount: number;
+  createdAt: string;
+}
+
+export interface MessageDTO {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  body: string;
+  isRead: boolean;
+  createdAt: string;
+}

@@ -1,8 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import { useApp } from "@/lib/store";
 import { useT } from "@/lib/use-t";
-import { DashboardShell, RoleGuard } from "@/components/dashboard/dashboard-shell";
+import { DashboardShell, RoleGuard, type NavItem } from "@/components/dashboard/dashboard-shell";
 import { Button } from "@/components/ui/button";
 import { CompanyAvatar } from "@/components/brand/logo";
 import { Plus } from "lucide-react";
@@ -14,6 +15,7 @@ import { Applicants } from "./tabs/applicants";
 import { TalentSearch } from "./tabs/talent-search";
 import { Analytics } from "./tabs/analytics";
 import { Profile } from "./tabs/profile";
+import { MessagesView } from "@/components/messages/messages-view";
 
 export function CompanyDashboard() {
   const user = useApp((s) => s.user);
@@ -21,7 +23,19 @@ export function CompanyDashboard() {
   const authLoading = useApp((s) => s.authLoading);
   const tab = useApp((s) => s.companyTab);
   const setTab = useApp((s) => s.setCompanyTab);
+  const unread = useApp((s) => s.messageUnreadCount);
   const { t } = useT();
+
+  // Overlay the i18n label + live unread badge on the `messages` nav entry.
+  const nav: NavItem[] = useMemo(
+    () =>
+      NAV.map((item) =>
+        item.key === "messages"
+          ? { ...item, label: t("dash.messages"), badge: unread }
+          : item,
+      ),
+    [t, unread],
+  );
 
   if (!user || user.role !== "COMPANY") {
     return <RoleGuard expected="COMPANY" />;
@@ -54,7 +68,7 @@ export function CompanyDashboard() {
   return (
     <DashboardShell
       brand="Company"
-      nav={NAV}
+      nav={nav}
       active={tab}
       onSelect={(k) => setTab(k as typeof tab)}
       welcome={welcome}
@@ -92,6 +106,7 @@ export function CompanyDashboard() {
           {tab === "applicants" && <Applicants />}
           {tab === "talent" && <TalentSearch />}
           {tab === "analytics" && <Analytics />}
+          {tab === "messages" && <MessagesView />}
           {tab === "profile" && <Profile />}
         </>
       )}

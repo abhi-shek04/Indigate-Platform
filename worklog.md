@@ -446,3 +446,64 @@ Verification:
 - `bun run lint` → exit 0, "✓ 0 problems".
 - `npx tsc --noEmit` → exit 0, no output (0 errors).
 
+
+---
+Task ID: MESSAGING-UI
+Agent: sub (general-purpose)
+Task: Build the shared MessagesView component and wire it into both the candidate and company dashboards. Add a "Message Candidate" entry point in the company applicants slide-over.
+
+Work Log:
+- Read existing assets before any change: `worklog.md`, `src/lib/types.ts` (`ConversationDTO`, `MessageDTO` already declared), `src/lib/store.ts` (`activeConversationId` / `messageUnreadCount` + setters already wired into `AppState`), `src/lib/i18n.ts`, `src/lib/api-client.ts` (`api()`, `formatRelative`), `src/lib/use-t.ts`, `src/components/dashboard/dashboard-shell.tsx` (shell + `NavItem` + `EmptyState`), `src/components/brand/logo.tsx` (avatar primitives), `src/components/ui/{input,button,textarea,scroll-area}.tsx`, `src/app/api/messages/route.ts` + `[conversationId]/route.ts` (to confirm DTO shapes + endpoints), and the candidate/company dashboards + company `tabs/applicants.tsx` + `shared.tsx`.
+- i18n: appended the 12 required `dash.messages.*` keys to BOTH the `en` and `ja` dictionaries in `src/lib/i18n.ts` (Messages / Send / placeholder / regarding / you / empty / empty.sub / select / start / no.contact / search / new).
+- `src/components/dashboard/dashboard-shell.tsx`: extended the `NavItem` interface with an optional `badge?: number`. The `NavList` button now renders a saffron pill (`bg-saffron text-white text-[10px] font-bold shadow-glow-brand`) on the right when `badge > 0`, and hides the existing active dot in that case to avoid double indicators. Otherwise the active-dot behavior is byte-identical to before.
+- Created `src/components/messages/messages-view.tsx` ("use client", exported `MessagesView`):
+  - Two-pane layout: `grid grid-cols-1 md:grid-cols-[280px_1fr] gap-4 h-[calc(100vh-8rem)] min-h-[480px]`.
+  - Reads `activeConversationId` / `setActiveConversation` / `setMessageUnreadCount` from `useApp`; reads `user.role` + `user.id` for sender-side bubble alignment + read-receipt logic.
+  - Conversation list pane: search `Input` with `Search` icon, scrollable `<ul>` of `ConversationItem`s. Each item shows a `PartyAvatar` (image-or-initials), bolded name when `unreadCount > 0`, last-message snippet truncated to 45 chars, `formatRelative()` timestamp, saffron unread pill, and an active state of `bg-saffron/10 border-l-2 border-saffron`. `onClick` → `setActiveConversation(conv.id)`.
+  - Chat thread pane: header (back button on mobile, avatar, name, saffron "Regarding: {jobTitle}" pill), scrollable messages area (`bg-background/40`), and a sticky input area at the bottom.
+  - Message bubbles: their messages left-aligned with `glass` bg + `rounded-2xl rounded-tl-sm`; my messages right-aligned with `bg-brand-gradient text-white rounded-2xl rounded-tr-sm shadow-glow-brand`. Each bubble has a timestamp below it; my bubbles also show `Check` (single tick, unread) or `CheckCheck` (saffron double tick, read).
+  - Bubbles animate in via `framer-motion` (`motion.div` with `initial={{opacity:0, y:8, scale:0.98}}` → `animate={{opacity:1, y:0, scale:1}}`, `0.22s` easeOutExpo). Wrapped in `<AnimatePresence initial={false}>` so existing bubbles don't re-animate when polling pulls in a new one.
+  - Input area: `Textarea` (rows=2, resize-none, max-h-32), `Send` button (`bg-brand-gradient text-white shadow-glow-brand`, disabled when empty/sending). `Ctrl+Enter` / `Cmd+Enter` triggers send. Optimistic append: a temp bubble is appended immediately with `id=temp-…`; on API success it's swapped for the real `MessageDTO`, on failure it's rolled back.
+  - Auto-scroll to bottom on new messages via `useRef` + `useEffect` on `messages`.
+  - Polling: conversations list refreshes every 10s; active thread refreshes every 5s. Both intervals are cleared on unmount. Each conversations-list refresh recomputes `messageUnreadCount` in the store (sum of all `conv.unreadCount`) so the sidebar badge stays live.
+  - Mobile behavior: `mobileThread` state toggles between list and thread. Toggling `activeConversationId` (via the store) auto-flips `mobileThread=true`; the in-thread back button flips it back to `false` without clearing `activeId`. CSS uses `hidden md:flex` so desktop always shows both panes.
+  - Empty states: `EmptyState` with `MessageSquare` icon for "no conversations"; centered `MessageSquare` + `t("dash.messages.select")` for "no conversation selected".
+  - Role-aware avatar / name selection: when `role === "CANDIDATE"`, the other party is the company (`companyName` / `companyLogo`); when `role === "COMPANY"`, the other party is the candidate (`candidateName` / `candidatePhoto`). A small internal `PartyAvatar` helper renders the image (when available) as a `<img>` (rounded-xl for company, rounded-full for candidate), falling back to brand-gradient initials.
+  - Uses only existing shadcn primitives (`Button`, `Input`, `Textarea`) + brand tokens (`bg-brand-gradient`, `text-gradient-brand` (unused — kept for reference), `glass`, `shadow-glow-brand`, `bg-saffron`, `text-saffron`). No blue/indigo anywhere.
+- `src/components/candidate/candidate-dashboard.tsx`:
+  - Imported `MessagesView` and `MessageSquare` (lucide).
+  - Added `useMemo` to the React import.
+  - Subscribed to `messageUnreadCount` from the store.
+  - Replaced the static `NAV` lookup passed to `DashboardShell` with a `useMemo`-derived `nav: NavItem[]` that injects `{ key: "messages", label: t("dash.messages"), icon: MessageSquare, badge: unread }` between `alerts` and `settings` (the static `NAV` no longer contains a `settings` slot for messages — instead it's appended dynamically so the live unread badge can attach).
+  - Added `{tab === "messages" && <MessagesView />}` to the render switch.
+- `src/components/company/shared.tsx`: added `MessageSquare` to the lucide import and `{ key: "messages", label: "Messages", icon: MessageSquare }` to `NAV` between `analytics` and `profile`. (Static English label here so the const can stay at module scope; the orchestrator overlays the i18n label + badge at runtime.)
+- `src/components/company/company-dashboard.tsx`:
+  - Imported `useMemo`, `MessagesView`, and `type NavItem`.
+  - Subscribed to `messageUnreadCount` from the store.
+  - Built a `useMemo`-derived `nav: NavItem[]` that maps over `NAV` and overlays `{ label: t("dash.messages"), badge: unread }` on the `messages` entry.
+  - Passed `nav` (not the static `NAV`) to `DashboardShell`.
+  - Added `{tab === "messages" && <MessagesView />}` to the render switch (still gated by the existing `pending && tab !== "overview" && tab !== "profile"` check, so un-approved companies see `PendingState` instead — consistent with `talent` / `analytics`).
+- `src/components/company/tabs/applicants.tsx` (ApplicantDetail slide-over):
+  - Imported `MessageSquare` + `Send` from lucide.
+  - Added `setActiveConversation` + `setCompanyTab` from `useApp` and local state for the message dialog (`showMessage`, `msgDraft`, `sendingMsg`).
+  - Added a `sendMessage()` that POSTs `{ candidateId, jobId, firstMessage }` to `/api/messages`, then on success: closes the dialog, clears the draft, calls `setActiveConversation(res.conversationId)`, and `setCompanyTab("messages")` to navigate the user to the messages tab with the new conversation pre-selected. (The slide-over closes itself when the Applicants component unmounts on tab switch.)
+  - Added a header button: if `c.openToWork` is true, a `bg-brand-gradient` "Message Candidate" button (`MessageSquare` icon + `t("dash.messages.start")` label) opens the composer Dialog; if false, a muted `Badge` shows `t("dash.messages.no.contact")` ("Not open to messages") instead — matching the API's `openToWork` gate on conversation creation.
+  - Added a new `Dialog` (alongside the existing schedule-interview Dialog) with a 5-row `Textarea` (resize-none, autoFocus), Cancel + Send buttons. Send button uses `bg-brand-gradient` and is disabled while empty or while sending.
+  - Added an `if (!c) return;` guard inside `sendMessage` to satisfy TS's closure-narrowing rule (the outer early-return doesn't narrow `c` inside nested function declarations).
+
+Verification:
+- `npx tsc --noEmit` → exit 0, no output (0 errors).
+- `bun run lint` → 0 errors. 1 pre-existing warning in `src/app/api/messages/route.ts` (line 147: `const message` assigned but never used) — NOT introduced by this task; left untouched per "API routes are already created" scope.
+
+Files created (1):
+- `src/components/messages/messages-view.tsx` — full two-pane messaging UI (~430 lines).
+
+Files modified (5):
+- `src/lib/i18n.ts` — added 12 `dash.messages.*` keys to EN + JA dictionaries.
+- `src/components/dashboard/dashboard-shell.tsx` — extended `NavItem` with optional `badge?: number`; rendered saffron pill in `NavList` when present.
+- `src/components/candidate/candidate-dashboard.tsx` — wired `MessagesView`, added dynamic `nav` with live unread badge between `alerts` and `settings`, imported `MessageSquare` + `useMemo`.
+- `src/components/company/shared.tsx` — added `messages` NAV entry between `analytics` and `profile`; imported `MessageSquare`.
+- `src/components/company/company-dashboard.tsx` — wired `MessagesView`, overlaid i18n label + live unread badge on the `messages` NAV entry, imported `useMemo` + `MessagesView` + `NavItem` type.
+- `src/components/company/tabs/applicants.tsx` — added "Message Candidate" button + composer Dialog in `ApplicantDetail`; on send, POSTs to `/api/messages` then navigates to the messages tab with the new conversation active. Shows "Not open to messages" badge when `!candidate.openToWork`.
+
+No API routes, Prisma schema, auth, store, or types were modified.

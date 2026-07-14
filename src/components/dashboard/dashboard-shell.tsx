@@ -22,6 +22,8 @@ export interface NavItem {
   key: string;
   label: string;
   icon: LucideIcon;
+  /** Optional numeric badge (e.g. unread count) shown on the right. */
+  badge?: number;
 }
 
 interface DashboardShellProps {
@@ -222,10 +224,21 @@ function NavList({
               )}
             />
             <span className="truncate">{item.label}</span>
+            {typeof item.badge === "number" && item.badge > 0 && (
+              <span
+                aria-label={`${item.badge} unread`}
+                className="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-saffron text-white text-[10px] font-bold shadow-glow-brand"
+              >
+                {item.badge > 99 ? "99+" : item.badge}
+              </span>
+            )}
             {isActive && (
               <span
                 aria-hidden
-                className="ml-auto h-1.5 w-1.5 rounded-full bg-saffron shadow-glow-brand"
+                className={cn(
+                  "ml-auto h-1.5 w-1.5 rounded-full bg-saffron shadow-glow-brand",
+                  typeof item.badge === "number" && item.badge > 0 && "hidden",
+                )}
               />
             )}
           </button>

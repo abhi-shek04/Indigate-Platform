@@ -11,8 +11,6 @@ import {
   MetricSkeleton,
 } from "@/components/dashboard/dashboard-shell";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CandidateAvatar } from "@/components/brand/logo";
 import {
@@ -24,13 +22,24 @@ import {
   Upload,
   Briefcase,
   ArrowRight,
+  type LucideIcon,
 } from "lucide-react";
 import type {
   ApplicationDTO,
+  ApplicationStatus,
   CandidateProfileDTO,
 } from "@/lib/types";
-import { STATUS_BADGE } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+/** Status → tailwind text/bg classes for status dots & accents. */
+const STATUS_COLORS: Record<ApplicationStatus, { dot: string; text: string }> = {
+  APPLIED: { dot: "bg-sky-500", text: "text-sky-600 dark:text-sky-400" },
+  SHORTLISTED: { dot: "bg-amber-500", text: "text-amber-600 dark:text-amber-400" },
+  INTERVIEWED: { dot: "bg-violet-500", text: "text-violet-600 dark:text-violet-400" },
+  OFFERED: { dot: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" },
+  REJECTED: { dot: "bg-crimson", text: "text-crimson" },
+  WITHDRAWN: { dot: "bg-muted-foreground", text: "text-muted-foreground" },
+};
 
 function computeCompletion(c: CandidateProfileDTO | null): number {
   if (!c) return 0;
@@ -83,6 +92,12 @@ export function Overview() {
     offers: apps?.filter((a) => a.status === "OFFERED").length ?? 0,
   };
   const recent = (apps ?? []).slice(0, 5);
+
+  // Segmented progress bar — 10 segments, each filled or empty.
+  const segments = Array.from({ length: 10 }, (_, i) => {
+    const threshold = (i + 1) * 10;
+    return completion >= threshold;
+  });
 
   return (
     <div className="space-y-6">
@@ -140,7 +155,7 @@ export function Overview() {
           </Button>
         }
       >
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex items-end justify-between gap-4">
             <p className="text-sm text-muted-foreground">
               {completion < 100
@@ -151,21 +166,30 @@ export function Overview() {
               {completion}%
             </p>
           </div>
-          <Progress
-            value={completion}
-            className="h-2.5 bg-muted"
-          />
+          {/* Segmented progress bar — 10 cells */}
+          <div className="flex gap-1.5">
+            {segments.map((filled, i) => (
+              <span
+                key={i}
+                aria-hidden
+                className={cn(
+                  "h-2.5 flex-1 rounded-full transition-colors",
+                  filled
+                    ? "bg-brand-gradient"
+                    : "bg-muted",
+                )}
+              />
+            ))}
+          </div>
           {completion < 100 && (
-            <div className="flex flex-wrap gap-2 pt-2">
-              {completion < 50 && (
-                <Button
-                  size="sm"
-                  className="bg-brand-gradient text-white hover:opacity-90"
-                  onClick={() => setTab("profile")}
-                >
-                  Complete profile
-                </Button>
-              )}
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button
+                size="sm"
+                className="bg-brand-gradient text-white hover:opacity-90"
+                onClick={() => setTab("profile")}
+              >
+                Complete profile →
+              </Button>
               {!candidate?.resumeUrl && (
                 <Button
                   size="sm"
@@ -184,6 +208,7 @@ export function Overview() {
       {/* Recent applications */}
       <SectionCard
         title={t("dash.recent.apps")}
+        icon={FileText as LucideIcon}
         action={
           <Button
             variant="ghost"
@@ -220,33 +245,42 @@ export function Overview() {
             />
           </div>
         ) : (
-          <ul className="divide-y">
-            {recent.map((a) => (
-              <li
-                key={a.id}
-                className="flex items-center gap-3 px-5 sm:px-6 py-3 hover:bg-accent/40 transition-colors"
-              >
-                <CandidateAvatar
-                  name={a.job?.company?.companyName || "?"}
-                  size={36}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-sm truncate">
-                    {a.job ? a.job.title : "Job removed"}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {a.job?.company?.companyName} ·{" "}
-                    {formatRelative(a.appliedAt, locale)}
-                  </p>
-                </div>
-                <Badge
-                  variant="outline"
-                  className={cn("font-semibold", STATUS_BADGE[a.status])}
+          <ul className="divide-y divide-border">
+            {recent.map((a) => {
+              const sc = STATUS_COLORS[a.status];
+              return (
+                <li
+                  key={a.id}
+                  className="flex items-center gap-3 px-5 sm:px-6 py-3 hover:bg-accent/40 transition-colors"
                 >
-                  {t(`status.${a.status}`)}
-                </Badge>
-              </li>
-            ))}
+                  <CandidateAvatar
+                    name={a.job?.company?.companyName || "?"}
+                    size={36}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-sm truncate">
+                      {a.job ? a.job.title : "Job removed"}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {a.job?.company?.companyName} ·{" "}
+                      {formatRelative(a.appliedAt, locale)}
+                    </p>
+                  </div>
+                  <span
+                    className={cn("status-dot", sc.dot, sc.text)}
+                    aria-hidden
+                  />
+                  <span
+                    className={cn(
+                      "text-xs font-semibold uppercase tracking-wide hidden sm:inline",
+                      sc.text,
+                    )}
+                  >
+                    {t(`status.${a.status}`)}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </SectionCard>

@@ -22,10 +22,22 @@ import {
   Plus,
   Users,
   Clock,
+  type LucideIcon,
 } from "lucide-react";
+import type { ApplicationStatus } from "@/lib/types";
 import { STATUS_BADGE } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useCompanyJobs, useCompanyApps } from "../shared";
+
+/** Status → dot/text color (mirrors candidate overview). */
+const STATUS_COLORS: Record<ApplicationStatus, { dot: string; text: string }> = {
+  APPLIED: { dot: "bg-sky-500", text: "text-sky-600 dark:text-sky-400" },
+  SHORTLISTED: { dot: "bg-amber-500", text: "text-amber-600 dark:text-amber-400" },
+  INTERVIEWED: { dot: "bg-violet-500", text: "text-violet-600 dark:text-violet-400" },
+  OFFERED: { dot: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" },
+  REJECTED: { dot: "bg-crimson", text: "text-crimson" },
+  WITHDRAWN: { dot: "bg-muted-foreground", text: "text-muted-foreground" },
+};
 
 export function Overview() {
   const company = useApp((s) => s.company);
@@ -45,7 +57,7 @@ export function Overview() {
   return (
     <div className="space-y-6">
       {pending && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 p-4 flex items-start gap-3">
+        <div className="card-premium p-4 flex items-start gap-3 !border-amber-200 dark:!border-amber-900 bg-amber-50/60 dark:bg-amber-950/20">
           <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold text-sm text-amber-900 dark:text-amber-100">
@@ -100,6 +112,7 @@ export function Overview() {
         {/* Recent applicants */}
         <SectionCard
           title={t("dash.company.recent")}
+          icon={Users as LucideIcon}
           action={
             <Button
               variant="ghost"
@@ -127,33 +140,40 @@ export function Overview() {
               />
             </div>
           ) : (
-            <ul className="divide-y">
-              {recentApps.map((a) => (
-                <li
-                  key={a.id}
-                  className="flex items-center gap-3 px-5 py-3 hover:bg-accent/40 transition-colors"
-                >
-                  <CandidateAvatar
-                    name={a.candidate?.fullName || "?"}
-                    photoUrl={a.candidate?.photoUrl}
-                    size={36}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-sm truncate">
-                      {a.candidate?.fullName ?? "Candidate"}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {a.job?.title} · {formatRelative(a.appliedAt, locale)}
-                    </p>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className={cn("font-semibold hidden sm:inline-flex", STATUS_BADGE[a.status])}
+            <ul className="divide-y divide-border">
+              {recentApps.map((a) => {
+                const sc = STATUS_COLORS[a.status];
+                return (
+                  <li
+                    key={a.id}
+                    className="flex items-center gap-3 px-5 py-3 hover:bg-accent/40 transition-colors"
                   >
-                    {t(`status.${a.status}`)}
-                  </Badge>
-                </li>
-              ))}
+                    <CandidateAvatar
+                      name={a.candidate?.fullName || "?"}
+                      photoUrl={a.candidate?.photoUrl}
+                      size={36}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm truncate">
+                        {a.candidate?.fullName ?? "Candidate"}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {a.job?.title} · {formatRelative(a.appliedAt, locale)}
+                      </p>
+                    </div>
+                    <span
+                      className={cn("status-dot", sc.dot, sc.text)}
+                      aria-hidden
+                    />
+                    <Badge
+                      variant="outline"
+                      className={cn("font-semibold hidden sm:inline-flex", STATUS_BADGE[a.status])}
+                    >
+                      {t(`status.${a.status}`)}
+                    </Badge>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </SectionCard>
@@ -161,6 +181,7 @@ export function Overview() {
         {/* Active jobs */}
         <SectionCard
           title="Active jobs"
+          icon={Briefcase as LucideIcon}
           action={
             <Button variant="ghost" size="sm" onClick={() => setTab("jobs")}>
               {t("common.viewall")}
@@ -195,7 +216,7 @@ export function Overview() {
               />
             </div>
           ) : (
-            <ul className="divide-y">
+            <ul className="divide-y divide-border">
               {jobs.slice(0, 5).map((j) => (
                 <li
                   key={j.id}
@@ -233,7 +254,7 @@ export function Overview() {
         <div className="grid sm:grid-cols-2 gap-4">
           <Button
             variant="outline"
-            className="h-auto py-5 justify-start text-left"
+            className="h-auto py-5 justify-start text-left card-premium hover:shadow-glow-brand"
             onClick={() => setTab("new")}
           >
             <div className="grid place-items-center h-10 w-10 rounded-xl bg-saffron/15 text-saffron mr-3">
@@ -248,7 +269,7 @@ export function Overview() {
           </Button>
           <Button
             variant="outline"
-            className="h-auto py-5 justify-start text-left"
+            className="h-auto py-5 justify-start text-left card-premium hover:shadow-glow-brand"
             onClick={() => setTab("applicants")}
           >
             <div className="grid place-items-center h-10 w-10 rounded-xl bg-crimson/15 text-crimson mr-3">

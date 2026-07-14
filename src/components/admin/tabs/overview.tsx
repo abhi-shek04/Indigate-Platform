@@ -30,6 +30,7 @@ import {
   XCircle,
   TrendingUp,
   Trophy,
+  type LucideIcon,
 } from "lucide-react";
 import {
   Area,
@@ -41,10 +42,20 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { ApplicationDTO } from "@/lib/types";
+import type { ApplicationDTO, ApplicationStatus } from "@/lib/types";
 import { APPLICATION_STATUSES, STATUS_BADGE } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { AdminStats, STATUS_COLORS } from "../shared";
+
+/** Status → status-dot color, mirroring other dashboards. */
+const DOT_COLORS: Record<ApplicationStatus, string> = {
+  APPLIED: "bg-sky-500 text-sky-600 dark:text-sky-400",
+  SHORTLISTED: "bg-amber-500 text-amber-600 dark:text-amber-400",
+  INTERVIEWED: "bg-violet-500 text-violet-600 dark:text-violet-400",
+  OFFERED: "bg-emerald-500 text-emerald-600 dark:text-emerald-400",
+  REJECTED: "bg-crimson text-crimson",
+  WITHDRAWN: "bg-muted-foreground text-muted-foreground",
+};
 
 /* ============== Overview ============== */
 
@@ -158,6 +169,7 @@ export function Overview() {
       <div className="grid lg:grid-cols-5 gap-6">
         <SectionCard
           title="Applications over time"
+          icon={TrendingUp as LucideIcon}
           className="lg:col-span-3"
           bodyClassName="pt-2"
         >
@@ -202,6 +214,7 @@ export function Overview() {
 
         <SectionCard
           title="By status"
+          icon={FileText as LucideIcon}
           className="lg:col-span-2"
           bodyClassName="pt-2"
         >
@@ -256,6 +269,7 @@ export function Overview() {
       {/* Pending approvals */}
       <SectionCard
         title={t("admin.pending")}
+        icon={Building2 as LucideIcon}
         action={
           pendingCompanies.length > 0 && (
             <Badge variant="secondary" className="font-semibold">
@@ -280,7 +294,7 @@ export function Overview() {
             />
           </div>
         ) : (
-          <ul className="divide-y">
+          <ul className="divide-y divide-border">
             {pendingCompanies.map((c) => (
               <li
                 key={c.id}
@@ -334,6 +348,7 @@ export function Overview() {
       {/* Recent applications */}
       <SectionCard
         title="Recent applications"
+        icon={FileText as LucideIcon}
         bodyClassName="p-0"
       >
         {loading ? (
@@ -350,34 +365,41 @@ export function Overview() {
             />
           </div>
         ) : (
-          <ul className="divide-y">
-            {apps.map((a) => (
-              <li
-                key={a.id}
-                className="flex items-center gap-3 px-5 sm:px-6 py-3"
-              >
-                <CandidateAvatar
-                  name={a.candidate?.fullName || "?"}
-                  photoUrl={a.candidate?.photoUrl}
-                  size={32}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold truncate">
-                    {a.candidate?.fullName ?? "Candidate"}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {a.job?.title} · {a.job?.company?.companyName} ·{" "}
-                    {formatRelative(a.appliedAt, locale)}
-                  </p>
-                </div>
-                <Badge
-                  variant="outline"
-                  className={cn("font-semibold hidden sm:inline-flex", STATUS_BADGE[a.status])}
+          <ul className="divide-y divide-border">
+            {apps.map((a) => {
+              const dc = DOT_COLORS[a.status];
+              return (
+                <li
+                  key={a.id}
+                  className="flex items-center gap-3 px-5 sm:px-6 py-3"
                 >
-                  {t(`status.${a.status}`)}
-                </Badge>
-              </li>
-            ))}
+                  <CandidateAvatar
+                    name={a.candidate?.fullName || "?"}
+                    photoUrl={a.candidate?.photoUrl}
+                    size={32}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold truncate">
+                      {a.candidate?.fullName ?? "Candidate"}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {a.job?.title} · {a.job?.company?.companyName} ·{" "}
+                      {formatRelative(a.appliedAt, locale)}
+                    </p>
+                  </div>
+                  <span
+                    className={cn("status-dot", dc)}
+                    aria-hidden
+                  />
+                  <Badge
+                    variant="outline"
+                    className={cn("font-semibold hidden sm:inline-flex", STATUS_BADGE[a.status])}
+                  >
+                    {t(`status.${a.status}`)}
+                  </Badge>
+                </li>
+              );
+            })}
           </ul>
         )}
       </SectionCard>

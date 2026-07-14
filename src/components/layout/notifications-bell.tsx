@@ -9,7 +9,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
 import type { NotificationDTO } from "@/lib/types";
 import { useT } from "@/lib/use-t";
 import { cn } from "@/lib/utils";
@@ -61,7 +60,12 @@ export function NotificationsBell() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
-          className="relative grid place-items-center h-9 w-9 rounded-lg hover:bg-accent transition-colors"
+          className={cn(
+            "relative grid place-items-center h-9 w-9 rounded-lg border transition-colors",
+            unread > 0
+              ? "border-saffron/40 bg-saffron/10 text-saffron"
+              : "border-border bg-background text-muted-foreground hover:text-foreground hover:bg-accent",
+          )}
           aria-label={t("nav.notifications")}
         >
           <Bell className="h-[1.15rem] w-[1.15rem]" />
@@ -75,32 +79,36 @@ export function NotificationsBell() {
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-[22rem] p-0"
+        className="card-premium w-80 p-0 bg-popover"
         onOpenAutoFocus={(e) => {
           e.preventDefault();
           load();
         }}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <p className="font-semibold">{t("nav.notifications")}</p>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <p className="font-display font-bold text-sm">Notifications</p>
           {unread > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs"
+            <button
               onClick={markAllRead}
+              className="text-xs font-semibold text-crimson hover:text-crimson/80 transition-colors"
             >
               Mark all read
-            </Button>
+            </button>
           )}
         </div>
         <div className="max-h-96 overflow-y-auto scroll-area">
           {items.length === 0 ? (
-            <p className="px-4 py-10 text-center text-sm text-muted-foreground">
-              You're all caught up 🎉
-            </p>
+            <div className="px-4 py-10 text-center">
+              <div className="mx-auto mb-3 grid place-items-center h-10 w-10 rounded-xl bg-muted text-muted-foreground">
+                <Bell className="h-5 w-5" />
+              </div>
+              <p className="text-sm font-medium">You&rsquo;re all caught up</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                No new notifications right now.
+              </p>
+            </div>
           ) : (
-            <ul className="divide-y">
+            <ul className="divide-y divide-border">
               {items.map((n) => (
                 <li
                   key={n.id}
@@ -109,11 +117,14 @@ export function NotificationsBell() {
                     !n.isRead && "bg-saffron/5",
                   )}
                 >
-                  <div className="flex items-start gap-2">
+                  <div className="flex items-start gap-2.5">
                     {!n.isRead && (
-                      <span className="mt-1.5 h-2 w-2 rounded-full bg-crimson shrink-0" />
+                      <span
+                        className="status-dot mt-1.5 text-crimson"
+                        style={{ background: "var(--crimson)" }}
+                      />
                     )}
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold leading-snug">
                         {n.title}
                       </p>

@@ -5,7 +5,6 @@ import { useApp } from "@/lib/store";
 import { useT } from "@/lib/use-t";
 import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { CompanyAvatar } from "@/components/brand/logo";
 import { JobCard } from "@/components/jobs/job-card";
 import { useCountUp } from "@/components/brand/use-count-up";
@@ -95,10 +94,9 @@ function StatCard({
       animate={visible ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.6, ease: easeOutExpo, delay }}
       whileHover={{ y: -4 }}
-      className="group relative rounded-2xl border border-border bg-card/80 glass px-5 py-6 text-center transition-all hover:border-saffron/40 hover:shadow-premium"
+      className="hero-stat group px-5 py-6 text-center transition-transform hover:-translate-y-1"
     >
-      {/* Saffron accent line on top */}
-      <span className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-saffron/60 to-transparent opacity-70 group-hover:opacity-100 transition-opacity" />
+      {/* Saffron accent line on top is provided by .hero-stat::after */}
       <div className="relative flex flex-col items-center">
         <motion.div
           whileHover={{ rotate: [0, -8, 8, 0], scale: 1.08 }}
@@ -192,7 +190,14 @@ export function LandingPage() {
       .catch(() => {});
   }, []);
 
-  const companyColors = ["#0ea5e9", "#ec4899", "#16a34a", "#f59e0b", "#8b5cf6", "#14b8a6"];
+  const companyColors = [
+    "#f59e0b", // saffron
+    "#dc2626", // crimson
+    "#d97706", // amber-dark (saffron family)
+    "#b91c1c", // crimson-dark
+    "#fbbf24", // amber (saffron family)
+    "#7f1d1d", // crimson-deep
+  ];
 
   return (
     <main>
@@ -230,12 +235,15 @@ export function LandingPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-20 pb-24 sm:pt-28 sm:pb-32">
           <RevealGroup className="mx-auto max-w-3xl text-center" stagger={0.12} delayChildren={0.1}>
             <motion.div variants={staggerItem} className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/10 px-4 py-1.5 text-sm font-medium text-crimson shadow-premium">
-              <Sparkles className="h-3.5 w-3.5" />
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-saffron opacity-70 animate-ping-soft" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-saffron" />
+              </span>
               {t("hero.badge")}
             </motion.div>
             <motion.h1
               variants={staggerItem}
-              className="mt-7 font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05]"
+              className="mt-7 font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05] text-gradient-brand"
             >
               {t("hero.title")}
             </motion.h1>
@@ -313,14 +321,15 @@ export function LandingPage() {
             <Reveal variants={fadeUp}>
               <div className="flex items-end justify-between flex-wrap gap-4 mb-10">
                 <div className="max-w-2xl">
-                  <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson bg-saffron/5">
-                    <Briefcase className="mr-1 h-3 w-3" />
+                  <div className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-crimson">
+                    <Briefcase className="h-3 w-3" />
                     {t("jobs.title")}
-                  </Badge>
-                  <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+                  </div>
+                  <h2 className="mt-3 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
                     Latest opportunities
                   </h2>
                   <p className="mt-2 text-muted-foreground">{t("jobs.subtitle")}</p>
+                  <div className="section-rule mt-5 max-w-md" />
                 </div>
                 <Button
                   variant="outline"
@@ -347,14 +356,15 @@ export function LandingPage() {
       <section className="py-20 sm:py-24 bg-card/40 border-y border-border">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <Reveal variants={fadeUp} className="text-center max-w-2xl mx-auto">
-            <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
-              <Sparkles className="mr-1 h-3 w-3" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-crimson">
+              <Sparkles className="h-3 w-3" />
               Process
-            </Badge>
-            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+            </div>
+            <h2 className="mt-3 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
               {t("how.title")}
             </h2>
             <p className="mt-2 text-muted-foreground">{t("how.subtitle")}</p>
+            <div className="section-rule mt-5 max-w-xs mx-auto" />
           </Reveal>
 
           <RevealGroup className="mt-14 grid gap-6 md:grid-cols-3 relative" stagger={0.14}>
@@ -369,7 +379,7 @@ export function LandingPage() {
               { icon: Plane, title: t("how.3.title"), desc: t("how.3.desc"), step: "03" },
             ].map((s, i) => (
               <motion.div key={i} variants={staggerItem} whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 300, damping: 20 }} className="relative">
-                <SpotlightCard className="relative h-full rounded-2xl border border-border bg-background p-7 hover:shadow-premium transition-shadow overflow-hidden">
+                <SpotlightCard className="card-premium relative h-full p-7 overflow-hidden">
                   <span className="absolute top-5 right-6 font-display text-5xl font-extrabold text-saffron/10 select-none">
                     {s.step}
                   </span>
@@ -399,14 +409,15 @@ export function LandingPage() {
       <section className="py-20 sm:py-24 bg-card/40 border-y border-border">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <Reveal variants={fadeUp} className="text-center max-w-2xl mx-auto">
-            <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
-              <Plane className="mr-1 h-3 w-3" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-crimson">
+              <Plane className="h-3 w-3" />
               Visa Guide
-            </Badge>
-            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+            </div>
+            <h2 className="mt-3 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
               {t("visa.title")}
             </h2>
             <p className="mt-2 text-muted-foreground">{t("visa.subtitle")}</p>
+            <div className="section-rule mt-5 max-w-xs mx-auto" />
           </Reveal>
 
           <Reveal variants={fadeUp} delay={0.15}>
@@ -459,11 +470,11 @@ export function LandingPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <Reveal variants={fadeUp}>
-              <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
-                <ShieldCheck className="mr-1 h-3 w-3" />
+              <div className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-crimson">
+                <ShieldCheck className="h-3 w-3" />
                 Why IndiGate
-              </Badge>
-              <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+              </div>
+              <h2 className="mt-3 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
                 Built for the cross-border journey
               </h2>
               <p className="mt-4 text-muted-foreground leading-relaxed">
@@ -538,14 +549,15 @@ export function LandingPage() {
         <section className="py-20 sm:py-24 bg-card/40 border-y border-border overflow-hidden">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <Reveal variants={fadeUp} className="text-center max-w-2xl mx-auto">
-              <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
-                <Quote className="mr-1 h-3 w-3" />
+              <div className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-crimson">
+                <Quote className="h-3 w-3" />
                 Testimonials
-              </Badge>
-              <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+              </div>
+              <h2 className="mt-3 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
                 {t("testimonials.title")}
               </h2>
               <p className="mt-2 text-muted-foreground">{t("testimonials.subtitle")}</p>
+              <div className="section-rule mt-5 max-w-xs mx-auto" />
             </Reveal>
           </div>
 
@@ -597,14 +609,15 @@ export function LandingPage() {
       <section className="py-20 sm:py-24">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
           <Reveal variants={fadeUp} className="text-center mb-12">
-            <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
-              <HelpCircle className="mr-1 h-3 w-3" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-crimson">
+              <HelpCircle className="h-3 w-3" />
               {t("faq.badge")}
-            </Badge>
-            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+            </div>
+            <h2 className="mt-3 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
               {t("faq.title")}
             </h2>
             <p className="mt-2 text-muted-foreground">{t("faq.subtitle")}</p>
+            <div className="section-rule mt-5 max-w-xs mx-auto" />
           </Reveal>
           <Reveal variants={fadeUp} delay={0.1}>
             <Accordion type="single" collapsible className="space-y-2">
@@ -640,11 +653,16 @@ export function LandingPage() {
       <section className="py-20 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <Reveal variants={fadeUp}>
-            <div className="relative overflow-hidden rounded-3xl bg-brand-gradient px-8 py-16 sm:px-16 sm:py-20 text-center shadow-glow-brand">
-              {/* Shimmer sweep overlay */}
-              <div className="pointer-events-none absolute inset-0 opacity-25 mix-blend-overlay">
-                <div className="absolute top-0 left-1/4 h-40 w-40 rounded-full bg-white blur-3xl animate-aurora" />
-                <div className="absolute bottom-0 right-1/4 h-56 w-56 rounded-full bg-white blur-3xl animate-aurora" style={{ animationDelay: "3s" }} />
+            <div className="card-premium relative overflow-hidden rounded-3xl bg-sidebar text-sidebar-foreground px-8 py-16 sm:px-16 sm:py-20 text-center">
+              {/* Mesh overlay with saffron/crimson aurora */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 bg-mesh opacity-60 mix-blend-screen"
+              />
+              {/* Glow blobs */}
+              <div className="pointer-events-none absolute inset-0 opacity-50">
+                <div className="absolute top-0 left-1/4 h-40 w-40 rounded-full bg-saffron/30 blur-3xl animate-aurora" />
+                <div className="absolute bottom-0 right-1/4 h-56 w-56 rounded-full bg-crimson/30 blur-3xl animate-aurora" style={{ animationDelay: "3s" }} />
               </div>
               <div className="relative">
                 <h2 className="font-display text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
@@ -700,14 +718,15 @@ function ContactSection() {
     <section id="contact" className="py-20 sm:py-24 bg-card/40 border-t border-border">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <Reveal variants={fadeUp} className="text-center">
-          <Badge variant="outline" className="mb-3 border-saffron/40 text-crimson">
-            <Mail className="mr-1 h-3 w-3" />
+          <div className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-crimson">
+            <Mail className="h-3 w-3" />
             Contact
-          </Badge>
-          <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+          </div>
+          <h2 className="mt-3 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
             {t("contact.title")}
           </h2>
           <p className="mt-2 text-muted-foreground">{t("contact.subtitle")}</p>
+          <div className="section-rule mt-5 max-w-xs mx-auto" />
         </Reveal>
 
         <Reveal variants={fadeUp} delay={0.15}>

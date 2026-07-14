@@ -507,3 +507,39 @@ Files modified (5):
 - `src/components/company/tabs/applicants.tsx` — added "Message Candidate" button + composer Dialog in `ApplicantDetail`; on send, POSTs to `/api/messages` then navigates to the messages tab with the new conversation active. Shows "Not open to messages" badge when `!candidate.openToWork`.
 
 No API routes, Prisma schema, auth, store, or types were modified.
+
+---
+
+Task ID: PREMIUM-UI
+Agent: frontend-styling-expert (Senior Frontend Designer + Senior React/Next.js Engineer)
+Task: Full premium UI/UX redesign of dashboard + jobs + landing surfaces. Design-only — no API/auth/Prisma/i18n touched.
+
+Work Log:
+- Appended a premium utility layer to `src/app/globals.css` inside the existing `@layer utilities` block: `.card-premium`, `.metric-num`, `.nav-item` (+ `.active` / `::before` glow bar), `.nav-icon`, `.nav-badge`, `.status-dot`, `.topbar`, `.section-rule`, `.table-premium` (with corner-radius headers + row hover), `.skill-tag`, `.hero-stat` (with `::after` saffron accent line). Used `color-mix(in oklch, …)` consistently so dark mode just works.
+- `src/components/dashboard/dashboard-shell.tsx` — full redesign. Sidebar nav buttons now use `.nav-item` + `.nav-icon` CSS classes with `motion.button` stagger (`delay: i * 0.04`). Active state uses `.nav-item.active` (saffron glow bar via `::before`). Topbar uses `.topbar` class with `h-14` and `gap-4 px-4 sm:px-6 lg:px-8`. `MetricCard` now uses `.card-premium` + `.metric-num` + top accent line + icon pill. `SectionCard` uses `.card-premium`, header `border-b`, optional `icon?: LucideIcon` prop (rendered as a saffron pill). `EmptyState` uses `.card-premium` with `animate-bob` on the icon. Sidebar footer uses `nav-item` style for Back to site / Log out, plus a new "IndiGate · India × Japan Career Platform" branding line. `CardSkeleton` / `MetricSkeleton` / `RoleGuard` migrated to `.card-premium`. All props interfaces (`DashboardShellProps`, `NavItem`) and all logic kept identical.
+- `src/components/jobs/job-card.tsx` — premium card. Uses `.card-premium` with `SpotlightCard` wrapper and `whileHover={{ y: -3 }}` spring. Meta row now uses dot separators (`·`) between location / type / time. Tags row uses `.skill-tag` class for JLPT + skills (kept `JLPT_BADGE` color classes for tint). Bottom row keeps salary (`Banknote` icon, saffron) + "Details →" CTA. Save button unchanged (rounded-lg border, saffron when saved). All save toggle / navigation / isSaved logic identical.
+- `src/components/brand/motion-primitives.tsx` — `SpotlightCard` upgraded: spotlight now uses `color-mix(in oklch, var(--saffron) 6%, transparent)` (subtle saffron at 6% opacity), 320px radius, 55% fade. `MagneticButton` and `TiltCard` / `ScrollProgress` / `ShimmerText` unchanged.
+- `src/components/layout/notifications-bell.tsx` — premium dropdown. Trigger is now a `rounded-lg border` button, saffron-tinted when unread. Dropdown is `w-80 .card-premium bg-popover`. Header has "Notifications" + "Mark all read" link. Items use `.status-dot` for unread indicator, title, message snippet, timestamp. Empty state uses a bell icon pill + "You're all caught up". All fetch / polling / markAllRead logic identical.
+- `src/components/candidate/tabs/overview.tsx` — dashboard overview. Added `STATUS_COLORS` map (dot + text per status). Metrics grid unchanged structurally (uses redesigned `MetricCard`). Profile completion section now uses a 10-segment progress bar (`bg-brand-gradient` filled cells vs `bg-muted` empty). Recent applications list renders a `.status-dot` per row + colored status text. All data fetching / completion logic identical.
+- `src/components/candidate/tabs/applications.tsx` — application tracker. Each application is a `.card-premium` with a 4-segment pipeline (APPLIED → SHORTLISTED → INTERVIEWED → OFFERED), filled cells use `bg-brand-gradient`, current stage gets a saffron-tinted icon pill + glow. Status badge top-right. Rejection note (crimson-tinted callout) shown when `status === "REJECTED"`. Interview info rendered as a violet-tinted inset card (Milestone H preserved). Withdraw AlertDialog unchanged. All data fetching / withdraw logic identical.
+- `src/components/company/tabs/overview.tsx` — applied the same `MetricCard` + `SectionCard` redesigns. Added local `STATUS_COLORS` map for status-dot rendering on the recent applicants list. Pending-approval banner uses `.card-premium` style with amber overrides. Quick-action buttons use `.card-premium` style. All `useCompanyJobs` / `useCompanyApps` hooks unchanged.
+- `src/components/admin/tabs/overview.tsx` — applied `MetricCard` redesign (already covered by dashboard-shell update). Section headers now use optional `icon` prop (TrendingUp / FileText / Building2). Recent applications list renders a `.status-dot` per row (added `DOT_COLORS` map). All admin data fetching / approve logic / chart config unchanged. No `<table>` elements exist in this file — `.table-premium` styling is available globally for any future tables in admin tabs.
+- `src/components/landing/landing-page.tsx` — hero & key sections redesigned. Hero eyebrow pill now has an animated `ping-soft` saffron dot. Headline uses `text-gradient-brand` for the 2-tone gradient. `StatCard` uses `.hero-stat` class (saffron `::after` accent line replaces the inline gradient span). All section headings (Featured jobs, How it works, Visa guide, Why IndiGate, Testimonials, FAQ, Contact) now use a small pill + h2 + subtitle + `.section-rule` divider. How-it-works step cards use `.card-premium`. CTA banner changed from `bg-brand-gradient` to `bg-sidebar` with a `bg-mesh` overlay + saffron/crimson aurora glow blobs (still `.card-premium` border). Removed the unused `Badge` import. `companyColors` array rewritten to use only saffron + crimson family shades (removed the blue/violet/green/teal colors). All data fetching, state, event handlers, i18n calls, and form logic identical.
+
+Verification:
+- `bun run lint` → 0 errors, 0 warnings.
+- `npx tsc --noEmit` → 0 errors, 0 output.
+
+Files modified (10):
+- `src/app/globals.css` — appended 14 new utility classes inside `@layer utilities` (no existing rules removed).
+- `src/components/dashboard/dashboard-shell.tsx` — full redesign of sidebar / topbar / MetricCard / SectionCard / EmptyState / CardSkeleton / MetricSkeleton / RoleGuard.
+- `src/components/jobs/job-card.tsx` — premium card with `.card-premium`, `.skill-tag`, dot-separated meta row.
+- `src/components/brand/motion-primitives.tsx` — `SpotlightCard` upgraded (subtle saffron 6% spotlight, smaller radius).
+- `src/components/layout/notifications-bell.tsx` — premium trigger + dropdown, status-dot unread indicator, branded empty state.
+- `src/components/candidate/tabs/overview.tsx` — 10-segment completion bar, status-dot recent apps list, local `STATUS_COLORS` map.
+- `src/components/candidate/tabs/applications.tsx` — 4-segment progress pipeline per application, rejection note, redesigned interview info card.
+- `src/components/company/tabs/overview.tsx` — premium MetricCard / SectionCard / pending banner / quick-action buttons, status-dot list.
+- `src/components/admin/tabs/overview.tsx` — premium MetricCard / SectionCard with icons, status-dot recent applications list.
+- `src/components/landing/landing-page.tsx` — hero with ping-dot + gradient headline + `.hero-stat` cards, section-rule dividers, `.card-premium` step cards, bg-sidebar CTA with bg-mesh overlay, saffron/crimson-only `companyColors`.
+
+No API routes, auth logic, Prisma schema, i18n keys, or `src/components/ui/*` / `src/components/auth/*` / `src/components/brand/logo.tsx` files were touched.

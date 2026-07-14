@@ -176,6 +176,202 @@
     box-shadow: 0 0 0 1px color-mix(in oklch, var(--saffron) 40%, transparent),
       0 0 0 4px color-mix(in oklch, var(--saffron) 14%, transparent);
   }
+
+  /* ===== Premium UI redesign (Task PREMIUM-UI) ===== */
+  .card-premium {
+    background: var(--card);
+    border: 1px solid color-mix(in oklch, var(--border) 100%, transparent);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 1px 0 0 color-mix(in oklch, var(--foreground) 4%, transparent) inset,
+      0 -1px 0 0 color-mix(in oklch, var(--foreground) 2%, transparent) inset,
+      0 2px 4px -1px color-mix(in oklch, var(--foreground) 6%, transparent),
+      0 8px 24px -4px color-mix(in oklch, var(--foreground) 4%, transparent);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  }
+  .card-premium:hover {
+    border-color: color-mix(in oklch, var(--saffron) 35%, var(--border));
+    box-shadow: 0 1px 0 0 color-mix(in oklch, var(--foreground) 4%, transparent) inset,
+      0 -1px 0 0 color-mix(in oklch, var(--foreground) 2%, transparent) inset,
+      0 4px 12px -2px color-mix(in oklch, var(--saffron) 12%, transparent),
+      0 12px 32px -4px color-mix(in oklch, var(--foreground) 8%, transparent);
+    transform: translateY(-2px);
+  }
+  .metric-num {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+  .nav-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--sidebar-foreground);
+    opacity: 0.65;
+    transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+    cursor: pointer;
+    user-select: none;
+    text-decoration: none;
+  }
+  .nav-item:hover {
+    opacity: 1;
+    background: color-mix(in oklch, var(--sidebar-accent) 60%, transparent);
+  }
+  .nav-item.active {
+    opacity: 1;
+    background: color-mix(in oklch, var(--saffron) 14%, transparent);
+    color: var(--sidebar-foreground);
+    font-weight: 600;
+  }
+  .nav-item.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 60%;
+    border-radius: 0 3px 3px 0;
+    background: var(--saffron);
+    box-shadow: 0 0 8px color-mix(in oklch, var(--saffron) 60%, transparent);
+  }
+  .nav-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    transition: color 0.15s ease;
+    color: var(--sidebar-foreground);
+    opacity: 0.7;
+  }
+  .nav-item:hover .nav-icon {
+    opacity: 1;
+  }
+  .nav-item.active .nav-icon {
+    color: var(--saffron);
+    filter: drop-shadow(0 0 6px color-mix(in oklch, var(--saffron) 50%, transparent));
+  }
+  .nav-badge {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--saffron);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 3px color-mix(in oklch, currentColor 20%, transparent);
+  }
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: color-mix(in oklch, var(--background) 88%, transparent);
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    border-bottom: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+  }
+  .section-rule {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--saffron) 40%, transparent),
+      color-mix(in oklch, var(--border) 60%, transparent) 60%,
+      transparent
+    );
+    margin-bottom: 20px;
+  }
+  .table-premium {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+  }
+  .table-premium th {
+    background: color-mix(in oklch, var(--muted) 60%, transparent);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted-foreground);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .table-premium td {
+    padding: 12px 14px;
+    border-bottom: 1px solid color-mix(in oklch, var(--border) 50%, transparent);
+    font-size: 13.5px;
+    vertical-align: middle;
+    transition: background 0.12s ease;
+  }
+  .table-premium tr:last-child td {
+    border-bottom: none;
+  }
+  .table-premium tbody tr:hover td {
+    background: color-mix(in oklch, var(--accent) 50%, transparent);
+  }
+  .table-premium th:first-child {
+    border-radius: 8px 0 0 0;
+  }
+  .table-premium th:last-child {
+    border-radius: 0 8px 0 0;
+  }
+  .skill-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 500;
+    background: color-mix(in oklch, var(--muted) 80%, transparent);
+    border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+    color: var(--foreground);
+    transition: background 0.12s ease, border-color 0.12s ease;
+    white-space: nowrap;
+  }
+  .skill-tag:hover {
+    background: color-mix(in oklch, var(--saffron) 12%, transparent);
+    border-color: color-mix(in oklch, var(--saffron) 30%, transparent);
+    color: color-mix(in oklch, var(--saffron) 90%, var(--foreground));
+  }
+  .hero-stat {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+    border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+    background: color-mix(in oklch, var(--card) 90%, transparent);
+    backdrop-filter: blur(10px);
+    padding: 20px 24px;
+  }
+  .hero-stat::after {
+    content: "";
+    position: absolute;
+    inset-x: 0;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--saffron) 60%, transparent),
+      transparent
+    );
+  }
 }
 
 /* Custom scrollbar */

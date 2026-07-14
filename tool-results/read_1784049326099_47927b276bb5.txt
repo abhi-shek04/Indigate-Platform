@@ -1,0 +1,982 @@
+     1→# INDIGATE — FULL PREMIUM UI/UX REDESIGN
+     2→### Paste this entire file as one prompt to your agent.
+     3→### This is a DESIGN-ONLY change. Do NOT touch any API routes, auth logic, Prisma schema, or i18n keys.
+     4→
+     5→---
+     6→
+     7→## EXISTING ARCHITECTURE — READ THIS BEFORE WRITING ANY CODE
+     8→
+     9→```
+    10→Stack: Next.js 16, Bun, TypeScript, SQLite via Prisma, shadcn/ui, Framer Motion, Zustand
+    11→This is a single-page app. All views render at "/". Do NOT add new pages or routes.
+    12→
+    13→Design tokens already defined in globals.css (DO NOT REMOVE ANY):
+    14→  --saffron (gold/brand), --crimson (red accent), --ink (dark text)
+    15→  .bg-brand-gradient, .text-gradient-brand, .glass, .shadow-premium,
+    16→  .shadow-glow-brand, .ring-brand, .gradient-border, .bg-mesh,
+    17→  .animate-aurora, .animate-bob, .animate-ping-soft, .animate-glow-pulse,
+    18→  .shimmer-sweep, .scroll-area, .animate-marquee, .animate-float-slow
+    19→
+    20→Fonts: --font-display (display headings), --font-sans (body), --font-mono (code/numbers)
+    21→Framer Motion: motion, AnimatePresence, easeOutExpo from "@/lib/motion"
+    22→Icons: lucide-react only
+    23→Utility: cn() from "@/lib/utils"
+    24→
+    25→FILES TO REDESIGN (the only files you touch):
+    26→  src/app/globals.css                               — add new utility classes only
+    27→  src/components/dashboard/dashboard-shell.tsx      — full redesign
+    28→  src/components/jobs/job-card.tsx                  — premium card
+    29→  src/components/brand/motion-primitives.tsx        — upgrade SpotlightCard
+    30→  src/components/layout/notifications-bell.tsx      — premium bell + dropdown
+    31→  src/components/candidate/tabs/overview.tsx        — dashboard overview
+    32→  src/components/candidate/tabs/applications.tsx    — application tracker
+    33→  src/components/company/tabs/overview.tsx          — company overview
+    34→  src/components/admin/tabs/overview.tsx            — admin overview
+    35→  src/components/landing/landing-page.tsx           — landing hero + sections
+    36→
+    37→DO NOT TOUCH: Any file in src/app/api/*, src/lib/*, src/components/ui/*,
+    38→  src/components/auth/*, src/components/brand/logo.tsx, prisma/*, i18n.ts
+    39→
+    40→VERIFICATION after each file: bun run lint && bunx tsc --noEmit — 0 errors
+    41→```
+    42→
+    43→---
+    44→
+    45→## DESIGN PHILOSOPHY FOR THIS REDESIGN
+    46→
+    47→Reference aesthetic: Linear.app + Vercel Dashboard + Craft.do
+    48→Goal: Every screen should feel like a ₹50L/yr SaaS product, not a college project.
+    49→
+    50→Four rules to follow on EVERY component:
+    51→1. DEPTH — Nothing is flat. Cards have layered backgrounds (bg-card over bg-background),
+    52→   active states have glows, interactive elements have shadows that lift on hover.
+    53→2. RHYTHM — Consistent 8px spatial grid. Gap-2=8px, gap-4=16px, gap-6=24px, gap-8=32px.
+    54→   Page padding: px-6 on mobile, px-8 on tablet, px-10 on desktop.
+    55→3. TYPOGRAPHY HIERARCHY — 3 clear levels on every screen:
+    56→   - Display: font-display font-bold text-xl+ (section titles, metric numbers)
+    57→   - Body: text-sm font-medium (labels, descriptions)
+    58→   - Caption: text-xs text-muted-foreground (timestamps, hints)
+    59→4. PRECISION — Pixel-perfect borders, exact border-radius consistency (rounded-xl for cards,
+    60→   rounded-lg for inputs/badges, rounded-full for pills/avatars).
+    61→
+    62→---
+    63→
+    64→## PART 1 — globals.css additions (APPEND only, do not remove anything)
+    65→
+    66→Add these new utility classes inside the existing `@layer utilities` block:
+    67→
+    68→```css
+    69→/* ── Premium card variants ─────────────────────────────────── */
+    70→.card-premium {
+    71→  background: var(--card);
+    72→  border: 1px solid color-mix(in oklch, var(--border) 100%, transparent);
+    73→  border-radius: var(--radius-xl);
+    74→  box-shadow:
+    75→    0 1px 0 0 color-mix(in oklch, var(--foreground) 4%, transparent) inset,
+    76→    0 -1px 0 0 color-mix(in oklch, var(--foreground) 2%, transparent) inset,
+    77→    0 2px 4px -1px color-mix(in oklch, var(--foreground) 6%, transparent),
+    78→    0 8px 24px -4px color-mix(in oklch, var(--foreground) 4%, transparent);
+    79→  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    80→}
+    81→.card-premium:hover {
+    82→  border-color: color-mix(in oklch, var(--saffron) 35%, var(--border));
+    83→  box-shadow:
+    84→    0 1px 0 0 color-mix(in oklch, var(--foreground) 4%, transparent) inset,
+    85→    0 -1px 0 0 color-mix(in oklch, var(--foreground) 2%, transparent) inset,
+    86→    0 4px 12px -2px color-mix(in oklch, var(--saffron) 12%, transparent),
+    87→    0 12px 32px -4px color-mix(in oklch, var(--foreground) 8%, transparent);
+    88→  transform: translateY(-2px);
+    89→}
+    90→
+    91→/* ── Metric number style ───────────────────────────────────── */
+    92→.metric-num {
+    93→  font-family: var(--font-display);
+    94→  font-size: 2rem;
+    95→  font-weight: 800;
+    96→  letter-spacing: -0.04em;
+    97→  line-height: 1;
+    98→}
+    99→
+   100→/* ── Sidebar nav item states ───────────────────────────────── */
+   101→.nav-item {
+   102→  position: relative;
+   103→  display: flex;
+   104→  align-items: center;
+   105→  gap: 10px;
+   106→  padding: 9px 12px;
+   107→  border-radius: 10px;
+   108→  font-size: 13.5px;
+   109→  font-weight: 500;
+   110→  color: var(--sidebar-foreground);
+   111→  opacity: 0.65;
+   112→  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+   113→  cursor: pointer;
+   114→  user-select: none;
+   115→  text-decoration: none;
+   116→}
+   117→.nav-item:hover {
+   118→  opacity: 1;
+   119→  background: color-mix(in oklch, var(--sidebar-accent) 60%, transparent);
+   120→}
+   121→.nav-item.active {
+   122→  opacity: 1;
+   123→  background: color-mix(in oklch, var(--saffron) 14%, transparent);
+   124→  color: var(--sidebar-foreground);
+   125→  font-weight: 600;
+   126→}
+   127→.nav-item.active .nav-icon {
+   128→  color: var(--saffron);
+   129→  filter: drop-shadow(0 0 6px color-mix(in oklch, var(--saffron) 50%, transparent));
+   130→}
+   131→.nav-item.active::before {
+   132→  content: '';
+   133→  position: absolute;
+   134→  left: 0;
+   135→  top: 50%;
+   136→  transform: translateY(-50%);
+   137→  width: 3px;
+   138→  height: 60%;
+   139→  border-radius: 0 3px 3px 0;
+   140→  background: var(--saffron);
+   141→  box-shadow: 0 0 8px color-mix(in oklch, var(--saffron) 60%, transparent);
+   142→}
+   143→.nav-icon {
+   144→  width: 16px;
+   145→  height: 16px;
+   146→  flex-shrink: 0;
+   147→  transition: color 0.15s ease, filter 0.15s ease;
+   148→  color: var(--sidebar-foreground);
+   149→  opacity: 0.7;
+   150→}
+   151→.nav-item:hover .nav-icon {
+   152→  opacity: 1;
+   153→}
+   154→.nav-badge {
+   155→  margin-left: auto;
+   156→  display: inline-flex;
+   157→  align-items: center;
+   158→  justify-content: center;
+   159→  min-width: 18px;
+   160→  height: 18px;
+   161→  padding: 0 5px;
+   162→  border-radius: 999px;
+   163→  background: var(--saffron);
+   164→  color: color-mix(in oklch, var(--foreground) 90%, transparent);
+   165→  font-size: 10px;
+   166→  font-weight: 700;
+   167→  line-height: 1;
+   168→}
+   169→
+   170→/* ── Status timeline dot ───────────────────────────────────── */
+   171→.status-dot {
+   172→  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+   173→  box-shadow: 0 0 0 3px color-mix(in oklch, currentColor 20%, transparent);
+   174→}
+   175→
+   176→/* ── Topbar blur bar ───────────────────────────────────────── */
+   177→.topbar {
+   178→  position: sticky; top: 0; z-index: 30;
+   179→  background: color-mix(in oklch, var(--background) 88%, transparent);
+   180→  backdrop-filter: blur(16px) saturate(160%);
+   181→  -webkit-backdrop-filter: blur(16px) saturate(160%);
+   182→  border-bottom: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+   183→}
+   184→
+   185→/* ── Section header divider line ───────────────────────────── */
+   186→.section-rule {
+   187→  height: 1px;
+   188→  background: linear-gradient(
+   189→    90deg,
+   190→    color-mix(in oklch, var(--saffron) 40%, transparent),
+   191→    color-mix(in oklch, var(--border) 60%, transparent) 60%,
+   192→    transparent
+   193→  );
+   194→  margin-bottom: 20px;
+   195→}
+   196→
+   197→/* ── Table premium ─────────────────────────────────────────── */
+   198→.table-premium { border-collapse: separate; border-spacing: 0; width: 100%; }
+   199→.table-premium th {
+   200→  background: color-mix(in oklch, var(--muted) 60%, transparent);
+   201→  font-size: 11px; font-weight: 600; text-transform: uppercase;
+   202→  letter-spacing: 0.06em; color: var(--muted-foreground);
+   203→  padding: 10px 14px; border-bottom: 1px solid var(--border);
+   204→  white-space: nowrap;
+   205→}
+   206→.table-premium td {
+   207→  padding: 12px 14px; border-bottom: 1px solid color-mix(in oklch, var(--border) 50%, transparent);
+   208→  font-size: 13.5px; vertical-align: middle;
+   209→  transition: background 0.12s ease;
+   210→}
+   211→.table-premium tr:last-child td { border-bottom: none; }
+   212→.table-premium tbody tr:hover td {
+   213→  background: color-mix(in oklch, var(--accent) 50%, transparent);
+   214→}
+   215→.table-premium th:first-child { border-radius: 8px 0 0 0; }
+   216→.table-premium th:last-child  { border-radius: 0 8px 0 0; }
+   217→
+   218→/* ── Tag / skill pill ──────────────────────────────────────── */
+   219→.skill-tag {
+   220→  display: inline-flex; align-items: center;
+   221→  padding: 3px 10px; border-radius: 999px;
+   222→  font-size: 11.5px; font-weight: 500;
+   223→  background: color-mix(in oklch, var(--muted) 80%, transparent);
+   224→  border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+   225→  color: var(--foreground);
+   226→  transition: background 0.12s ease, border-color 0.12s ease;
+   227→  white-space: nowrap;
+   228→}
+   229→.skill-tag:hover {
+   230→  background: color-mix(in oklch, var(--saffron) 12%, transparent);
+   231→  border-color: color-mix(in oklch, var(--saffron) 30%, transparent);
+   232→  color: color-mix(in oklch, var(--saffron) 90%, var(--foreground));
+   233→}
+   234→
+   235→/* ── Inset hero card (stat cards on landing) ───────────────── */
+   236→.hero-stat {
+   237→  position: relative; overflow: hidden;
+   238→  border-radius: var(--radius-xl);
+   239→  border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+   240→  background: color-mix(in oklch, var(--card) 90%, transparent);
+   241→  backdrop-filter: blur(10px);
+   242→  padding: 20px 24px;
+   243→}
+   244→.hero-stat::after {
+   245→  content: ''; position: absolute; inset-x-0; top: 0; height: 1px;
+   246→  background: linear-gradient(
+   247→    90deg, transparent, color-mix(in oklch, var(--saffron) 60%, transparent), transparent
+   248→  );
+   249→}
+   250→```
+   251→
+   252→---
+   253→
+   254→## PART 2 — dashboard-shell.tsx — Full Redesign
+   255→
+   256→Redesign the entire file. Keep all props interfaces identical (DashboardShellProps, NavItem).
+   257→Keep all logic identical. Only redesign the JSX and className strings.
+   258→
+   259→### Sidebar (desktop, w-[240px]):
+   260→```
+   261→Background: bg-sidebar (already dark)
+   262→Top section: Logo area — 64px tall, px-4, flex items-center gap-3
+   263→  - Logo component (existing)
+   264→  - A subtle vertical separator: border-r border-sidebar-border
+   265→  - No extra text next to logo
+   266→
+   267→Nav section: flex-1 overflow-y-auto scroll-area, py-3, px-3
+   268→  - Section label above nav groups (if you want to group):
+   269→    <p className="px-3 mb-1 mt-4 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/35">
+   270→      {sectionLabel}
+   271→    </p>
+   272→  - Each nav item: use .nav-item and .nav-icon utility classes
+   273→    <button
+   274→      className={cn("nav-item w-full", active === item.key && "active")}
+   275→      onClick={() => { onSelect(item.key); onPick?.() }}
+   276→    >
+   277→      <item.icon className="nav-icon" />
+   278→      <span className="flex-1 text-left">{item.label}</span>
+   279→      {/* badge slot — pass as prop or hardcode per key */}
+   280→    </button>
+   281→  - Use Framer Motion stagger on nav items:
+   282→    initial={{ opacity:0, x:-8 }} animate={{ opacity:1, x:0 }}
+   283→    transition={{ delay: index * 0.04 }}
+   284→
+   285→Footer: px-3 pb-4 space-y-1, border-t border-sidebar-border/40 pt-3
+   286→  - "← Back to site" button: nav-item style, opacity-50 hover:opacity-100
+   287→  - "Log out" button: nav-item style, text-crimson/70 hover:text-crimson
+   288→
+   289→Sidebar bottom branding: hidden from nav, just a 2-line text in footer:
+   290→  <p className="px-3 mt-3 text-[10px] text-sidebar-foreground/25 leading-relaxed">
+   291→    IndiGate · India × Japan<br/>Career Platform
+   292→  </p>
+   293→```
+   294→
+   295→### Topbar (header):
+   296→```
+   297→className="topbar"  ← use the new utility class
+   298→Height: h-14 (56px)
+   299→Layout: flex items-center gap-4 px-6 lg:px-8
+   300→
+   301→LEFT: Mobile menu trigger (lg:hidden) + Welcome heading
+   302→  <div className="min-w-0 flex-1">
+   303→    <h1 className="font-display font-bold text-[15px] leading-tight truncate tracking-tight">
+   304→      {welcome}
+   305→    </h1>
+   306→    {subtitle && (
+   307→      <p className="text-[11px] text-muted-foreground truncate mt-0.5">{subtitle}</p>
+   308→    )}
+   309→  </div>
+   310→
+   311→RIGHT: gap-1.5 items-center
+   312→  {topbarActions}
+   313→  <div className="h-4 w-px bg-border mx-1" />
+   314→  <NotificationsBell />
+   315→  <LocaleToggle />
+   316→  {avatar}
+   317→```
+   318→
+   319→### MetricCard — complete rewrite:
+   320→```tsx
+   321→export function MetricCard({ label, value, icon: Icon, accent = "saffron", hint, trend }: {
+   322→  label: string;
+   323→  value: number | string;
+   324→  icon: LucideIcon;
+   325→  accent?: "saffron" | "crimson" | "emerald" | "violet" | "sky" | "amber";
+   326→  hint?: string;
+   327→  trend?: { value: number; label: string }; // optional: +12% this month
+   328→}) {
+   329→  const accentColor: Record<string, string> = {
+   330→    saffron: "var(--saffron)", crimson: "var(--crimson)",
+   331→    emerald: "#10b981", violet: "#8b5cf6", sky: "#0ea5e9", amber: "#f59e0b",
+   332→  };
+   333→  const color = accentColor[accent];
+   334→
+   335→  return (
+   336→    <motion.div
+   337→      initial={{ opacity: 0, y: 16 }}
+   338→      animate={{ opacity: 1, y: 0 }}
+   339→      transition={{ duration: 0.4, ease: easeOutExpo }}
+   340→      className="card-premium group relative overflow-hidden p-5"
+   341→    >
+   342→      {/* Top accent line */}
+   343→      <span
+   344→        className="absolute inset-x-0 top-0 h-[2px]"
+   345→        style={{ background: `linear-gradient(90deg, ${color}, transparent)` }}
+   346→      />
+   347→      {/* Subtle icon background glow */}
+   348→      <span
+   349→        className="absolute -top-6 -right-6 h-24 w-24 rounded-full opacity-[0.07] blur-2xl"
+   350→        style={{ background: color }}
+   351→      />
+   352→
+   353→      <div className="relative flex items-start justify-between gap-3">
+   354→        <div className="min-w-0 flex-1">
+   355→          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+   356→            {label}
+   357→          </p>
+   358→          <p className="metric-num" style={{ color }}>
+   359→            {typeof value === "number" ? value.toLocaleString() : value}
+   360→          </p>
+   361→          {hint && (
+   362→            <p className="mt-1.5 text-xs text-muted-foreground">{hint}</p>
+   363→          )}
+   364→          {trend && (
+   365→            <p className="mt-1.5 text-xs font-medium" style={{ color: trend.value >= 0 ? "#10b981" : "#ef4444" }}>
+   366→              {trend.value >= 0 ? "↑" : "↓"} {Math.abs(trend.value)}% {trend.label}
+   367→            </p>
+   368→          )}
+   369→        </div>
+   370→        <div
+   371→          className="grid place-items-center h-10 w-10 rounded-xl shrink-0"
+   372→          style={{
+   373→            background: `color-mix(in oklch, ${color} 14%, transparent)`,
+   374→            border: `1px solid color-mix(in oklch, ${color} 22%, transparent)`
+   375→          }}
+   376→        >
+   377→          <Icon className="h-4.5 w-4.5" style={{ color }} />
+   378→        </div>
+   379→      </div>
+   380→    </motion.div>
+   381→  );
+   382→}
+   383→```
+   384→
+   385→### SectionCard — complete rewrite:
+   386→```tsx
+   387→export function SectionCard({ title, action, children, className, bodyClassName, icon: Icon }: {
+   388→  title?: ReactNode;
+   389→  action?: ReactNode;
+   390→  children: ReactNode;
+   391→  className?: string;
+   392→  bodyClassName?: string;
+   393→  icon?: LucideIcon; // NEW optional icon prop
+   394→}) {
+   395→  return (
+   396→    <section className={cn("card-premium overflow-hidden", className)}>
+   397→      {(title || action) && (
+   398→        <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-3.5 border-b border-border/60">
+   399→          <div className="flex items-center gap-2.5">
+   400→            {Icon && (
+   401→              <div className="grid place-items-center h-6 w-6 rounded-md bg-saffron/10">
+   402→                <Icon className="h-3.5 w-3.5 text-saffron" />
+   403→              </div>
+   404→            )}
+   405→            {typeof title === "string" ? (
+   406→              <h2 className="font-display font-semibold text-[14px] tracking-tight">{title}</h2>
+   407→            ) : title}
+   408→          </div>
+   409→          {action && <div className="flex items-center gap-2 shrink-0">{action}</div>}
+   410→        </div>
+   411→      )}
+   412→      <div className={cn("p-5 sm:p-6", bodyClassName)}>{children}</div>
+   413→    </section>
+   414→  );
+   415→}
+   416→```
+   417→
+   418→### EmptyState — complete rewrite:
+   419→```tsx
+   420→export function EmptyState({ icon: Icon, title, description, action }: {
+   421→  icon: LucideIcon;
+   422→  title: string;
+   423→  description?: string;
+   424→  action?: ReactNode;
+   425→}) {
+   426→  return (
+   427→    <motion.div
+   428→      initial={{ opacity: 0, scale: 0.97 }}
+   429→      animate={{ opacity: 1, scale: 1 }}
+   430→      transition={{ duration: 0.4, ease: easeOutExpo }}
+   431→      className="flex flex-col items-center justify-center py-16 px-8 text-center"
+   432→    >
+   433→      <div className="relative mb-5">
+   434→        <div className="grid place-items-center h-16 w-16 rounded-2xl bg-muted text-muted-foreground ring-1 ring-border animate-bob">
+   435→          <Icon className="h-7 w-7" />
+   436→        </div>
+   437→        <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-background ring-2 ring-background flex items-center justify-center">
+   438→          <span className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+   439→        </span>
+   440→      </div>
+   441→      <p className="font-display font-bold text-base text-foreground">{title}</p>
+   442→      {description && (
+   443→        <p className="mt-1.5 text-sm text-muted-foreground max-w-xs leading-relaxed">{description}</p>
+   444→      )}
+   445→      {action && <div className="mt-6">{action}</div>}
+   446→    </motion.div>
+   447→  );
+   448→}
+   449→```
+   450→
+   451→---
+   452→
+   453→## PART 3 — job-card.tsx — Premium Redesign
+   454→
+   455→Keep ALL logic (save toggle, navigation, isSaved state) exactly the same.
+   456→Only redesign the JSX.
+   457→
+   458→```tsx
+   459→return (
+   460→  <motion.article
+   461→    onClick={() => navigate("job-detail", { jobId: job.id })}
+   462→    initial={{ opacity: 0, y: 12 }}
+   463→    animate={{ opacity: 1, y: 0 }}
+   464→    whileHover={{ y: -3 }}
+   465→    transition={{ type: "spring", stiffness: 280, damping: 20 }}
+   466→    className="group relative cursor-pointer"
+   467→  >
+   468→    <div className="card-premium h-full p-5">
+   469→
+   470→      {/* TOP ROW: logo + save button */}
+   471→      <div className="flex items-start justify-between gap-3 mb-4">
+   472→        <div className="flex items-center gap-3">
+   473→          <div className="relative shrink-0">
+   474→            <CompanyAvatar name={job.company.companyName} color={job.company.logoUrl} size={44} />
+   475→            {/* Active pulse if recently posted (< 3 days) — optional */}
+   476→          </div>
+   477→          <div className="min-w-0">
+   478→            <h3 className="font-display font-bold text-[15px] leading-snug line-clamp-1 group-hover:text-crimson transition-colors">
+   479→              {title}
+   480→            </h3>
+   481→            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+   482→              {job.company.companyName}
+   483→            </p>
+   484→          </div>
+   485→        </div>
+   486→        <button
+   487→          onClick={toggleSave}
+   488→          disabled={saving}
+   489→          aria-label={isSaved ? "Unsave job" : "Save job"}
+   490→          className={cn(
+   491→            "shrink-0 grid place-items-center h-8 w-8 rounded-lg border transition-all duration-150",
+   492→            isSaved
+   493→              ? "bg-saffron/10 border-saffron/40 text-saffron scale-95"
+   494→              : "bg-background border-border text-muted-foreground hover:text-saffron hover:border-saffron/30 hover:bg-saffron/5",
+   495→          )}
+   496→        >
+   497→          <Bookmark className={cn("h-3.5 w-3.5 transition-transform", isSaved && "fill-current scale-110")} />
+   498→        </button>
+   499→      </div>
+   500→
+   501→      {/* META ROW: location, type, time */}
+   502→      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-[11.5px] text-muted-foreground">
+   503→        <span className="inline-flex items-center gap-1">
+   504→          <MapPin className="h-3 w-3" />
+   505→          {job.location}
+   506→        </span>
+   507→        <span className="h-1 w-1 rounded-full bg-border" />
+   508→        <span className="inline-flex items-center gap-1">
+   509→          <Briefcase className="h-3 w-3" />
+   510→          {t(`jobtype.${job.jobType}`)}
+   511→        </span>
+   512→        <span className="h-1 w-1 rounded-full bg-border" />
+   513→        <span className="inline-flex items-center gap-1">
+   514→          <Clock className="h-3 w-3" />
+   515→          {formatRelative(job.postedAt, locale)}
+   516→        </span>
+   517→      </div>
+   518→
+   519→      {/* TAGS ROW: JLPT + skills */}
+   520→      <div className="flex flex-wrap gap-1.5 mb-4">
+   521→        <span className={cn("skill-tag font-semibold text-[11px]", JLPT_BADGE[job.jlptRequired])}>
+   522→          {job.jlptRequired}
+   523→        </span>
+   524→        {job.skillsRequired.slice(0, 3).map((s) => (
+   525→          <span key={s} className="skill-tag">{s}</span>
+   526→        ))}
+   527→        {job.skillsRequired.length > 3 && (
+   528→          <span className="skill-tag text-muted-foreground">
+   529→            +{job.skillsRequired.length - 3}
+   530→          </span>
+   531→        )}
+   532→      </div>
+   533→
+   534→      {/* BOTTOM ROW: salary + view cta */}
+   535→      <div className="flex items-center justify-between pt-3 border-t border-border/50">
+   536→        <div className="flex items-center gap-1.5">
+   537→          <div className="grid place-items-center h-6 w-6 rounded-md bg-saffron/10">
+   538→            <Banknote className="h-3.5 w-3.5 text-saffron" />
+   539→          </div>
+   540→          <span className="text-[13px] font-semibold">{formatSalary(job)}</span>
+   541→        </div>
+   542→        <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-crimson group-hover:gap-1.5 transition-all">
+   543→          {t("jobs.details")}
+   544→          <ArrowRight className="h-3 w-3" />
+   545→        </span>
+   546→      </div>
+   547→
+   548→    </div>
+   549→  </motion.article>
+   550→);
+   551→```
+   552→
+   553→---
+   554→
+   555→## PART 4 — motion-primitives.tsx — SpotlightCard upgrade
+   556→
+   557→Rewrite SpotlightCard to be more refined. The current version is OK but the spotlight
+   558→effect can be more subtle and premium:
+   559→
+   560→```tsx
+   561→"use client";
+   562→
+   563→import { useRef, useState, type ReactNode, type MouseEvent } from "react";
+   564→import { motion } from "framer-motion";
+   565→import { cn } from "@/lib/utils";
+   566→
+   567→export function SpotlightCard({ children, className }: { children: ReactNode; className?: string }) {
+   568→  const ref = useRef<HTMLDivElement>(null);
+   569→  const [pos, setPos] = useState({ x: 0, y: 0, opacity: 0 });
+   570→
+   571→  function handleMove(e: MouseEvent<HTMLDivElement>) {
+   572→    const el = ref.current;
+   573→    if (!el) return;
+   574→    const rect = el.getBoundingClientRect();
+   575→    setPos({ x: e.clientX - rect.left, y: e.clientY - rect.top, opacity: 1 });
+   576→  }
+   577→
+   578→  return (
+   579→    <div
+   580→      ref={ref}
+   581→      onMouseMove={handleMove}
+   582→      onMouseLeave={() => setPos((p) => ({ ...p, opacity: 0 }))}
+   583→      className={cn("relative overflow-hidden", className)}
+   584→    >
+   585→      {/* Subtle radial spotlight */}
+   586→      <div
+   587→        className="pointer-events-none absolute inset-0 rounded-[inherit] transition-opacity duration-300"
+   588→        style={{
+   589→          opacity: pos.opacity,
+   590→          background: `radial-gradient(200px circle at ${pos.x}px ${pos.y}px,
+   591→            color-mix(in oklch, var(--saffron) 6%, transparent),
+   592→            transparent 70%)`,
+   593→        }}
+   594→      />
+   595→      {children}
+   596→    </div>
+   597→  );
+   598→}
+   599→
+   600→// Keep MagneticButton exactly as-is (do not change)
+   601→```
+   602→
+   603→---
+   604→
+   605→## PART 5 — notifications-bell.tsx — Premium dropdown
+   606→
+   607→Keep all fetch logic and data exactly the same.
+   608→Redesign the dropdown panel:
+   609→
+   610→The trigger button:
+   611→```tsx
+   612→<button
+   613→  aria-label="Notifications"
+   614→  className={cn(
+   615→    "relative grid place-items-center h-8 w-8 rounded-lg border transition-all duration-150",
+   616→    hasUnread
+   617→      ? "border-saffron/30 bg-saffron/8 text-saffron"
+   618→      : "border-border bg-transparent text-muted-foreground hover:text-foreground hover:bg-accent"
+   619→  )}
+   620→>
+   621→  <Bell className="h-4 w-4" />
+   622→  {hasUnread && (
+   623→    <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-saffron text-[8px] font-bold text-white">
+   624→      {unreadCount > 9 ? "9+" : unreadCount}
+   625→    </span>
+   626→  )}
+   627→</button>
+   628→```
+   629→
+   630→The dropdown panel (use a positioned div or Popover):
+   631→```tsx
+   632→// Panel: w-80, max-h-96, overflow-y-auto scroll-area
+   633→// className="absolute right-0 top-10 z-50 w-80 card-premium bg-popover overflow-hidden"
+   634→
+   635→// Header row inside panel:
+   636→<div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
+   637→  <span className="font-display font-semibold text-sm">Notifications</span>
+   638→  {hasUnread && (
+   639→    <button onClick={markAllRead}
+   640→      className="text-[11px] font-medium text-saffron hover:underline">
+   641→      Mark all read
+   642→    </button>
+   643→  )}
+   644→</div>
+   645→
+   646→// Each notification item:
+   647→<div className={cn(
+   648→  "flex items-start gap-3 px-4 py-3 border-b border-border/40 transition-colors hover:bg-accent/50 cursor-pointer",
+   649→  !notif.isRead && "bg-saffron/[0.03]"
+   650→)}>
+   651→  {/* Colored dot for unread */}
+   652→  <span className={cn(
+   653→    "mt-1.5 h-2 w-2 rounded-full flex-shrink-0",
+   654→    notif.isRead ? "bg-transparent" : "bg-saffron"
+   655→  )} />
+   656→  <div className="min-w-0 flex-1">
+   657→    <p className="text-[13px] font-medium leading-snug line-clamp-2">{notif.title}</p>
+   658→    <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{notif.message}</p>
+   659→    <p className="text-[10px] text-muted-foreground/70 mt-1">{formatRelative(notif.createdAt)}</p>
+   660→  </div>
+   661→</div>
+   662→
+   663→// Empty state:
+   664→<div className="py-10 text-center">
+   665→  <Bell className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
+   666→  <p className="text-sm text-muted-foreground">You're all caught up</p>
+   667→</div>
+   668→```
+   669→
+   670→---
+   671→
+   672→## PART 6 — candidate/tabs/overview.tsx — Dashboard Overview
+   673→
+   674→Keep ALL data fetching and state logic identical.
+   675→Redesign the layout and visual hierarchy.
+   676→
+   677→### Profile completion section redesign:
+   678→Instead of a basic Progress bar, use this design:
+   679→```tsx
+   680→<div className="card-premium p-5 mb-6 relative overflow-hidden">
+   681→  {/* Subtle mesh background on this card only */}
+   682→  <span className="absolute inset-0 bg-mesh opacity-40 pointer-events-none" />
+   683→  <div className="relative flex items-center gap-4">
+   684→    <CandidateAvatar ... className="h-14 w-14 ring-2 ring-saffron/30" />
+   685→    <div className="flex-1 min-w-0">
+   686→      <div className="flex items-center justify-between mb-1">
+   687→        <div>
+   688→          <p className="font-display font-bold text-[15px]">{candidate.fullName}</p>
+   689→          <p className="text-xs text-muted-foreground">{candidate.location ?? "Location not set"}</p>
+   690→        </div>
+   691→        <div className="text-right">
+   692→          <p className="font-display font-bold text-2xl text-gradient-brand leading-none">{completion}%</p>
+   693→          <p className="text-[10px] text-muted-foreground mt-0.5">Profile complete</p>
+   694→        </div>
+   695→      </div>
+   696→      {/* Segmented progress bar instead of single bar */}
+   697→      <div className="flex gap-1 mt-2">
+   698→        {Array.from({ length: 10 }).map((_, i) => (
+   699→          <div
+   700→            key={i}
+   701→            className={cn(
+   702→              "h-1.5 flex-1 rounded-full transition-all duration-500",
+   703→              i < Math.round(completion / 10)
+   704→                ? "bg-brand-gradient"
+   705→                : "bg-muted"
+   706→            )}
+   707→            style={{ transitionDelay: `${i * 50}ms` }}
+   708→          />
+   709→        ))}
+   710→      </div>
+   711→      {completion < 100 && (
+   712→        <button onClick={() => setTab("profile")}
+   713→          className="mt-2 text-[11px] font-medium text-saffron hover:underline">
+   714→          Complete your profile →
+   715→        </button>
+   716→      )}
+   717→    </div>
+   718→  </div>
+   719→</div>
+   720→```
+   721→
+   722→### Metrics row — 4 cards in a grid:
+   723→```
+   724→className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
+   725→```
+   726→Use MetricCard for: Total Applications, Shortlisted, Interviews, Offers
+   727→
+   728→### Recent applications — replace plain list with a styled timeline:
+   729→```tsx
+   730→<SectionCard title="Recent Applications" icon={Send}
+   731→  action={<Button variant="ghost" size="sm" onClick={() => setTab("applications")}>View all →</Button>}
+   732→>
+   733→  <div className="space-y-0 divide-y divide-border/50">
+   734→    {recentApps.map((app, i) => (
+   735→      <motion.div
+   736→        key={app.id}
+   737→        initial={{ opacity: 0, x: -8 }}
+   738→        animate={{ opacity: 1, x: 0 }}
+   739→        transition={{ delay: i * 0.06 }}
+   740→        className="flex items-center gap-4 py-3 first:pt-0 last:pb-0"
+   741→      >
+   742→        {/* Status dot */}
+   743→        <span className={cn("status-dot", STATUS_COLORS[app.status])} />
+   744→        <div className="flex-1 min-w-0">
+   745→          <p className="text-[13.5px] font-semibold truncate">{app.jobTitle}</p>
+   746→          <p className="text-xs text-muted-foreground truncate">{app.companyName}</p>
+   747→        </div>
+   748→        <div className="text-right shrink-0">
+   749→          <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full", STATUS_BADGE[app.status])}>
+   750→            {app.status}
+   751→          </span>
+   752→          <p className="text-[10px] text-muted-foreground mt-1">{formatRelative(app.appliedAt)}</p>
+   753→        </div>
+   754→      </motion.div>
+   755→    ))}
+   756→  </div>
+   757→</SectionCard>
+   758→```
+   759→
+   760→Add this STATUS_COLORS map at the top of the file:
+   761→```ts
+   762→const STATUS_COLORS: Record<string, string> = {
+   763→  APPLIED:     "bg-sky-400 text-sky-400",
+   764→  SHORTLISTED: "bg-amber-400 text-amber-400",
+   765→  INTERVIEWED: "bg-violet-400 text-violet-400",
+   766→  OFFERED:     "bg-emerald-400 text-emerald-400",
+   767→  REJECTED:    "bg-red-400 text-red-400",
+   768→  WITHDRAWN:   "bg-slate-400 text-slate-400",
+   769→};
+   770→```
+   771→
+   772→---
+   773→
+   774→## PART 7 — candidate/tabs/applications.tsx — Kanban tracker upgrade
+   775→
+   776→The application tracker is currently a list. Upgrade it to a proper timeline/status view.
+   777→
+   778→For each application card:
+   779→```tsx
+   780→<motion.div
+   781→  key={app.id}
+   782→  layout
+   783→  initial={{ opacity: 0, scale: 0.96 }}
+   784→  animate={{ opacity: 1, scale: 1 }}
+   785→  exit={{ opacity: 0, scale: 0.96 }}
+   786→  className="card-premium p-4 group"
+   787→>
+   788→  <div className="flex items-start justify-between gap-3">
+   789→    <div className="flex items-start gap-3">
+   790→      <CompanyAvatar name={app.companyName} size={36} />
+   791→      <div className="min-w-0">
+   792→        <p className="font-display font-semibold text-[14px] leading-snug">{app.jobTitle}</p>
+   793→        <p className="text-xs text-muted-foreground">{app.companyName}</p>
+   794→      </div>
+   795→    </div>
+   796→    <span className={cn("shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full", STATUS_BADGE[app.status])}>
+   797→      {app.status}
+   798→    </span>
+   799→  </div>
+   800→
+   801→  {/* Progress pipeline */}
+   802→  <div className="mt-4 flex items-center gap-0">
+   803→    {["APPLIED","SHORTLISTED","INTERVIEWED","OFFERED"].map((step, i, arr) => {
+   804→      const stepIndex = arr.indexOf(app.status);
+   805→      const active = i <= stepIndex;
+   806→      return (
+   807→        <div key={step} className="flex items-center flex-1">
+   808→          <div className={cn(
+   809→            "h-1.5 w-full rounded-full transition-all duration-700",
+   810→            active ? "bg-brand-gradient" : "bg-muted"
+   811→          )} style={{ transitionDelay: `${i * 100}ms` }} />
+   812→          {i < arr.length - 1 && (
+   813→            <div className={cn(
+   814→              "h-3 w-3 rounded-full border-2 shrink-0 transition-all duration-700",
+   815→              active
+   816→                ? "border-saffron bg-saffron"
+   817→                : "border-muted bg-background"
+   818→            )} />
+   819→          )}
+   820→        </div>
+   821→      );
+   822→    })}
+   823→  </div>
+   824→
+   825→  <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+   826→    <span>Applied {formatRelative(app.appliedAt, locale)}</span>
+   827→    {app.status === "REJECTED" && (
+   828→      <span className="text-red-500 font-medium">Not selected</span>
+   829→    )}
+   830→  </div>
+   831→</motion.div>
+   832→```
+   833→
+   834→---
+   835→
+   836→## PART 8 — landing-page.tsx — Hero & Key Sections
+   837→
+   838→Keep ALL data fetching, state, event handlers, and i18n logic EXACTLY the same.
+   839→Only redesign the visual markup.
+   840→
+   841→### Hero section improvements:
+   842→
+   843→The hero currently has a search bar. Make it more premium:
+   844→
+   845→1. The eyebrow pill (above headline) should be:
+   846→```tsx
+   847→<motion.div initial={{ opacity:0, y:-8 }} animate={{ opacity:1, y:0 }}>
+   848→  <span className="inline-flex items-center gap-2 rounded-full border border-saffron/25
+   849→    bg-saffron/8 px-3 py-1.5 text-[11px] font-semibold tracking-wide text-saffron">
+   850→    <span className="h-1.5 w-1.5 rounded-full bg-saffron animate-ping-soft" />
+   851→    Now Connecting India × Japan
+   852→  </span>
+   853→</motion.div>
+   854→```
+   855→
+   856→2. The headline: Remove any generic font usage. Use:
+   857→```tsx
+   858→<h1 className="font-display font-extrabold text-4xl sm:text-5xl lg:text-6xl
+   859→  leading-[1.08] tracking-[-0.03em]">
+   860→  {/* Two lines — first line normal, second line gradient */}
+   861→  Your Career Bridge<br />
+   862→  <span className="text-gradient-brand">India to Japan</span>
+   863→</h1>
+   864→```
+   865→
+   866→3. StatCards row: Use the new `.hero-stat` utility class.
+   867→   Remove any blue/purple colors from stat cards — only use saffron and crimson.
+   868→   Each stat card gets an icon in a saffron/10 pill.
+   869→
+   870→4. Section heading pattern (use this EVERYWHERE in the landing page for consistency):
+   871→```tsx
+   872→<div className="text-center mb-10">
+   873→  <span className="inline-flex items-center gap-2 rounded-full border border-saffron/25
+   874→    bg-saffron/8 px-3 py-1 text-[11px] font-semibold tracking-wide text-saffron mb-3">
+   875→    {sectionEyebrow}
+   876→  </span>
+   877→  <h2 className="font-display font-bold text-3xl sm:text-4xl tracking-tight">
+   878→    {sectionTitle}
+   879→  </h2>
+   880→  <p className="mt-3 text-muted-foreground text-base max-w-2xl mx-auto">
+   881→    {sectionSubtitle}
+   882→  </p>
+   883→  <div className="section-rule mt-6 max-w-xs mx-auto" />
+   884→</div>
+   885→```
+   886→
+   887→5. Feature/How-it-Works cards: Replace with numbered step cards:
+   888→```tsx
+   889→<div className="grid sm:grid-cols-3 gap-6">
+   890→  {steps.map((step, i) => (
+   891→    <div key={i} className="card-premium p-6 relative">
+   892→      <div className="font-display text-6xl font-extrabold text-gradient-brand opacity-20 leading-none mb-4">
+   893→        {String(i + 1).padStart(2, "0")}
+   894→      </div>
+   895→      <div className="grid place-items-center h-10 w-10 rounded-xl bg-saffron/10 mb-4">
+   896→        <step.icon className="h-5 w-5 text-saffron" />
+   897→      </div>
+   898→      <h3 className="font-display font-bold text-[15px] mb-2">{step.title}</h3>
+   899→      <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
+   900→    </div>
+   901→  ))}
+   902→</div>
+   903→```
+   904→
+   905→6. Featured jobs grid: Change from 2-col to 3-col on desktop:
+   906→```tsx
+   907→className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+   908→```
+   909→
+   910→7. Company logos section (trust band): Make logos more elegant:
+   911→   Wrap in a container with `.bg-mesh` background. Use grayscale + hover:grayscale-0.
+   912→
+   913→8. CTA banner at the bottom: Replace plain colored div with:
+   914→```tsx
+   915→<div className="relative rounded-3xl overflow-hidden bg-sidebar text-sidebar-foreground">
+   916→  <div className="absolute inset-0 bg-mesh opacity-40" />
+   917→  <div className="absolute inset-0 bg-brand-gradient opacity-10" />
+   918→  <div className="relative px-8 py-16 text-center">
+   919→    <h2 className="font-display font-extrabold text-3xl sm:text-4xl tracking-tight mb-4">
+   920→      {ctaTitle}
+   921→    </h2>
+   922→    <p className="text-sidebar-foreground/70 mb-8 max-w-md mx-auto">{ctaSubtitle}</p>
+   923→    <div className="flex flex-wrap justify-center gap-3">
+   924→      <Button size="lg" className="bg-brand-gradient hover:opacity-90 shadow-glow-brand font-semibold">
+   925→        {ctaButtonPrimary}
+   926→      </Button>
+   927→      <Button size="lg" variant="outline"
+   928→        className="border-sidebar-foreground/20 text-sidebar-foreground hover:bg-sidebar-foreground/10">
+   929→        {ctaButtonSecondary}
+   930→      </Button>
+   931→    </div>
+   932→  </div>
+   933→</div>
+   934→```
+   935→
+   936→---
+   937→
+   938→## PART 9 — Company & Admin overview tabs
+   939→
+   940→Apply the same MetricCard + SectionCard redesigns.
+   941→For company/tabs/overview.tsx: wrap the job cards in a proper list format using card-premium.
+   942→For admin/tabs/overview.tsx: all data tables should use the `.table-premium` CSS class
+   943→  (apply it as: <table className="table-premium">) and remove all direct border/padding
+   944→  classes from th/td (the CSS handles it).
+   945→
+   946→---
+   947→
+   948→## PART 10 — Final consistency pass (apply to ALL components you touched)
+   949→
+   950→Run through every file you changed and verify:
+   951→
+   952→1. NO hardcoded hex colors like `#666`, `#fff`, `rgba(0,0,0,0.1)` — use CSS vars or Tailwind
+   953→2. NO `p-4` on cards — use `p-5` or `p-6` for breathing room
+   954→3. NO `text-gray-500` — use `text-muted-foreground`
+   955→4. NO `bg-gray-100` — use `bg-muted` or `bg-accent`
+   956→5. EVERY interactive element has a focus-visible ring (already in globals.css)
+   957→6. EVERY hover state has a `transition-*` class with `duration-150` or `duration-200`
+   958→7. ALL font-bold headings inside cards use `font-display` class
+   959→8. ALL Framer Motion animations use `easeOutExpo` from `@/lib/motion`
+   960→
+   961→---
+   962→
+   963→## VERIFICATION
+   964→
+   965→```bash
+   966→bun run lint          # → 0 errors, 0 warnings
+   967→bunx tsc --noEmit     # → 0 errors
+   968→bun run dev           # → opens at localhost:3000 clean
+   969→```
+   970→
+   971→Manual design check checklist:
+   972→[ ] Landing hero: eyebrow pill visible, headline 2-tone gradient, stat cards have icon pills
+   973→[ ] Job board: 3-col grid on desktop, all cards lift cleanly on hover, skill tags are pill-shaped
+   974→[ ] Candidate dashboard: sidebar nav active item has saffron glow + left bar indicator
+   975→[ ] MetricCard: accent top line matches color, metric number is large font-display
+   976→[ ] SectionCard: has subtle shadow, optional icon in header
+   977→[ ] Applications tab: progress pipeline renders between steps
+   978→[ ] Notifications bell: dropdown has unread dot + mark-all-read, not raw list
+   979→[ ] Admin tables: table-premium class applied, rows highlight on hover
+   980→[ ] Dark mode: toggle it — all colors should remain coherent (they use CSS vars, should work)
+   981→[ ] Mobile (375px): sidebar collapses, job grid 1-col, no overflow anywhere
+   982→```

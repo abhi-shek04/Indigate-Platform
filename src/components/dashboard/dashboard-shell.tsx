@@ -88,7 +88,11 @@ export function DashboardShell({
             disabledKeys={disabledKeys}
           />
         </div>
-        <SidebarFooter onGoSite={goSite} onLogout={handleLogout} logoutLabel={t("nav.logout")} />
+        <SidebarFooter
+          onGoSite={goSite}
+          onLogout={handleLogout}
+          logoutLabel={t("nav.logout")}
+        />
       </aside>
 
       {/* Mobile sidebar (Sheet) */}
@@ -117,7 +121,11 @@ export function DashboardShell({
                 onPick={() => setMobileOpen(false)}
               />
             </div>
-            <SidebarFooter onGoSite={goSite} onLogout={handleLogout} logoutLabel={t("nav.logout")} />
+            <SidebarFooter
+              onGoSite={goSite}
+              onLogout={handleLogout}
+              logoutLabel={t("nav.logout")}
+            />
           </SheetContent>
         </Sheet>
       </div>
@@ -125,17 +133,19 @@ export function DashboardShell({
       {/* Main */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-md border-b border-border">
-          <div className="flex items-center gap-3 px-4 sm:px-6 lg:px-8 h-16">
+        <header className="topbar">
+          <div className="flex items-center gap-4 px-4 sm:px-6 lg:px-8 h-14">
             <div className="lg:hidden">
               {/* Spacer for mobile menu button which is rendered by each dashboard */}
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="font-display font-extrabold text-lg sm:text-xl leading-tight truncate">
+              <h1 className="font-display font-extrabold text-base sm:text-lg leading-tight truncate">
                 {welcome}
               </h1>
               {subtitle && (
-                <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  {subtitle}
+                </p>
               )}
             </div>
             <div className="flex items-center gap-1.5">
@@ -184,13 +194,16 @@ function NavList({
 }) {
   return (
     <nav className="flex flex-col gap-1 px-3" aria-label={ariaLabel ?? "Dashboard navigation"}>
-      {nav.map((item) => {
+      {nav.map((item, i) => {
         const Icon = item.icon;
         const isActive = item.key === active;
         const isDisabled = disabledKeys.includes(item.key);
         return (
-          <button
+          <motion.button
             key={item.key}
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, ease: easeOutExpo, delay: i * 0.04 }}
             disabled={isDisabled}
             onClick={() => {
               if (isDisabled) return;
@@ -199,49 +212,22 @@ function NavList({
             }}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all outline-none",
-              "focus-visible:ring-2 focus-visible:ring-sidebar-ring",
-              isActive
-                ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
+              "nav-item outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+              isActive && "active",
               isDisabled && "opacity-40 cursor-not-allowed hover:bg-transparent",
             )}
           >
-            {isActive && (
-              <motion.span
-                layoutId="sidebar-active"
-                aria-hidden
-                className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full bg-brand-gradient"
-                transition={{ type: "spring", stiffness: 380, damping: 30 }}
-              />
-            )}
-            <Icon
-              className={cn(
-                "h-[1.05rem] w-[1.05rem] shrink-0 transition-colors",
-                isActive
-                  ? "text-saffron"
-                  : "text-sidebar-foreground/50 group-hover:text-sidebar-accent-foreground",
-              )}
-            />
+            <Icon className="nav-icon" />
             <span className="truncate">{item.label}</span>
             {typeof item.badge === "number" && item.badge > 0 && (
               <span
                 aria-label={`${item.badge} unread`}
-                className="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-saffron text-white text-[10px] font-bold shadow-glow-brand"
+                className="nav-badge"
               >
                 {item.badge > 99 ? "99+" : item.badge}
               </span>
             )}
-            {isActive && (
-              <span
-                aria-hidden
-                className={cn(
-                  "ml-auto h-1.5 w-1.5 rounded-full bg-saffron shadow-glow-brand",
-                  typeof item.badge === "number" && item.badge > 0 && "hidden",
-                )}
-              />
-            )}
-          </button>
+          </motion.button>
         );
       })}
     </nav>
@@ -258,21 +244,24 @@ function SidebarFooter({
   logoutLabel: string;
 }) {
   return (
-    <div className="mt-auto px-3 pb-5 pt-4 border-t border-sidebar-border/60 flex flex-col gap-1">
+    <div className="mt-auto px-3 pb-5 pt-4 border-t border-sidebar-border/60 flex flex-col gap-2">
       <button
         onClick={onGoSite}
-        className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-colors"
+        className="nav-item group"
       >
-        <ArrowLeft className="h-[1.05rem] w-[1.05rem] transition-transform group-hover:-translate-x-0.5" />
+        <ArrowLeft className="nav-icon transition-transform group-hover:-translate-x-0.5" />
         <span>Back to site</span>
       </button>
       <button
         onClick={onLogout}
-        className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/80 hover:bg-destructive/20 hover:text-sidebar-accent-foreground transition-colors"
+        className="nav-item group hover:!bg-destructive/20"
       >
-        <LogOut className="h-[1.05rem] w-[1.05rem] transition-transform group-hover:translate-x-0.5" />
+        <LogOut className="nav-icon transition-transform group-hover:translate-x-0.5" />
         <span>{logoutLabel}</span>
       </button>
+      <p className="mt-1 px-3 text-[10px] font-medium uppercase tracking-[0.14em] text-sidebar-foreground/40">
+        IndiGate · India × Japan Career Platform
+      </p>
     </div>
   );
 }
@@ -328,16 +317,19 @@ export function MetricCard({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.5, ease: easeOutExpo }}
       whileHover={{ y: -4 }}
-      className="group rounded-2xl border border-border bg-card shadow-premium p-5 sm:p-6 transition-shadow hover:shadow-glow-brand"
+      className="card-premium group relative p-5 sm:p-6"
     >
+      {/* Top accent line */}
+      <span
+        aria-hidden
+        className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-saffron/60 to-transparent opacity-70 group-hover:opacity-100 transition-opacity"
+      />
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.08em]">
             {label}
           </p>
-          <p className="mt-2 font-display text-3xl font-extrabold leading-none">
-            {value}
-          </p>
+          <p className="metric-num mt-2">{value}</p>
           {hint && (
             <p className="mt-1.5 text-xs text-muted-foreground">{hint}</p>
           )}
@@ -373,7 +365,7 @@ export function EmptyState({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: easeOutExpo }}
-      className="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center"
+      className="card-premium p-10 text-center"
     >
       <div className="mx-auto mb-4 grid place-items-center h-14 w-14 rounded-2xl bg-muted text-muted-foreground">
         <Icon className="h-6 w-6 animate-bob" />
@@ -392,27 +384,31 @@ export function EmptyState({
 export function SectionCard({
   title,
   action,
+  icon: Icon,
   children,
   className,
   bodyClassName,
 }: {
   title?: ReactNode;
   action?: ReactNode;
+  icon?: LucideIcon;
   children: ReactNode;
   className?: string;
   bodyClassName?: string;
 }) {
   return (
-    <section
-      className={cn(
-        "rounded-2xl border border-border bg-card shadow-premium",
-        className,
-      )}
-    >
+    <section className={cn("card-premium", className)}>
       {(title || action) && (
         <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-4 border-b border-border">
           {typeof title === "string" ? (
-            <h2 className="font-display font-bold text-base sm:text-lg">{title}</h2>
+            <h2 className="font-display font-bold text-base sm:text-lg flex items-center gap-2.5">
+              {Icon && (
+                <span className="grid place-items-center h-7 w-7 rounded-lg bg-saffron/12 text-saffron ring-1 ring-inset ring-saffron/20">
+                  <Icon className="h-4 w-4" />
+                </span>
+              )}
+              {title}
+            </h2>
           ) : (
             title
           )}
@@ -444,7 +440,7 @@ export function RoleGuard({
 
   return (
     <div className="min-h-screen bg-mesh grid place-items-center px-4 py-16">
-      <div className="max-w-md w-full rounded-3xl border border-border bg-card shadow-premium p-8 text-center">
+      <div className="max-w-md w-full card-premium p-8 text-center">
         <div className="mx-auto mb-5 grid place-items-center h-16 w-16 rounded-2xl bg-brand-gradient shadow-glow-brand text-white">
           <LockIcon />
         </div>
@@ -487,7 +483,7 @@ function LockIcon() {
 
 export function CardSkeleton({ lines = 3 }: { lines?: number }) {
   return (
-    <div className="rounded-2xl border border-border bg-card shadow-premium p-5 sm:p-6">
+    <div className="card-premium p-5 sm:p-6">
       <div className="h-5 w-1/3 bg-muted rounded animate-pulse" />
       <div className="mt-4 space-y-3">
         {Array.from({ length: lines }).map((_, i) => (
@@ -500,7 +496,7 @@ export function CardSkeleton({ lines = 3 }: { lines?: number }) {
 
 export function MetricSkeleton() {
   return (
-    <div className="rounded-2xl border border-border bg-card shadow-premium p-5 sm:p-6">
+    <div className="card-premium p-5 sm:p-6">
       <div className="h-4 w-1/2 bg-muted rounded animate-pulse" />
       <div className="mt-3 h-8 w-1/3 bg-muted rounded animate-pulse" />
     </div>

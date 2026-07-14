@@ -10,15 +10,6 @@ import {
   CardSkeleton,
 } from "@/components/dashboard/dashboard-shell";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,10 +26,26 @@ import {
   Briefcase,
   FileText,
   CalendarClock,
+  Send,
+  Star,
+  Trophy,
+  XCircle,
 } from "lucide-react";
-import type { ApplicationDTO } from "@/lib/types";
+import type { ApplicationDTO, ApplicationStatus } from "@/lib/types";
 import { STATUS_BADGE } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+const PIPELINE: { key: ApplicationStatus; label: string; icon: typeof Send }[] = [
+  { key: "APPLIED", label: "Applied", icon: Send },
+  { key: "SHORTLISTED", label: "Shortlisted", icon: Star },
+  { key: "INTERVIEWED", label: "Interviewed", icon: CalendarClock },
+  { key: "OFFERED", label: "Offered", icon: Trophy },
+];
+
+function progressIndex(status: ApplicationStatus): number {
+  const idx = PIPELINE.findIndex((p) => p.key === status);
+  return idx < 0 ? -1 : idx;
+}
 
 export function Applications() {
   const { t, locale } = useT();
@@ -114,107 +121,156 @@ export function Applications() {
     <div className="space-y-4">
       <SectionCard
         title={`${apps.length} application${apps.length === 1 ? "" : "s"}`}
-        bodyClassName="p-0"
+        icon={FileText}
+        bodyClassName="p-5 sm:p-6 space-y-4"
       >
-        <div className="max-h-[70vh] overflow-y-auto scroll-area">
-          <Table>
-            <TableHeader className="sticky top-0 bg-card z-10">
-              <TableRow>
-                <TableHead className="pl-5 sm:pl-6">Role</TableHead>
-                <TableHead className="hidden sm:table-cell">Applied</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right pr-5 sm:pr-6">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {apps.map((a) => (
-                <Fragment key={a.id}>
-                <TableRow>
-                  <TableCell className="pl-5 sm:pl-6">
-                    <button
-                      onClick={() =>
-                        a.job && navigate("job-detail", { jobId: a.job.id })
-                      }
-                      className="text-left"
-                    >
-                      <p className="font-semibold text-sm hover:text-crimson transition-colors">
-                        {a.job?.title ?? "Job removed"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {a.job?.company?.companyName} ·{" "}
-                        {a.job?.location}
-                      </p>
-                    </button>
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
-                    {formatDate(a.appliedAt, locale)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={cn("font-semibold", STATUS_BADGE[a.status])}
-                    >
-                      {t(`status.${a.status}`)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right pr-5 sm:pr-6">
-                    {a.status !== "WITHDRAWN" && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={busyId === a.id}
-                            className="text-muted-foreground hover:text-destructive"
+        {apps.map((a) => {
+          const activeIdx = progressIndex(a.status);
+          const isRejected = a.status === "REJECTED";
+          const isWithdrawn = a.status === "WITHDRAWN";
+          return (
+            <Fragment key={a.id}>
+              <div className="card-premium p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <button
+                    onClick={() =>
+                      a.job && navigate("job-detail", { jobId: a.job.id })
+                    }
+                    className="text-left min-w-0"
+                  >
+                    <p className="font-display font-bold text-base hover:text-crimson transition-colors truncate">
+                      {a.job?.title ?? "Job removed"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {a.job?.company?.companyName} · {a.job?.location} ·{" "}
+                      Applied {formatDate(a.appliedAt, locale)}
+                    </p>
+                  </button>
+                  <span
+                    className={cn(
+                      "inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-semibold shrink-0",
+                      STATUS_BADGE[a.status],
+                    )}
+                  >
+                    {t(`status.${a.status}`)}
+                  </span>
+                </div>
+
+                {/* Progress pipeline */}
+                <div className="mt-4 flex items-center gap-1.5">
+                  {PIPELINE.map((stage, i) => {
+                    const isDone = activeIdx >= 0 && i <= activeIdx;
+                    const isCurrent = i === activeIdx;
+                    return (
+                      <div key={stage.key} className="flex-1 flex flex-col gap-1.5">
+                        <div
+                          className={cn(
+                            "h-1.5 rounded-full transition-colors",
+                            isDone
+                              ? "bg-brand-gradient"
+                              : "bg-muted",
+                          )}
+                        />
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={cn(
+                              "grid place-items-center h-5 w-5 rounded-full text-[10px] font-bold transition-colors shrink-0",
+                              isCurrent
+                                ? "bg-brand-gradient text-white shadow-glow-brand"
+                                : isDone
+                                  ? "bg-saffron/20 text-saffron"
+                                  : "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            <stage.icon className="h-2.5 w-2.5" />
+                          </span>
+                          <span
+                            className={cn(
+                              "text-[11px] font-medium truncate transition-colors",
+                              isCurrent
+                                ? "text-foreground"
+                                : isDone
+                                  ? "text-saffron"
+                                  : "text-muted-foreground",
+                            )}
+                          >
+                            {stage.label}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Rejection note */}
+                {isRejected && (
+                  <div className="mt-3 flex items-start gap-2 rounded-lg bg-crimson/5 border border-crimson/20 px-3 py-2">
+                    <XCircle className="h-4 w-4 text-crimson shrink-0 mt-0.5" />
+                    <p className="text-xs text-crimson">
+                      {a.notes
+                        ? a.notes
+                        : "Application was not selected to move forward."}
+                    </p>
+                  </div>
+                )}
+
+                {/* Interview info */}
+                {a.status === "INTERVIEWED" && a.interviewDate && (
+                  <div className="mt-3">
+                    <InterviewInfo app={a} />
+                  </div>
+                )}
+
+                {/* Withdraw action */}
+                {!isWithdrawn && (
+                  <div className="mt-3 flex justify-end">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={busyId === a.id}
+                          className="text-muted-foreground hover:text-destructive h-7 text-xs"
+                        >
+                          Withdraw application
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            Withdraw this application?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            You&rsquo;re about to withdraw your application for{" "}
+                            <span className="font-medium text-foreground">
+                              {a.job?.title}
+                            </span>{" "}
+                            at{" "}
+                            <span className="font-medium text-foreground">
+                              {a.job?.company?.companyName}
+                            </span>
+                            . This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>
+                            {t("common.cancel")}
+                          </AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-white hover:bg-destructive/90"
+                            onClick={() => withdraw(a)}
                           >
                             Withdraw
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              Withdraw this application?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              You're about to withdraw your application for{" "}
-                              <span className="font-medium text-foreground">
-                                {a.job?.title}
-                              </span>{" "}
-                              at{" "}
-                              <span className="font-medium text-foreground">
-                                {a.job?.company?.companyName}
-                              </span>
-                              . This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>
-                              {t("common.cancel")}
-                            </AlertDialogCancel>
-                            <AlertDialogAction
-                              className="bg-destructive text-white hover:bg-destructive/90"
-                              onClick={() => withdraw(a)}
-                            >
-                              Withdraw
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                  </TableCell>
-                </TableRow>
-                {a.status === "INTERVIEWED" && a.interviewDate && (
-                  <TableRow className="bg-violet-50/50 dark:bg-violet-950/20">
-                    <TableCell colSpan={4} className="px-5 sm:px-6 py-3">
-                      <InterviewInfo app={a} />
-                    </TableCell>
-                  </TableRow>
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 )}
-                </Fragment>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </div>
+            </Fragment>
+          );
+        })}
       </SectionCard>
     </div>
   );
@@ -248,7 +304,7 @@ function InterviewInfo({ app }: { app: ApplicationDTO }) {
   const calUrl = `https://www.google.com/calendar/event?action=TEMPLATE&text=${calTitle}&dates=${start}/${end}&details=${calDetails}&ctz=Asia/Tokyo`;
 
   return (
-    <div className="flex items-start gap-3 flex-wrap">
+    <div className="flex items-start gap-3 flex-wrap rounded-lg bg-violet-50/60 dark:bg-violet-950/20 border border-violet-200/60 dark:border-violet-900/40 px-3 py-2.5">
       <div className="grid place-items-center h-9 w-9 rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 shrink-0">
         <CalendarClock className="h-4 w-4" />
       </div>
@@ -266,7 +322,7 @@ function InterviewInfo({ app }: { app: ApplicationDTO }) {
         )}
       </div>
       <a href={calUrl} target="_blank" rel="noreferrer">
-        <Button size="sm" variant="outline" className="shrink-0">
+        <Button size="sm" variant="outline" className="shrink-0 h-8">
           <CalendarClock className="mr-1.5 h-3.5 w-3.5" />
           {locale === "ja" ? "カレンダーに追加" : "Add to Calendar"}
         </Button>

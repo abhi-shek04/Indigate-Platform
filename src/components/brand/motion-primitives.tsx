@@ -50,12 +50,13 @@ export function MagneticButton({
 }
 
 /**
- * SpotlightCard — a cursor-following radial spotlight on hover.
+ * SpotlightCard — a subtle cursor-following radial spotlight on hover.
+ * Uses saffron at 6% opacity for a premium, low-key feel.
  */
 export function SpotlightCard({
   children,
   className,
-  spotlightColor = "rgba(255, 153, 51, 0.12)",
+  spotlightColor = "color-mix(in oklch, var(--saffron) 6%, transparent)",
 }: {
   children: React.ReactNode;
   className?: string;
@@ -67,7 +68,7 @@ export function SpotlightCard({
   const background = useTransform(
     [mouseX, mouseY],
     ([x, y]) =>
-      `radial-gradient(420px circle at ${x}% ${y}%, ${spotlightColor}, transparent 45%)`,
+      `radial-gradient(320px circle at ${x}% ${y}%, ${spotlightColor}, transparent 55%)`,
   );
 
   function onMove(e: React.MouseEvent) {

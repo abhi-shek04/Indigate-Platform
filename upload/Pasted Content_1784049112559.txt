@@ -1,0 +1,982 @@
+# INDIGATE — FULL PREMIUM UI/UX REDESIGN
+### Paste this entire file as one prompt to your agent.
+### This is a DESIGN-ONLY change. Do NOT touch any API routes, auth logic, Prisma schema, or i18n keys.
+
+---
+
+## EXISTING ARCHITECTURE — READ THIS BEFORE WRITING ANY CODE
+
+```
+Stack: Next.js 16, Bun, TypeScript, SQLite via Prisma, shadcn/ui, Framer Motion, Zustand
+This is a single-page app. All views render at "/". Do NOT add new pages or routes.
+
+Design tokens already defined in globals.css (DO NOT REMOVE ANY):
+  --saffron (gold/brand), --crimson (red accent), --ink (dark text)
+  .bg-brand-gradient, .text-gradient-brand, .glass, .shadow-premium,
+  .shadow-glow-brand, .ring-brand, .gradient-border, .bg-mesh,
+  .animate-aurora, .animate-bob, .animate-ping-soft, .animate-glow-pulse,
+  .shimmer-sweep, .scroll-area, .animate-marquee, .animate-float-slow
+
+Fonts: --font-display (display headings), --font-sans (body), --font-mono (code/numbers)
+Framer Motion: motion, AnimatePresence, easeOutExpo from "@/lib/motion"
+Icons: lucide-react only
+Utility: cn() from "@/lib/utils"
+
+FILES TO REDESIGN (the only files you touch):
+  src/app/globals.css                               — add new utility classes only
+  src/components/dashboard/dashboard-shell.tsx      — full redesign
+  src/components/jobs/job-card.tsx                  — premium card
+  src/components/brand/motion-primitives.tsx        — upgrade SpotlightCard
+  src/components/layout/notifications-bell.tsx      — premium bell + dropdown
+  src/components/candidate/tabs/overview.tsx        — dashboard overview
+  src/components/candidate/tabs/applications.tsx    — application tracker
+  src/components/company/tabs/overview.tsx          — company overview
+  src/components/admin/tabs/overview.tsx            — admin overview
+  src/components/landing/landing-page.tsx           — landing hero + sections
+
+DO NOT TOUCH: Any file in src/app/api/*, src/lib/*, src/components/ui/*,
+  src/components/auth/*, src/components/brand/logo.tsx, prisma/*, i18n.ts
+
+VERIFICATION after each file: bun run lint && bunx tsc --noEmit — 0 errors
+```
+
+---
+
+## DESIGN PHILOSOPHY FOR THIS REDESIGN
+
+Reference aesthetic: Linear.app + Vercel Dashboard + Craft.do
+Goal: Every screen should feel like a ₹50L/yr SaaS product, not a college project.
+
+Four rules to follow on EVERY component:
+1. DEPTH — Nothing is flat. Cards have layered backgrounds (bg-card over bg-background),
+   active states have glows, interactive elements have shadows that lift on hover.
+2. RHYTHM — Consistent 8px spatial grid. Gap-2=8px, gap-4=16px, gap-6=24px, gap-8=32px.
+   Page padding: px-6 on mobile, px-8 on tablet, px-10 on desktop.
+3. TYPOGRAPHY HIERARCHY — 3 clear levels on every screen:
+   - Display: font-display font-bold text-xl+ (section titles, metric numbers)
+   - Body: text-sm font-medium (labels, descriptions)
+   - Caption: text-xs text-muted-foreground (timestamps, hints)
+4. PRECISION — Pixel-perfect borders, exact border-radius consistency (rounded-xl for cards,
+   rounded-lg for inputs/badges, rounded-full for pills/avatars).
+
+---
+
+## PART 1 — globals.css additions (APPEND only, do not remove anything)
+
+Add these new utility classes inside the existing `@layer utilities` block:
+
+```css
+/* ── Premium card variants ─────────────────────────────────── */
+.card-premium {
+  background: var(--card);
+  border: 1px solid color-mix(in oklch, var(--border) 100%, transparent);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    0 1px 0 0 color-mix(in oklch, var(--foreground) 4%, transparent) inset,
+    0 -1px 0 0 color-mix(in oklch, var(--foreground) 2%, transparent) inset,
+    0 2px 4px -1px color-mix(in oklch, var(--foreground) 6%, transparent),
+    0 8px 24px -4px color-mix(in oklch, var(--foreground) 4%, transparent);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.card-premium:hover {
+  border-color: color-mix(in oklch, var(--saffron) 35%, var(--border));
+  box-shadow:
+    0 1px 0 0 color-mix(in oklch, var(--foreground) 4%, transparent) inset,
+    0 -1px 0 0 color-mix(in oklch, var(--foreground) 2%, transparent) inset,
+    0 4px 12px -2px color-mix(in oklch, var(--saffron) 12%, transparent),
+    0 12px 32px -4px color-mix(in oklch, var(--foreground) 8%, transparent);
+  transform: translateY(-2px);
+}
+
+/* ── Metric number style ───────────────────────────────────── */
+.metric-num {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+/* ── Sidebar nav item states ───────────────────────────────── */
+.nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--sidebar-foreground);
+  opacity: 0.65;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+}
+.nav-item:hover {
+  opacity: 1;
+  background: color-mix(in oklch, var(--sidebar-accent) 60%, transparent);
+}
+.nav-item.active {
+  opacity: 1;
+  background: color-mix(in oklch, var(--saffron) 14%, transparent);
+  color: var(--sidebar-foreground);
+  font-weight: 600;
+}
+.nav-item.active .nav-icon {
+  color: var(--saffron);
+  filter: drop-shadow(0 0 6px color-mix(in oklch, var(--saffron) 50%, transparent));
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: 0 3px 3px 0;
+  background: var(--saffron);
+  box-shadow: 0 0 8px color-mix(in oklch, var(--saffron) 60%, transparent);
+}
+.nav-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transition: color 0.15s ease, filter 0.15s ease;
+  color: var(--sidebar-foreground);
+  opacity: 0.7;
+}
+.nav-item:hover .nav-icon {
+  opacity: 1;
+}
+.nav-badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--saffron);
+  color: color-mix(in oklch, var(--foreground) 90%, transparent);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ── Status timeline dot ───────────────────────────────────── */
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  box-shadow: 0 0 0 3px color-mix(in oklch, currentColor 20%, transparent);
+}
+
+/* ── Topbar blur bar ───────────────────────────────────────── */
+.topbar {
+  position: sticky; top: 0; z-index: 30;
+  background: color-mix(in oklch, var(--background) 88%, transparent);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+}
+
+/* ── Section header divider line ───────────────────────────── */
+.section-rule {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--saffron) 40%, transparent),
+    color-mix(in oklch, var(--border) 60%, transparent) 60%,
+    transparent
+  );
+  margin-bottom: 20px;
+}
+
+/* ── Table premium ─────────────────────────────────────────── */
+.table-premium { border-collapse: separate; border-spacing: 0; width: 100%; }
+.table-premium th {
+  background: color-mix(in oklch, var(--muted) 60%, transparent);
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--muted-foreground);
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.table-premium td {
+  padding: 12px 14px; border-bottom: 1px solid color-mix(in oklch, var(--border) 50%, transparent);
+  font-size: 13.5px; vertical-align: middle;
+  transition: background 0.12s ease;
+}
+.table-premium tr:last-child td { border-bottom: none; }
+.table-premium tbody tr:hover td {
+  background: color-mix(in oklch, var(--accent) 50%, transparent);
+}
+.table-premium th:first-child { border-radius: 8px 0 0 0; }
+.table-premium th:last-child  { border-radius: 0 8px 0 0; }
+
+/* ── Tag / skill pill ──────────────────────────────────────── */
+.skill-tag {
+  display: inline-flex; align-items: center;
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 500;
+  background: color-mix(in oklch, var(--muted) 80%, transparent);
+  border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+  color: var(--foreground);
+  transition: background 0.12s ease, border-color 0.12s ease;
+  white-space: nowrap;
+}
+.skill-tag:hover {
+  background: color-mix(in oklch, var(--saffron) 12%, transparent);
+  border-color: color-mix(in oklch, var(--saffron) 30%, transparent);
+  color: color-mix(in oklch, var(--saffron) 90%, var(--foreground));
+}
+
+/* ── Inset hero card (stat cards on landing) ───────────────── */
+.hero-stat {
+  position: relative; overflow: hidden;
+  border-radius: var(--radius-xl);
+  border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+  background: color-mix(in oklch, var(--card) 90%, transparent);
+  backdrop-filter: blur(10px);
+  padding: 20px 24px;
+}
+.hero-stat::after {
+  content: ''; position: absolute; inset-x-0; top: 0; height: 1px;
+  background: linear-gradient(
+    90deg, transparent, color-mix(in oklch, var(--saffron) 60%, transparent), transparent
+  );
+}
+```
+
+---
+
+## PART 2 — dashboard-shell.tsx — Full Redesign
+
+Redesign the entire file. Keep all props interfaces identical (DashboardShellProps, NavItem).
+Keep all logic identical. Only redesign the JSX and className strings.
+
+### Sidebar (desktop, w-[240px]):
+```
+Background: bg-sidebar (already dark)
+Top section: Logo area — 64px tall, px-4, flex items-center gap-3
+  - Logo component (existing)
+  - A subtle vertical separator: border-r border-sidebar-border
+  - No extra text next to logo
+
+Nav section: flex-1 overflow-y-auto scroll-area, py-3, px-3
+  - Section label above nav groups (if you want to group):
+    <p className="px-3 mb-1 mt-4 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/35">
+      {sectionLabel}
+    </p>
+  - Each nav item: use .nav-item and .nav-icon utility classes
+    <button
+      className={cn("nav-item w-full", active === item.key && "active")}
+      onClick={() => { onSelect(item.key); onPick?.() }}
+    >
+      <item.icon className="nav-icon" />
+      <span className="flex-1 text-left">{item.label}</span>
+      {/* badge slot — pass as prop or hardcode per key */}
+    </button>
+  - Use Framer Motion stagger on nav items:
+    initial={{ opacity:0, x:-8 }} animate={{ opacity:1, x:0 }}
+    transition={{ delay: index * 0.04 }}
+
+Footer: px-3 pb-4 space-y-1, border-t border-sidebar-border/40 pt-3
+  - "← Back to site" button: nav-item style, opacity-50 hover:opacity-100
+  - "Log out" button: nav-item style, text-crimson/70 hover:text-crimson
+
+Sidebar bottom branding: hidden from nav, just a 2-line text in footer:
+  <p className="px-3 mt-3 text-[10px] text-sidebar-foreground/25 leading-relaxed">
+    IndiGate · India × Japan<br/>Career Platform
+  </p>
+```
+
+### Topbar (header):
+```
+className="topbar"  ← use the new utility class
+Height: h-14 (56px)
+Layout: flex items-center gap-4 px-6 lg:px-8
+
+LEFT: Mobile menu trigger (lg:hidden) + Welcome heading
+  <div className="min-w-0 flex-1">
+    <h1 className="font-display font-bold text-[15px] leading-tight truncate tracking-tight">
+      {welcome}
+    </h1>
+    {subtitle && (
+      <p className="text-[11px] text-muted-foreground truncate mt-0.5">{subtitle}</p>
+    )}
+  </div>
+
+RIGHT: gap-1.5 items-center
+  {topbarActions}
+  <div className="h-4 w-px bg-border mx-1" />
+  <NotificationsBell />
+  <LocaleToggle />
+  {avatar}
+```
+
+### MetricCard — complete rewrite:
+```tsx
+export function MetricCard({ label, value, icon: Icon, accent = "saffron", hint, trend }: {
+  label: string;
+  value: number | string;
+  icon: LucideIcon;
+  accent?: "saffron" | "crimson" | "emerald" | "violet" | "sky" | "amber";
+  hint?: string;
+  trend?: { value: number; label: string }; // optional: +12% this month
+}) {
+  const accentColor: Record<string, string> = {
+    saffron: "var(--saffron)", crimson: "var(--crimson)",
+    emerald: "#10b981", violet: "#8b5cf6", sky: "#0ea5e9", amber: "#f59e0b",
+  };
+  const color = accentColor[accent];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: easeOutExpo }}
+      className="card-premium group relative overflow-hidden p-5"
+    >
+      {/* Top accent line */}
+      <span
+        className="absolute inset-x-0 top-0 h-[2px]"
+        style={{ background: `linear-gradient(90deg, ${color}, transparent)` }}
+      />
+      {/* Subtle icon background glow */}
+      <span
+        className="absolute -top-6 -right-6 h-24 w-24 rounded-full opacity-[0.07] blur-2xl"
+        style={{ background: color }}
+      />
+
+      <div className="relative flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+            {label}
+          </p>
+          <p className="metric-num" style={{ color }}>
+            {typeof value === "number" ? value.toLocaleString() : value}
+          </p>
+          {hint && (
+            <p className="mt-1.5 text-xs text-muted-foreground">{hint}</p>
+          )}
+          {trend && (
+            <p className="mt-1.5 text-xs font-medium" style={{ color: trend.value >= 0 ? "#10b981" : "#ef4444" }}>
+              {trend.value >= 0 ? "↑" : "↓"} {Math.abs(trend.value)}% {trend.label}
+            </p>
+          )}
+        </div>
+        <div
+          className="grid place-items-center h-10 w-10 rounded-xl shrink-0"
+          style={{
+            background: `color-mix(in oklch, ${color} 14%, transparent)`,
+            border: `1px solid color-mix(in oklch, ${color} 22%, transparent)`
+          }}
+        >
+          <Icon className="h-4.5 w-4.5" style={{ color }} />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+```
+
+### SectionCard — complete rewrite:
+```tsx
+export function SectionCard({ title, action, children, className, bodyClassName, icon: Icon }: {
+  title?: ReactNode;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+  bodyClassName?: string;
+  icon?: LucideIcon; // NEW optional icon prop
+}) {
+  return (
+    <section className={cn("card-premium overflow-hidden", className)}>
+      {(title || action) && (
+        <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-3.5 border-b border-border/60">
+          <div className="flex items-center gap-2.5">
+            {Icon && (
+              <div className="grid place-items-center h-6 w-6 rounded-md bg-saffron/10">
+                <Icon className="h-3.5 w-3.5 text-saffron" />
+              </div>
+            )}
+            {typeof title === "string" ? (
+              <h2 className="font-display font-semibold text-[14px] tracking-tight">{title}</h2>
+            ) : title}
+          </div>
+          {action && <div className="flex items-center gap-2 shrink-0">{action}</div>}
+        </div>
+      )}
+      <div className={cn("p-5 sm:p-6", bodyClassName)}>{children}</div>
+    </section>
+  );
+}
+```
+
+### EmptyState — complete rewrite:
+```tsx
+export function EmptyState({ icon: Icon, title, description, action }: {
+  icon: LucideIcon;
+  title: string;
+  description?: string;
+  action?: ReactNode;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.97 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.4, ease: easeOutExpo }}
+      className="flex flex-col items-center justify-center py-16 px-8 text-center"
+    >
+      <div className="relative mb-5">
+        <div className="grid place-items-center h-16 w-16 rounded-2xl bg-muted text-muted-foreground ring-1 ring-border animate-bob">
+          <Icon className="h-7 w-7" />
+        </div>
+        <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-background ring-2 ring-background flex items-center justify-center">
+          <span className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+        </span>
+      </div>
+      <p className="font-display font-bold text-base text-foreground">{title}</p>
+      {description && (
+        <p className="mt-1.5 text-sm text-muted-foreground max-w-xs leading-relaxed">{description}</p>
+      )}
+      {action && <div className="mt-6">{action}</div>}
+    </motion.div>
+  );
+}
+```
+
+---
+
+## PART 3 — job-card.tsx — Premium Redesign
+
+Keep ALL logic (save toggle, navigation, isSaved state) exactly the same.
+Only redesign the JSX.
+
+```tsx
+return (
+  <motion.article
+    onClick={() => navigate("job-detail", { jobId: job.id })}
+    initial={{ opacity: 0, y: 12 }}
+    animate={{ opacity: 1, y: 0 }}
+    whileHover={{ y: -3 }}
+    transition={{ type: "spring", stiffness: 280, damping: 20 }}
+    className="group relative cursor-pointer"
+  >
+    <div className="card-premium h-full p-5">
+
+      {/* TOP ROW: logo + save button */}
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="flex items-center gap-3">
+          <div className="relative shrink-0">
+            <CompanyAvatar name={job.company.companyName} color={job.company.logoUrl} size={44} />
+            {/* Active pulse if recently posted (< 3 days) — optional */}
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-display font-bold text-[15px] leading-snug line-clamp-1 group-hover:text-crimson transition-colors">
+              {title}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+              {job.company.companyName}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={toggleSave}
+          disabled={saving}
+          aria-label={isSaved ? "Unsave job" : "Save job"}
+          className={cn(
+            "shrink-0 grid place-items-center h-8 w-8 rounded-lg border transition-all duration-150",
+            isSaved
+              ? "bg-saffron/10 border-saffron/40 text-saffron scale-95"
+              : "bg-background border-border text-muted-foreground hover:text-saffron hover:border-saffron/30 hover:bg-saffron/5",
+          )}
+        >
+          <Bookmark className={cn("h-3.5 w-3.5 transition-transform", isSaved && "fill-current scale-110")} />
+        </button>
+      </div>
+
+      {/* META ROW: location, type, time */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-[11.5px] text-muted-foreground">
+        <span className="inline-flex items-center gap-1">
+          <MapPin className="h-3 w-3" />
+          {job.location}
+        </span>
+        <span className="h-1 w-1 rounded-full bg-border" />
+        <span className="inline-flex items-center gap-1">
+          <Briefcase className="h-3 w-3" />
+          {t(`jobtype.${job.jobType}`)}
+        </span>
+        <span className="h-1 w-1 rounded-full bg-border" />
+        <span className="inline-flex items-center gap-1">
+          <Clock className="h-3 w-3" />
+          {formatRelative(job.postedAt, locale)}
+        </span>
+      </div>
+
+      {/* TAGS ROW: JLPT + skills */}
+      <div className="flex flex-wrap gap-1.5 mb-4">
+        <span className={cn("skill-tag font-semibold text-[11px]", JLPT_BADGE[job.jlptRequired])}>
+          {job.jlptRequired}
+        </span>
+        {job.skillsRequired.slice(0, 3).map((s) => (
+          <span key={s} className="skill-tag">{s}</span>
+        ))}
+        {job.skillsRequired.length > 3 && (
+          <span className="skill-tag text-muted-foreground">
+            +{job.skillsRequired.length - 3}
+          </span>
+        )}
+      </div>
+
+      {/* BOTTOM ROW: salary + view cta */}
+      <div className="flex items-center justify-between pt-3 border-t border-border/50">
+        <div className="flex items-center gap-1.5">
+          <div className="grid place-items-center h-6 w-6 rounded-md bg-saffron/10">
+            <Banknote className="h-3.5 w-3.5 text-saffron" />
+          </div>
+          <span className="text-[13px] font-semibold">{formatSalary(job)}</span>
+        </div>
+        <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-crimson group-hover:gap-1.5 transition-all">
+          {t("jobs.details")}
+          <ArrowRight className="h-3 w-3" />
+        </span>
+      </div>
+
+    </div>
+  </motion.article>
+);
+```
+
+---
+
+## PART 4 — motion-primitives.tsx — SpotlightCard upgrade
+
+Rewrite SpotlightCard to be more refined. The current version is OK but the spotlight
+effect can be more subtle and premium:
+
+```tsx
+"use client";
+
+import { useRef, useState, type ReactNode, type MouseEvent } from "react";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+
+export function SpotlightCard({ children, className }: { children: ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ x: 0, y: 0, opacity: 0 });
+
+  function handleMove(e: MouseEvent<HTMLDivElement>) {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setPos({ x: e.clientX - rect.left, y: e.clientY - rect.top, opacity: 1 });
+  }
+
+  return (
+    <div
+      ref={ref}
+      onMouseMove={handleMove}
+      onMouseLeave={() => setPos((p) => ({ ...p, opacity: 0 }))}
+      className={cn("relative overflow-hidden", className)}
+    >
+      {/* Subtle radial spotlight */}
+      <div
+        className="pointer-events-none absolute inset-0 rounded-[inherit] transition-opacity duration-300"
+        style={{
+          opacity: pos.opacity,
+          background: `radial-gradient(200px circle at ${pos.x}px ${pos.y}px,
+            color-mix(in oklch, var(--saffron) 6%, transparent),
+            transparent 70%)`,
+        }}
+      />
+      {children}
+    </div>
+  );
+}
+
+// Keep MagneticButton exactly as-is (do not change)
+```
+
+---
+
+## PART 5 — notifications-bell.tsx — Premium dropdown
+
+Keep all fetch logic and data exactly the same.
+Redesign the dropdown panel:
+
+The trigger button:
+```tsx
+<button
+  aria-label="Notifications"
+  className={cn(
+    "relative grid place-items-center h-8 w-8 rounded-lg border transition-all duration-150",
+    hasUnread
+      ? "border-saffron/30 bg-saffron/8 text-saffron"
+      : "border-border bg-transparent text-muted-foreground hover:text-foreground hover:bg-accent"
+  )}
+>
+  <Bell className="h-4 w-4" />
+  {hasUnread && (
+    <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-saffron text-[8px] font-bold text-white">
+      {unreadCount > 9 ? "9+" : unreadCount}
+    </span>
+  )}
+</button>
+```
+
+The dropdown panel (use a positioned div or Popover):
+```tsx
+// Panel: w-80, max-h-96, overflow-y-auto scroll-area
+// className="absolute right-0 top-10 z-50 w-80 card-premium bg-popover overflow-hidden"
+
+// Header row inside panel:
+<div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
+  <span className="font-display font-semibold text-sm">Notifications</span>
+  {hasUnread && (
+    <button onClick={markAllRead}
+      className="text-[11px] font-medium text-saffron hover:underline">
+      Mark all read
+    </button>
+  )}
+</div>
+
+// Each notification item:
+<div className={cn(
+  "flex items-start gap-3 px-4 py-3 border-b border-border/40 transition-colors hover:bg-accent/50 cursor-pointer",
+  !notif.isRead && "bg-saffron/[0.03]"
+)}>
+  {/* Colored dot for unread */}
+  <span className={cn(
+    "mt-1.5 h-2 w-2 rounded-full flex-shrink-0",
+    notif.isRead ? "bg-transparent" : "bg-saffron"
+  )} />
+  <div className="min-w-0 flex-1">
+    <p className="text-[13px] font-medium leading-snug line-clamp-2">{notif.title}</p>
+    <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{notif.message}</p>
+    <p className="text-[10px] text-muted-foreground/70 mt-1">{formatRelative(notif.createdAt)}</p>
+  </div>
+</div>
+
+// Empty state:
+<div className="py-10 text-center">
+  <Bell className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
+  <p className="text-sm text-muted-foreground">You're all caught up</p>
+</div>
+```
+
+---
+
+## PART 6 — candidate/tabs/overview.tsx — Dashboard Overview
+
+Keep ALL data fetching and state logic identical.
+Redesign the layout and visual hierarchy.
+
+### Profile completion section redesign:
+Instead of a basic Progress bar, use this design:
+```tsx
+<div className="card-premium p-5 mb-6 relative overflow-hidden">
+  {/* Subtle mesh background on this card only */}
+  <span className="absolute inset-0 bg-mesh opacity-40 pointer-events-none" />
+  <div className="relative flex items-center gap-4">
+    <CandidateAvatar ... className="h-14 w-14 ring-2 ring-saffron/30" />
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center justify-between mb-1">
+        <div>
+          <p className="font-display font-bold text-[15px]">{candidate.fullName}</p>
+          <p className="text-xs text-muted-foreground">{candidate.location ?? "Location not set"}</p>
+        </div>
+        <div className="text-right">
+          <p className="font-display font-bold text-2xl text-gradient-brand leading-none">{completion}%</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Profile complete</p>
+        </div>
+      </div>
+      {/* Segmented progress bar instead of single bar */}
+      <div className="flex gap-1 mt-2">
+        {Array.from({ length: 10 }).map((_, i) => (
+          <div
+            key={i}
+            className={cn(
+              "h-1.5 flex-1 rounded-full transition-all duration-500",
+              i < Math.round(completion / 10)
+                ? "bg-brand-gradient"
+                : "bg-muted"
+            )}
+            style={{ transitionDelay: `${i * 50}ms` }}
+          />
+        ))}
+      </div>
+      {completion < 100 && (
+        <button onClick={() => setTab("profile")}
+          className="mt-2 text-[11px] font-medium text-saffron hover:underline">
+          Complete your profile →
+        </button>
+      )}
+    </div>
+  </div>
+</div>
+```
+
+### Metrics row — 4 cards in a grid:
+```
+className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
+```
+Use MetricCard for: Total Applications, Shortlisted, Interviews, Offers
+
+### Recent applications — replace plain list with a styled timeline:
+```tsx
+<SectionCard title="Recent Applications" icon={Send}
+  action={<Button variant="ghost" size="sm" onClick={() => setTab("applications")}>View all →</Button>}
+>
+  <div className="space-y-0 divide-y divide-border/50">
+    {recentApps.map((app, i) => (
+      <motion.div
+        key={app.id}
+        initial={{ opacity: 0, x: -8 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: i * 0.06 }}
+        className="flex items-center gap-4 py-3 first:pt-0 last:pb-0"
+      >
+        {/* Status dot */}
+        <span className={cn("status-dot", STATUS_COLORS[app.status])} />
+        <div className="flex-1 min-w-0">
+          <p className="text-[13.5px] font-semibold truncate">{app.jobTitle}</p>
+          <p className="text-xs text-muted-foreground truncate">{app.companyName}</p>
+        </div>
+        <div className="text-right shrink-0">
+          <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full", STATUS_BADGE[app.status])}>
+            {app.status}
+          </span>
+          <p className="text-[10px] text-muted-foreground mt-1">{formatRelative(app.appliedAt)}</p>
+        </div>
+      </motion.div>
+    ))}
+  </div>
+</SectionCard>
+```
+
+Add this STATUS_COLORS map at the top of the file:
+```ts
+const STATUS_COLORS: Record<string, string> = {
+  APPLIED:     "bg-sky-400 text-sky-400",
+  SHORTLISTED: "bg-amber-400 text-amber-400",
+  INTERVIEWED: "bg-violet-400 text-violet-400",
+  OFFERED:     "bg-emerald-400 text-emerald-400",
+  REJECTED:    "bg-red-400 text-red-400",
+  WITHDRAWN:   "bg-slate-400 text-slate-400",
+};
+```
+
+---
+
+## PART 7 — candidate/tabs/applications.tsx — Kanban tracker upgrade
+
+The application tracker is currently a list. Upgrade it to a proper timeline/status view.
+
+For each application card:
+```tsx
+<motion.div
+  key={app.id}
+  layout
+  initial={{ opacity: 0, scale: 0.96 }}
+  animate={{ opacity: 1, scale: 1 }}
+  exit={{ opacity: 0, scale: 0.96 }}
+  className="card-premium p-4 group"
+>
+  <div className="flex items-start justify-between gap-3">
+    <div className="flex items-start gap-3">
+      <CompanyAvatar name={app.companyName} size={36} />
+      <div className="min-w-0">
+        <p className="font-display font-semibold text-[14px] leading-snug">{app.jobTitle}</p>
+        <p className="text-xs text-muted-foreground">{app.companyName}</p>
+      </div>
+    </div>
+    <span className={cn("shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full", STATUS_BADGE[app.status])}>
+      {app.status}
+    </span>
+  </div>
+
+  {/* Progress pipeline */}
+  <div className="mt-4 flex items-center gap-0">
+    {["APPLIED","SHORTLISTED","INTERVIEWED","OFFERED"].map((step, i, arr) => {
+      const stepIndex = arr.indexOf(app.status);
+      const active = i <= stepIndex;
+      return (
+        <div key={step} className="flex items-center flex-1">
+          <div className={cn(
+            "h-1.5 w-full rounded-full transition-all duration-700",
+            active ? "bg-brand-gradient" : "bg-muted"
+          )} style={{ transitionDelay: `${i * 100}ms` }} />
+          {i < arr.length - 1 && (
+            <div className={cn(
+              "h-3 w-3 rounded-full border-2 shrink-0 transition-all duration-700",
+              active
+                ? "border-saffron bg-saffron"
+                : "border-muted bg-background"
+            )} />
+          )}
+        </div>
+      );
+    })}
+  </div>
+
+  <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+    <span>Applied {formatRelative(app.appliedAt, locale)}</span>
+    {app.status === "REJECTED" && (
+      <span className="text-red-500 font-medium">Not selected</span>
+    )}
+  </div>
+</motion.div>
+```
+
+---
+
+## PART 8 — landing-page.tsx — Hero & Key Sections
+
+Keep ALL data fetching, state, event handlers, and i18n logic EXACTLY the same.
+Only redesign the visual markup.
+
+### Hero section improvements:
+
+The hero currently has a search bar. Make it more premium:
+
+1. The eyebrow pill (above headline) should be:
+```tsx
+<motion.div initial={{ opacity:0, y:-8 }} animate={{ opacity:1, y:0 }}>
+  <span className="inline-flex items-center gap-2 rounded-full border border-saffron/25
+    bg-saffron/8 px-3 py-1.5 text-[11px] font-semibold tracking-wide text-saffron">
+    <span className="h-1.5 w-1.5 rounded-full bg-saffron animate-ping-soft" />
+    Now Connecting India × Japan
+  </span>
+</motion.div>
+```
+
+2. The headline: Remove any generic font usage. Use:
+```tsx
+<h1 className="font-display font-extrabold text-4xl sm:text-5xl lg:text-6xl
+  leading-[1.08] tracking-[-0.03em]">
+  {/* Two lines — first line normal, second line gradient */}
+  Your Career Bridge<br />
+  <span className="text-gradient-brand">India to Japan</span>
+</h1>
+```
+
+3. StatCards row: Use the new `.hero-stat` utility class.
+   Remove any blue/purple colors from stat cards — only use saffron and crimson.
+   Each stat card gets an icon in a saffron/10 pill.
+
+4. Section heading pattern (use this EVERYWHERE in the landing page for consistency):
+```tsx
+<div className="text-center mb-10">
+  <span className="inline-flex items-center gap-2 rounded-full border border-saffron/25
+    bg-saffron/8 px-3 py-1 text-[11px] font-semibold tracking-wide text-saffron mb-3">
+    {sectionEyebrow}
+  </span>
+  <h2 className="font-display font-bold text-3xl sm:text-4xl tracking-tight">
+    {sectionTitle}
+  </h2>
+  <p className="mt-3 text-muted-foreground text-base max-w-2xl mx-auto">
+    {sectionSubtitle}
+  </p>
+  <div className="section-rule mt-6 max-w-xs mx-auto" />
+</div>
+```
+
+5. Feature/How-it-Works cards: Replace with numbered step cards:
+```tsx
+<div className="grid sm:grid-cols-3 gap-6">
+  {steps.map((step, i) => (
+    <div key={i} className="card-premium p-6 relative">
+      <div className="font-display text-6xl font-extrabold text-gradient-brand opacity-20 leading-none mb-4">
+        {String(i + 1).padStart(2, "0")}
+      </div>
+      <div className="grid place-items-center h-10 w-10 rounded-xl bg-saffron/10 mb-4">
+        <step.icon className="h-5 w-5 text-saffron" />
+      </div>
+      <h3 className="font-display font-bold text-[15px] mb-2">{step.title}</h3>
+      <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
+    </div>
+  ))}
+</div>
+```
+
+6. Featured jobs grid: Change from 2-col to 3-col on desktop:
+```tsx
+className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+```
+
+7. Company logos section (trust band): Make logos more elegant:
+   Wrap in a container with `.bg-mesh` background. Use grayscale + hover:grayscale-0.
+
+8. CTA banner at the bottom: Replace plain colored div with:
+```tsx
+<div className="relative rounded-3xl overflow-hidden bg-sidebar text-sidebar-foreground">
+  <div className="absolute inset-0 bg-mesh opacity-40" />
+  <div className="absolute inset-0 bg-brand-gradient opacity-10" />
+  <div className="relative px-8 py-16 text-center">
+    <h2 className="font-display font-extrabold text-3xl sm:text-4xl tracking-tight mb-4">
+      {ctaTitle}
+    </h2>
+    <p className="text-sidebar-foreground/70 mb-8 max-w-md mx-auto">{ctaSubtitle}</p>
+    <div className="flex flex-wrap justify-center gap-3">
+      <Button size="lg" className="bg-brand-gradient hover:opacity-90 shadow-glow-brand font-semibold">
+        {ctaButtonPrimary}
+      </Button>
+      <Button size="lg" variant="outline"
+        className="border-sidebar-foreground/20 text-sidebar-foreground hover:bg-sidebar-foreground/10">
+        {ctaButtonSecondary}
+      </Button>
+    </div>
+  </div>
+</div>
+```
+
+---
+
+## PART 9 — Company & Admin overview tabs
+
+Apply the same MetricCard + SectionCard redesigns.
+For company/tabs/overview.tsx: wrap the job cards in a proper list format using card-premium.
+For admin/tabs/overview.tsx: all data tables should use the `.table-premium` CSS class
+  (apply it as: <table className="table-premium">) and remove all direct border/padding
+  classes from th/td (the CSS handles it).
+
+---
+
+## PART 10 — Final consistency pass (apply to ALL components you touched)
+
+Run through every file you changed and verify:
+
+1. NO hardcoded hex colors like `#666`, `#fff`, `rgba(0,0,0,0.1)` — use CSS vars or Tailwind
+2. NO `p-4` on cards — use `p-5` or `p-6` for breathing room
+3. NO `text-gray-500` — use `text-muted-foreground`
+4. NO `bg-gray-100` — use `bg-muted` or `bg-accent`
+5. EVERY interactive element has a focus-visible ring (already in globals.css)
+6. EVERY hover state has a `transition-*` class with `duration-150` or `duration-200`
+7. ALL font-bold headings inside cards use `font-display` class
+8. ALL Framer Motion animations use `easeOutExpo` from `@/lib/motion`
+
+---
+
+## VERIFICATION
+
+```bash
+bun run lint          # → 0 errors, 0 warnings
+bunx tsc --noEmit     # → 0 errors
+bun run dev           # → opens at localhost:3000 clean
+```
+
+Manual design check checklist:
+[ ] Landing hero: eyebrow pill visible, headline 2-tone gradient, stat cards have icon pills
+[ ] Job board: 3-col grid on desktop, all cards lift cleanly on hover, skill tags are pill-shaped
+[ ] Candidate dashboard: sidebar nav active item has saffron glow + left bar indicator
+[ ] MetricCard: accent top line matches color, metric number is large font-display
+[ ] SectionCard: has subtle shadow, optional icon in header
+[ ] Applications tab: progress pipeline renders between steps
+[ ] Notifications bell: dropdown has unread dot + mark-all-read, not raw list
+[ ] Admin tables: table-premium class applied, rows highlight on hover
+[ ] Dark mode: toggle it — all colors should remain coherent (they use CSS vars, should work)
+[ ] Mobile (375px): sidebar collapses, job grid 1-col, no overflow anywhere
+```

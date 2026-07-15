@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useT } from "@/lib/use-t";
 import { api, formatRelative } from "@/lib/api-client";
 import {
@@ -30,6 +30,7 @@ import {
   XCircle,
   TrendingUp,
   Trophy,
+  RefreshCw,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -65,9 +66,17 @@ export function Overview() {
   const [apps, setApps] = useState<ApplicationDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [secondsAgo, setSecondsAgo] = useState(0);
+  // Track previous totals so we can toast when new applications arrive.
+  const prevTotalRef = useRef<number | null>(null);
+  const hasLoadedOnce = useRef(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent ?? false;
+    if (silent) setRefreshing(true);
+    else setLoading(true);
     try {
       const [s, a] = await Promise.all([
         api<AdminStats>("/api/admin/stats"),
@@ -75,16 +84,76 @@ export function Overview() {
       ]);
       setStats(s);
       setApps(a.items.slice(0, 10));
+      setLastUpdated(new Date());
+      setSecondsAgo(0);
+      // Notify on new applications, but only after the initial load.
+      if (hasLoadedOnce.current && prevTotalRef.current !== null) {
+        const delta = s.metrics.totalApps - prevTotalRef.current;
+        if (delta > 0) {
+          toast.success(
+            `${delta} new application${delta > 1 ? "s" : ""} arrived`,
+            { description: "Admin overview auto-refreshed" },
+          );
+        }
+      }
+      prevTotalRef.current = s.metrics.totalApps;
+      hasLoadedOnce.current = true;
     } catch {
-      setStats(null);
+      if (!silent) setStats(null);
     } finally {
-      setLoading(false);
+      if (silent) setRefreshing(false);
+      else setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // Auto-refresh every 45s. Pauses while the tab is hidden and resumes (with
+  // an immediate refresh) when the admin returns — saves bandwidth and DB
+  // load without sacrificing the "live" feel.
+  useEffect(() => {
+    const POLL_MS = 45_000;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (timer) return;
+      timer = setInterval(() => {
+        void load({ silent: true });
+      }, POLL_MS);
+    };
+    const stop = () => {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    };
+    const onVisibility = () => {
+      if (document.hidden) {
+        stop();
+      } else {
+        start();
+        void load({ silent: true });
+      }
+    };
+    start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [load]);
+
+  // "Updated Xs ago" ticker — ticks every second while we have a timestamp.
+  useEffect(() => {
+    if (!lastUpdated) return;
+    const id = setInterval(() => {
+      setSecondsAgo(
+        Math.max(0, Math.floor((Date.now() - lastUpdated.getTime()) / 1000)),
+      );
+    }, 1000);
+    return () => clearInterval(id);
+  }, [lastUpdated]);
 
   async function approve(id: string, approve: boolean) {
     setBusyId(id);
@@ -93,7 +162,7 @@ export function Overview() {
         method: "PATCH",
       });
       toast.success(approve ? "Company approved." : "Company rejected.");
-      await load();
+      await load({ silent: true });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed.");
     } finally {
@@ -118,6 +187,34 @@ export function Overview() {
 
   return (
     <div className="space-y-6">
+      {/* Live status bar */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 text-xs">
+          <span className="relative flex h-2 w-2" aria-hidden>
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+          </span>
+          <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+            Live
+          </span>
+          <span className="text-muted-foreground">
+            {lastUpdated ? `\u00b7 Updated ${formatAgo(secondsAgo)}` : "\u00b7 Loading\u2026"}
+          </span>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={refreshing || loading}
+          onClick={() => void load({ silent: true })}
+          className="gap-1.5"
+        >
+          <RefreshCw
+            className={cn("h-3.5 w-3.5", refreshing && "animate-spin")}
+          />
+          {refreshing ? "Refreshing\u2026" : "Refresh now"}
+        </Button>
+      </div>
+
       {/* Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? (
@@ -405,4 +502,12 @@ export function Overview() {
       </SectionCard>
     </div>
   );
+}
+
+/** Human-friendly "Xs ago" / "Xm ago" for the live indicator. */
+function formatAgo(seconds: number) {
+  if (seconds < 5) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  const m = Math.floor(seconds / 60);
+  return `${m}m ago`;
 }

@@ -622,3 +622,33 @@ Stage Summary:
 - Admin topbar now displays avatar "AD" + text label "Admin" (was "IA" + "Indobox Admin" in the user's view).
 - Admin user's `name` in DB + seed is now "Admin" (was "Indobox Admin").
 - Files modified: `src/components/admin/admin-dashboard.tsx`, `prisma/seed.ts`. DB record updated in place.
+
+---
+Task ID: ADMIN-LIVE-REFRESH
+Agent: main (Z.ai Code)
+Task: Add true live updates to the admin Overview — auto-refresh polling + premium "Live" indicator + new-application toast.
+
+Work Log:
+- Read `src/components/admin/tabs/overview.tsx` + `/api/admin/stats/route.ts` to confirm charts are already DB-backed (verified in prior step: inserting an app changed totalApps 26→27, APPLIED 8→9, reverted cleanly).
+- Chose polling (45s) over a socket.io mini-service: consistent with the existing messages-view polling pattern, no new port/infra, sufficient for an admin dashboard, and robust. Used the Page Visibility API to pause polling when the tab is hidden and resume with an immediate refresh on return.
+- `src/components/admin/tabs/overview.tsx` changes:
+  - Imports: added `useRef` (React) + `RefreshCw` (lucide).
+  - New state: `lastUpdated`, `refreshing`, `secondsAgo`. New refs: `prevTotalRef`, `hasLoadedOnce` (to detect new-app delta only after the initial load).
+  - `load()` now accepts `{ silent?: boolean }`. Silent refreshes set `refreshing` (spinner) instead of `loading` (skeletons), so auto/manual refreshes don't flash the whole dashboard. On success it sets `lastUpdated`, resets `secondsAgo`, and if `totalApps` increased since the last load it fires `toast.success("N new application(s) arrived", { description: "Admin overview auto-refreshed" })`.
+  - New `useEffect`: 45s `setInterval` calling `load({ silent: true })`. `visibilitychange` listener stops the interval when `document.hidden` and restarts + immediately refreshes when visible again. Cleanup on unmount.
+  - New `useEffect`: 1s ticker updating `secondsAgo` from `lastUpdated` (drives the "Updated Xs ago" text). Re-created when `lastUpdated` changes.
+  - `approve()` now calls `load({ silent: true })` (was `load()`) so approve/reject doesn't flash skeletons.
+  - New UI: a "Live" status bar rendered at the top of the Overview (above the metrics grid). Left side: emerald pulsing dot (`animate-ping` + solid core) + bold green "Live" + muted "· Updated Xs ago" / "· Loading…". Right side: outline "Refresh now" button with a `RefreshCw` icon that spins while `refreshing`.
+  - Added module-scope `formatAgo(seconds)` helper → "just now" (<5s) / "Ns ago" / "Nm ago".
+- Lint: `bun run lint` → 0 errors / 0 warnings. `npx tsc --noEmit` → 0 errors.
+- Agent Browser verification (logged in as admin@indigate.work):
+  - Live bar renders: green pulsing dot + "Live" + "Updated 5s ago" + "Refresh now" button (VLM-confirmed).
+  - Inserted test app in DB → clicked "Refresh now" → "Total applications" metric card updated 26→27, "This month" 13→14 (VLM-confirmed on cropped screenshot).
+  - Toast fired: VLM confirmed "1 new application arrived — Admin overview auto-refreshed" popup visible.
+  - Cleaned up both test apps → DB back to 26 / 8. Final refresh confirmed reverted.
+  - Console: no errors (only normal Fast Refresh/HMR dev logs).
+
+Stage Summary:
+- Admin Overview is now truly live: auto-refreshes every 45s (paused when tab hidden), shows a premium "Live · Updated Xs ago" indicator with a manual "Refresh now" button, and toasts the admin when new applications arrive since the last refresh.
+- Silent refreshes use a spinner instead of skeletons so the dashboard never flashes during background polls.
+- No API routes, Prisma schema, or other tabs touched. Only `src/components/admin/tabs/overview.tsx` modified.

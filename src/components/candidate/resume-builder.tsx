@@ -62,6 +62,7 @@ import {
   type JlptLevel,
 } from "@/lib/resume-types";
 import { ResumePreview } from "./resume-preview";
+import { useJpFont } from "@/lib/pdf-templates/use-jp-font";
 
 type Tab = "edit" | "preview-en" | "translate" | "preview-ja";
 
@@ -122,6 +123,7 @@ export function ResumeBuilder() {
   );
   const [translating, setTranslating] = useState(false);
   const [translated, setTranslated] = useState(false);
+  const jpFontReady = useJpFont();
 
   // Keep the sidebar active-section indicator in sync with the scroll position.
   // Only runs in the Edit tab (sidebar is hidden in previews / print).
@@ -1096,9 +1098,9 @@ export function ResumeBuilder() {
                 fileName={`${data.name || "resume"}_JP_履歴書.pdf`}
               >
                 {({ loading: pdfLoading }) => (
-                  <Button disabled={pdfLoading} className="bg-brand-gradient text-white font-semibold">
+                  <Button disabled={pdfLoading || !jpFontReady} className="bg-brand-gradient text-white font-semibold">
                     <Download className="h-4 w-4 mr-1.5" />
-                    {pdfLoading ? "生成中…" : "Download 履歴書 PDF"}
+                    {!jpFontReady ? "Loading font…" : pdfLoading ? "生成中…" : "Download 履歴書 PDF"}
                   </Button>
                 )}
               </PDFDownloadLink>

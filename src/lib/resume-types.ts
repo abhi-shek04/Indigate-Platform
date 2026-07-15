@@ -65,6 +65,8 @@ export interface ResumeSkill {
 }
 
 // "More About Why You Want to Work in Japan" — 3 Q&A fields.
+// `japanMotivationJa` stores the AI-translated Japanese version so the English
+// resume keeps the English essays and the Japanese resume shows Japanese.
 export interface ResumeJapanMotivation {
   whyJapan?: string;
   careerInJapan?: string;
@@ -101,8 +103,9 @@ export interface ResumeData {
   // "Other languages" line on the English resume (e.g. "English, Telugu, Hindi")
   otherLanguages?: string;
 
-  // "More About Why You Want to Work in Japan" — 3 Q&A
+  // "More About Why You Want to Work in Japan" — 3 Q&A (English + Japanese)
   japanMotivation?: ResumeJapanMotivation;
+  japanMotivationJa?: ResumeJapanMotivation;
 
   education: ResumeEducation[];
   projects: ResumeProject[];
@@ -134,6 +137,11 @@ export const EMPTY_RESUME: ResumeData = {
   expectedJlpt: "",
   otherLanguages: "",
   japanMotivation: {
+    whyJapan: "",
+    careerInJapan: "",
+    challenges: "",
+  },
+  japanMotivationJa: {
     whyJapan: "",
     careerInJapan: "",
     challenges: "",

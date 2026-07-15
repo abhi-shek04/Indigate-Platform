@@ -16,10 +16,10 @@ import {
   type ResumeSkill,
 } from "@/lib/resume-types";
 
-// Register Noto Sans JP for Japanese text rendering
+// Register IPA Gothic for Japanese text rendering (6.2MB — smaller than NotoSansJP)
 Font.register({
   family: "NotoSansJP",
-  src: "/fonts/NotoSansJP.ttf",
+  src: "/fonts/ipag.ttf",
 });
 
 // Checkmark glyphs used in the Skills proficiency table.

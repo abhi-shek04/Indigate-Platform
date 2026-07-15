@@ -488,7 +488,7 @@ export function EnglishResumePDF({ data }: { data: ResumeData }) {
               {data.japanMotivation.whyJapan ? (
                 <View style={styles.qaItem}>
                   <Text style={styles.qaQuestion}>
-                    Why do you want to work in Japan? (日本で働きたい理由は何ですか？)
+                    Why do you want to work in Japan?
                   </Text>
                   <Text style={styles.qaAnswer}>
                     {data.japanMotivation.whyJapan}
@@ -500,7 +500,6 @@ export function EnglishResumePDF({ data }: { data: ResumeData }) {
                 <View style={styles.qaItem}>
                   <Text style={styles.qaQuestion}>
                     What kind of career would you like to create in Japan?
-                    (日本でどのようなキャリアを作りたいと思いますか？)
                   </Text>
                   <Text style={styles.qaAnswer}>
                     {data.japanMotivation.careerInJapan}
@@ -512,7 +511,7 @@ export function EnglishResumePDF({ data }: { data: ResumeData }) {
                 <View style={styles.qaItem}>
                   <Text style={styles.qaQuestion}>
                     What challenges do you foresee in adjusting to life in Japan,
-                    and how would you address them? (日本生活への適応において、どのような課題を予想し、どう対処しますか？)
+                    and how would you address them?
                   </Text>
                   <Text style={styles.qaAnswer}>
                     {data.japanMotivation.challenges}
@@ -521,6 +520,24 @@ export function EnglishResumePDF({ data }: { data: ResumeData }) {
               ) : null}
             </View>
           )}
+
+        {/* ── Self-PR & Hobbies ─────────────────────────────────────── */}
+        {(data.selfPr || data.hobbies) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Self-PR &amp; Hobbies</Text>
+            {data.selfPr ? (
+              <Text style={{ fontSize: 10, lineHeight: 1.5, marginBottom: 4 }}>
+                {data.selfPr}
+              </Text>
+            ) : null}
+            {data.hobbies ? (
+              <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
+                <Text style={{ fontFamily: "Helvetica-Bold" }}>Hobbies:</Text>{" "}
+                {data.hobbies}
+              </Text>
+            ) : null}
+          </View>
+        )}
       </Page>
     </Document>
   );

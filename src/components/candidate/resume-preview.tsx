@@ -297,30 +297,23 @@ function JapaneseResume({ data }: { data: ResumeData }) {
         </SectionEn>
       ) : null}
 
-      {data.japanMotivation && (data.japanMotivation.whyJapan || data.japanMotivation.careerInJapan || data.japanMotivation.challenges) && (
-        <SectionEn title="日本で働きたい理由について">
-          <div className="space-y-3">
-            {data.japanMotivation.whyJapan && (
-              <QAItemJa
-                question="なぜ日本で働きたいですか？"
-                answer={data.japanMotivation.whyJapan}
-              />
-            )}
-            {data.japanMotivation.careerInJapan && (
-              <QAItemJa
-                question="日本でどのようなキャリアを作りたいですか？"
-                answer={data.japanMotivation.careerInJapan}
-              />
-            )}
-            {data.japanMotivation.challenges && (
-              <QAItemJa
-                question="日本生活への適応において、どのような課題を予想し、どう対処しますか？"
-                answer={data.japanMotivation.challenges}
-              />
-            )}
-          </div>
-        </SectionEn>
-      )}
+      {(() => {
+        const ja = data.japanMotivationJa;
+        const en = data.japanMotivation;
+        const wj = ja?.whyJapan || en?.whyJapan;
+        const ci = ja?.careerInJapan || en?.careerInJapan;
+        const ch = ja?.challenges || en?.challenges;
+        if (!wj && !ci && !ch) return null;
+        return (
+          <SectionEn title="日本で働きたい理由について">
+            <div className="space-y-3">
+              {wj && <QAItemJa question="なぜ日本で働きたいですか？" answer={wj} />}
+              {ci && <QAItemJa question="日本でどのようなキャリアを作りたいですか？" answer={ci} />}
+              {ch && <QAItemJa question="日本生活への適応において、どのような課題を予想し、どう対処しますか？" answer={ch} />}
+            </div>
+          </SectionEn>
+        );
+      })()}
 
       {(data.selfPrJa || data.selfPr || data.hobbiesJa || data.hobbies) && (
         <SectionEn title="趣味 / 自己PR">
@@ -613,6 +606,19 @@ function EnglishResume({ data }: { data: ResumeData }) {
               />
             )}
           </div>
+        </SectionEn>
+      )}
+
+      {(data.selfPr || data.hobbies) && (
+        <SectionEn title="Self-PR & Hobbies">
+          {data.selfPr && (
+            <p className="text-sm whitespace-pre-wrap">{data.selfPr}</p>
+          )}
+          {data.hobbies && (
+            <p className="text-sm mt-2 text-gray-700">
+              <span className="font-bold">Hobbies:</span> {data.hobbies}
+            </p>
+          )}
         </SectionEn>
       )}
     </div>

@@ -128,10 +128,12 @@ Return a JSON object with EXACTLY this shape (same array lengths as the input):
       nameJa: t.nameJa || data.nameJa,
       selfPrJa: t.selfPrJa || data.selfPrJa,
       hobbiesJa: t.hobbiesJa || data.hobbiesJa,
-      japanMotivation: {
-        whyJapan: t.japanMotivation?.whyJapan || data.japanMotivation?.whyJapan || "",
-        careerInJapan: t.japanMotivation?.careerInJapan || data.japanMotivation?.careerInJapan || "",
-        challenges: t.japanMotivation?.challenges || data.japanMotivation?.challenges || "",
+      // Save translated Japan motivation essays in a SEPARATE field so the
+      // English resume keeps the English originals.
+      japanMotivationJa: {
+        whyJapan: t.japanMotivation?.whyJapan || data.japanMotivationJa?.whyJapan || "",
+        careerInJapan: t.japanMotivation?.careerInJapan || data.japanMotivationJa?.careerInJapan || "",
+        challenges: t.japanMotivation?.challenges || data.japanMotivationJa?.challenges || "",
       },
       projects: data.projects.map((p, i) => ({
         ...p,

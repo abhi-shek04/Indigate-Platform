@@ -1019,3 +1019,34 @@ Stage Summary:
 - JP resume additionally has the 宣言 (Declaration) section at the end (traditional for 履歴書).
 - Arjun's location fixed: "Bengaluru, India" → "Hyderabad, Telangana, India" (in both seed + DB).
 - Files modified: `prisma/seed.ts` (location), `src/components/candidate/resume-preview.tsx` (JP resume rewrite).
+
+---
+Task ID: RESUME-FINAL-FIX
+Agent: main (Z.ai Code)
+Task: Fix 3 issues — (1) EN resume missing Self-PR, (2) Why Japan essays not translated (English showing in JP resume), (3) PDF download shows garbled Japanese characters.
+
+Work Log:
+- Issue 1 (EN resume missing Self-PR): Added "Self-PR & Hobbies" section to the EnglishResume in `resume-preview.tsx` (after the Why Japan section, matching the JP resume structure). Also added it to the EN PDF template `english-resume-pdf.tsx`.
+- Issue 2 (Why Japan essays not translated): The translate API was overwriting the English `japanMotivation` with Japanese — losing the English. Fixed by:
+  - Added `japanMotivationJa?: ResumeJapanMotivation` to the ResumeData type (separate field for Japanese translations).
+  - Updated the translate API to save to `japanMotivationJa` instead of overwriting `japanMotivation`.
+  - Updated the JP resume preview to use `japanMotivationJa` (with fallback to `japanMotivation`).
+  - Re-translated Arjun's resume — verified `japanMotivationJa` now contains proper Japanese translations.
+- Issue 3 (PDF garbled characters): The root cause was the 9.5MB NotoSansJP.ttf font loading too slowly — the PDF generated before the font was ready, falling back to Helvetica which doesn't support CJK. Fixed by:
+  - Downloaded IPA Gothic font (ipag.ttf, 6.2MB — smaller) to public/fonts/.
+  - Changed the JP PDF template to use `/fonts/ipag.ttf`.
+  - Created `src/lib/pdf-templates/use-jp-font.ts` — a hook that preloads the font as a base64 data URL (fetches → ArrayBuffer → base64 → Font.register with data URL). This guarantees the font is ready before PDF generation.
+  - Updated the resume builder to use `useJpFont()` — the JP PDF download button shows "Loading font…" until the font is ready, then "Download 履歴書 PDF".
+  - Also removed Japanese parenthetical text from the EN PDF "Why Japan" labels (was garbling with Helvetica — English resume should be English-only).
+- Agent Browser verification:
+  - EN resume: Self-PR & Hobbies section now visible. Why Japan labels are English-only (no garbled text).
+  - JP resume: Why Japan essays now show proper Japanese (なぜ日本で働きたいですか？ → 日本の最先端技術と深い文化伝統が融合した独特の魅力に惹かれています...).
+  - Font preloading: button shows "Loading font…" initially, then "Download 履歴書 PDF" once ready.
+  - `npx tsc --noEmit` → 0 errors. `bun run lint` → 0 errors.
+
+Stage Summary:
+- EN resume now has Self-PR & Hobbies section (matching JP structure).
+- Why Japan essays are properly translated to Japanese (stored in `japanMotivationJa`, English originals preserved in `japanMotivation`).
+- PDF font preloading via base64 data URL eliminates the garbled text issue — the font is guaranteed to be ready before PDF generation.
+- EN PDF labels no longer have Japanese text (avoids Helvetica garbling).
+- Files modified: `src/lib/resume-types.ts` (added japanMotivationJa), `src/app/api/candidates/me/resume/translate/route.ts` (save to japanMotivationJa), `src/components/candidate/resume-preview.tsx` (use japanMotivationJa in JP + Self-PR in EN), `src/lib/pdf-templates/english-resume-pdf.tsx` (add Self-PR + remove Japanese labels), `src/lib/pdf-templates/japanese-resume-pdf.tsx` (use ipag.ttf), `src/lib/pdf-templates/use-jp-font.ts` (NEW — font preloader), `src/components/candidate/resume-builder.tsx` (use useJpFont hook), `public/fonts/ipag.ttf` (NEW — IPA Gothic font).

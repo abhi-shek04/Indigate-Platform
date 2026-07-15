@@ -82,10 +82,10 @@ function JapaneseResume({ data }: { data: ResumeData }) {
           </span>
         </div>
         <div className="flex">
-          <span className="flex-1">
-            {formatDobJa(data.dob)}
-            {data.gender && <span className="ml-4">{genderJa(data.gender)}</span>}
-          </span>
+          <span className="font-bold w-36">生年月日 :</span>
+          <span className="flex-1">{formatDobJa(data.dob)}</span>
+          <span className="font-bold w-28">性別 :</span>
+          <span className="flex-1">{genderJa(data.gender)}</span>
         </div>
         <div className="flex">
           <span className="font-bold w-36">メール :</span>
@@ -377,10 +377,10 @@ function EnglishResume({ data }: { data: ResumeData }) {
           <span className="flex-1">{data.name || "—"}</span>
         </div>
         <div className="flex">
-          <span className="flex-1">
-            {dobWithAge}
-            {data.gender && <span className="ml-4">{genderEn(data.gender)}</span>}
-          </span>
+          <span className="font-bold w-36">Date of Birth :</span>
+          <span className="flex-1">{dobWithAge || "—"}</span>
+          <span className="font-bold w-28">Gender :</span>
+          <span className="flex-1">{data.gender ? genderEn(data.gender) : "—"}</span>
         </div>
         <div className="flex">
           <span className="font-bold w-36">E-Mail :</span>

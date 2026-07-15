@@ -1189,3 +1189,22 @@ Stage Summary:
 - Duplicate Self-PR fixed: cleaned the `challenges` field data (was accidentally contaminated with Self-PR text).
 - Gender formatting improved: ` | ` separator instead of 4-space indent.
 - Files modified: `src/lib/pdf-templates/english-resume-pdf.tsx`, `src/lib/pdf-templates/japanese-resume-pdf.tsx`, DB data cleanup.
+
+---
+Task ID: GENDER-LABEL-FIX
+Agent: main (Z.ai Code)
+Task: Fix gender field showing without a "Gender:" label in resume (EN HTML preview + EN PDF + JP HTML preview).
+
+Work Log:
+- Issue: Gender was rendered inline after the DOB with no label — just "Male" floating with a separator. Looked unprofessional.
+- Fixed in 3 places:
+  1. EN PDF template (english-resume-pdf.tsx): Changed the DOB+gender row to a proper labeled 2-column row: "Date of Birth :" | value | "Gender :" | value (matching the E-Mail/Telephone row layout).
+  2. EN HTML preview (resume-preview.tsx EnglishResume): Same fix — labeled row with "Date of Birth :" and "Gender :".
+  3. JP HTML preview (resume-preview.tsx JapaneseResume): Same fix — labeled row with "生年月日 :" and "性別 :".
+- VLM-verified both HTML preview and PDF: "Date of Birth :" and "Gender :" labels now visible, gender shown as "Male" under its label.
+- `npx tsc --noEmit` → 0 errors. `bun run lint` → 0 errors.
+
+Stage Summary:
+- Gender now has a proper "Gender :" label in all resume views (EN PDF, EN HTML preview, JP HTML preview).
+- Date of Birth also got its own "Date of Birth :" label (was previously unlabeled).
+- Files modified: `src/lib/pdf-templates/english-resume-pdf.tsx`, `src/components/candidate/resume-preview.tsx`.

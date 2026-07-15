@@ -209,10 +209,10 @@ export function EnglishResumePDF({ data }: { data: ResumeData }) {
           </View>
 
           <View style={styles.personalRow}>
-            <Text style={styles.personalValue}>
-              {dobWithAge}
-              {data.gender ? `  |  ${genderEn(data.gender)}` : ""}
-            </Text>
+            <Text style={styles.personalLabel}>Date of Birth :</Text>
+            <Text style={styles.personalValue}>{dobWithAge || "—"}</Text>
+            <Text style={[styles.personalLabel, { width: 130 }]}>Gender :</Text>
+            <Text style={styles.personalValue}>{data.gender ? genderEn(data.gender) : "—"}</Text>
           </View>
 
           <View style={styles.personalRow}>

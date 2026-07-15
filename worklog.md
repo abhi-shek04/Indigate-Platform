@@ -1382,3 +1382,28 @@ Stage Summary:
 - All fake percentages (+24% YoY, 33%/66%/100%) and fake numbers (1,947 etc.) removed.
 - Footer completely redesigned: dark premium background, 3-column layout, office locations, contact bar, staggered animations.
 - Files modified: `src/components/landing/landing-page.tsx`, `src/components/layout/footer.tsx`.
+
+---
+Task ID: HERO-CLEANUP-FINAL
+Agent: main (Z.ai Code)
+Task: Remove Live journey badge, remove floating job card, add India/Japan flags, fix button padding.
+
+Work Log:
+- Removed "Live journey" green badge from hero visual — replaced with clean "Career Journey" label with Globe2 icon + "🇮🇳 → 🇯🇵" on the right.
+- Removed the floating mini job card ("Software Developer - Kintaro Logistics - N2 - Featured") that was peeking out of the top-right of the map.
+- Replaced MapPin icons with flag emojis: India pin now shows 🇮🇳 (in saffron ring), Japan pin shows 🇯🇵 (in crimson ring). Pins slightly larger (h-10 w-10) to fit the emoji.
+- Fixed button padding: all hero CTA buttons reduced from `px-7 h-12 text-base` to `px-5 h-11 text-sm` — more compact, less empty space.
+- Shortened "Go to Dashboard" to just "Dashboard" for a more compact button.
+- Removed unused `job` variable and `featured` prop from HeroJourneyVisual.
+- VLM-verified: all 5 checks passed (9/10):
+  1. No "Live journey" badge ✅
+  2. India 🇮🇳 + Japan 🇯🇵 flags visible ✅
+  3. No floating job card ✅
+  4. Compact buttons ✅
+  5. "Career Journey" header ✅
+- `npx tsc --noEmit` → 0 errors. `bun run lint` → 0 errors.
+
+Stage Summary:
+- Hero visual is now clean: "Career Journey" header, India/Japan flag pins, no floating job card, no "Live journey" badge.
+- All hero buttons are compact (px-5 h-11 text-sm) — no excessive empty space.
+- Files modified: `src/components/landing/landing-page.tsx`.

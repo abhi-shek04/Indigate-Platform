@@ -283,9 +283,7 @@ function BentoFeatured({
 /*  Hero journey visual (right column of hero)                                */
 /* -------------------------------------------------------------------------- */
 
-function HeroJourneyVisual({ featured }: { featured: JobDTO[] }) {
-  const job = featured[0];
-
+function HeroJourneyVisual() {
   return (
     <TiltCard max={5} className="relative">
       <div className="card-premium rounded-3xl p-6 sm:p-7 relative overflow-hidden">
@@ -302,15 +300,12 @@ function HeroJourneyVisual({ featured }: { featured: JobDTO[] }) {
 
         {/* Header */}
         <div className="relative flex items-center justify-between mb-5">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-70 animate-ping-soft" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            </span>
-            Live journey
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            <Globe2 className="h-3.5 w-3.5 text-saffron" />
+            Career Journey
           </span>
-          <span className="text-[11px] text-muted-foreground font-medium">
-            India → Japan
+          <span className="text-[11px] font-bold text-muted-foreground">
+            🇮🇳 → 🇯🇵
           </span>
         </div>
 
@@ -353,8 +348,8 @@ function HeroJourneyVisual({ featured }: { featured: JobDTO[] }) {
 
           {/* India pin */}
           <div className="absolute left-[6%] bottom-[18%] flex flex-col items-center">
-            <div className="grid place-items-center h-9 w-9 rounded-full bg-saffron/15 ring-2 ring-saffron/40 text-saffron backdrop-blur-sm">
-              <MapPin className="h-4 w-4" />
+            <div className="grid place-items-center h-10 w-10 rounded-full bg-saffron/15 ring-2 ring-saffron/40 backdrop-blur-sm text-lg">
+              🇮🇳
             </div>
             <span className="mt-1.5 text-[10px] font-bold uppercase tracking-wider">
               India
@@ -363,8 +358,8 @@ function HeroJourneyVisual({ featured }: { featured: JobDTO[] }) {
 
           {/* Japan pin */}
           <div className="absolute right-[4%] top-[22%] flex flex-col items-center">
-            <div className="grid place-items-center h-9 w-9 rounded-full bg-crimson/15 ring-2 ring-crimson/40 text-crimson backdrop-blur-sm">
-              <MapPin className="h-4 w-4" />
+            <div className="grid place-items-center h-10 w-10 rounded-full bg-crimson/15 ring-2 ring-crimson/40 backdrop-blur-sm text-lg">
+              🇯🇵
             </div>
             <span className="mt-1.5 text-[10px] font-bold uppercase tracking-wider">
               Japan
@@ -393,44 +388,6 @@ function HeroJourneyVisual({ featured }: { featured: JobDTO[] }) {
             </div>
           </motion.div>
 
-          {/* Floating mini job card peeking out top-right */}
-          {job && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.85, y: -8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{
-                delay: 1.4,
-                type: "spring",
-                stiffness: 200,
-                damping: 18,
-              }}
-              className="absolute -top-3 -right-2 sm:-right-4 w-44 sm:w-52 rounded-xl glass border border-border/70 shadow-premium p-3 hidden sm:block"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <CompanyAvatar
-                  name={job.company.companyName}
-                  color={job.company.logoUrl}
-                  size={28}
-                />
-                <div className="min-w-0">
-                  <p className="text-[11px] font-bold truncate leading-tight">
-                    {job.title}
-                  </p>
-                  <p className="text-[9px] text-muted-foreground truncate">
-                    {job.company.companyName}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="skill-tag text-[9px] font-semibold py-0 px-1.5">
-                  {job.jlptRequired}
-                </span>
-                <span className="text-[9px] text-saffron font-bold uppercase tracking-wide">
-                  Featured
-                </span>
-              </div>
-            </motion.div>
-          )}
         </div>
 
         {/* Pipeline stages */}
@@ -641,7 +598,7 @@ export function LandingPage() {
               >
                 <MagneticButton
                   onClick={() => navigate("jobs")}
-                  className="bg-brand-gradient text-white hover:opacity-90 font-semibold text-base h-12 px-7 rounded-xl shadow-glow-brand inline-flex items-center gap-2 cursor-pointer"
+                  className="bg-brand-gradient text-white hover:opacity-90 font-semibold text-sm h-11 px-5 rounded-xl shadow-glow-brand inline-flex items-center gap-2 cursor-pointer"
                 >
                   <Search className="h-4 w-4" />
                   {t("hero.cta.find")}
@@ -658,16 +615,16 @@ export function LandingPage() {
                             : "admin",
                       )
                     }
-                    className="bg-background border-2 border-border hover:border-saffron/50 hover:bg-saffron/5 font-semibold text-base h-12 px-7 rounded-xl inline-flex items-center gap-2 cursor-pointer group transition-all"
+                    className="bg-background border-2 border-border hover:border-saffron/50 hover:bg-saffron/5 font-semibold text-sm h-11 px-5 rounded-xl inline-flex items-center gap-2 cursor-pointer group transition-all"
                   >
                     <LayoutDashboard className="h-4 w-4 text-saffron transition-transform group-hover:scale-110" />
-                    {pick("Go to Dashboard", "ダッシュボードへ")}
+                    {pick("Dashboard", "ダッシュボード")}
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </MagneticButton>
                 ) : (
                   <MagneticButton
                     onClick={() => navigate("register")}
-                    className="bg-background border-2 border-border hover:border-saffron/50 font-semibold text-base h-12 px-7 rounded-xl inline-flex items-center gap-2 cursor-pointer"
+                    className="bg-background border-2 border-border hover:border-saffron/50 font-semibold text-sm h-11 px-5 rounded-xl inline-flex items-center gap-2 cursor-pointer"
                   >
                     {t("hero.cta.hire")}
                   </MagneticButton>
@@ -688,7 +645,7 @@ export function LandingPage() {
               delay={0.3}
               className="relative lg:pt-4"
             >
-              <HeroJourneyVisual featured={featured} />
+              <HeroJourneyVisual />
             </Reveal>
           </div>
 

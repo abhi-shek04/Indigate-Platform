@@ -7,11 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ShieldCheck, KeyRound, Trash2, Mail, AlertTriangle } from "lucide-react";
+import { ShieldCheck, KeyRound, Mail } from "lucide-react";
 
 export function AccountSettings() {
   const user = useApp((s) => s.user);
-  const logout = useApp((s) => s.logout);
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
@@ -142,24 +141,6 @@ export function AccountSettings() {
         </form>
       </div>
 
-      {/* Danger zone */}
-      <div className="rounded-2xl border border-red-200 dark:border-red-900 bg-red-50/50 dark:bg-red-950/20 p-6">
-        <h2 className="font-display text-lg font-bold mb-2 flex items-center gap-2 text-red-600 dark:text-red-400">
-          <AlertTriangle className="h-5 w-5" />
-          Danger Zone
-        </h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          Log out of your account on this device.
-        </p>
-        <Button
-          variant="outline"
-          onClick={() => logout()}
-          className="text-red-600 border-red-200 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950/40"
-        >
-          <Trash2 className="mr-2 h-4 w-4" />
-          Log Out
-        </Button>
-      </div>
     </div>
   );
 }

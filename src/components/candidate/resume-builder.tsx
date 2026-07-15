@@ -43,9 +43,6 @@ import {
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { PDFDownloadLink } from "@react-pdf/renderer";
-import { EnglishResumePDF } from "@/lib/pdf-templates/english-resume-pdf";
-import { JapaneseResumePDF } from "@/lib/pdf-templates/japanese-resume-pdf";
 import {
   EMPTY_RESUME,
   GENDER_OPTIONS,
@@ -62,7 +59,6 @@ import {
   type JlptLevel,
 } from "@/lib/resume-types";
 import { ResumePreview } from "./resume-preview";
-import { useJpFont } from "@/lib/pdf-templates/use-jp-font";
 
 type Tab = "edit" | "preview-en" | "translate" | "preview-ja";
 
@@ -123,7 +119,6 @@ export function ResumeBuilder() {
   );
   const [translating, setTranslating] = useState(false);
   const [translated, setTranslated] = useState(false);
-  const jpFontReady = useJpFont();
 
   // Keep the sidebar active-section indicator in sync with the scroll position.
   // Only runs in the Edit tab (sidebar is hidden in previews / print).
@@ -940,17 +935,16 @@ export function ResumeBuilder() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <PDFDownloadLink
-                document={<EnglishResumePDF data={data} />}
-                fileName={`${data.name || "resume"}_EN.pdf`}
+              <Button
+                variant="outline"
+                className="font-semibold"
+                onClick={() => {
+                  window.open("/api/candidates/me/resume/pdf?lang=en", "_blank");
+                }}
               >
-                {({ loading: pdfLoading }) => (
-                  <Button variant="outline" disabled={pdfLoading} className="font-semibold">
-                    <Download className="h-4 w-4 mr-1.5" />
-                    {pdfLoading ? "Generating…" : "Download EN PDF"}
-                  </Button>
-                )}
-              </PDFDownloadLink>
+                <Download className="h-4 w-4 mr-1.5" />
+                Download EN PDF
+              </Button>
               <Button
                 onClick={() => setTab("translate")}
                 disabled={!data.name}
@@ -1093,17 +1087,15 @@ export function ResumeBuilder() {
                 <Languages className="h-4 w-4 mr-1.5" />
                 Re-translate
               </Button>
-              <PDFDownloadLink
-                document={<JapaneseResumePDF data={data} />}
-                fileName={`${data.name || "resume"}_JP_履歴書.pdf`}
+              <Button
+                className="bg-brand-gradient text-white font-semibold"
+                onClick={() => {
+                  window.open("/api/candidates/me/resume/pdf?lang=ja", "_blank");
+                }}
               >
-                {({ loading: pdfLoading }) => (
-                  <Button disabled={pdfLoading || !jpFontReady} className="bg-brand-gradient text-white font-semibold">
-                    <Download className="h-4 w-4 mr-1.5" />
-                    {!jpFontReady ? "Loading font…" : pdfLoading ? "生成中…" : "Download 履歴書 PDF"}
-                  </Button>
-                )}
-              </PDFDownloadLink>
+                <Download className="h-4 w-4 mr-1.5" />
+                Download 履歴書 PDF
+              </Button>
             </div>
           </div>
           <div className="bg-muted/60 rounded-2xl p-4 sm:p-8">

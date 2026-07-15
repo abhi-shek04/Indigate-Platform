@@ -1,0 +1,1222 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useState, useCallback } from "react";
+     4→import { useApp } from "@/lib/store";
+     5→import { useT } from "@/lib/use-t";
+     6→import { api } from "@/lib/api-client";
+     7→import { Button } from "@/components/ui/button";
+     8→import { Input } from "@/components/ui/input";
+     9→import { Textarea } from "@/components/ui/textarea";
+    10→import { Badge } from "@/components/ui/badge";
+    11→import { Progress } from "@/components/ui/progress";
+    12→import { Checkbox } from "@/components/ui/checkbox";
+    13→import {
+    14→  Select,
+    15→  SelectContent,
+    16→  SelectItem,
+    17→  SelectTrigger,
+    18→  SelectValue,
+    19→} from "@/components/ui/select";
+    20→import {
+    21→  ArrowLeft,
+    22→  ArrowRight,
+    23→  Plus,
+    24→  Trash2,
+    25→  Save,
+    26→  Printer,
+    27→  FileText,
+    28→  Eye,
+    29→  User,
+    30→  GraduationCap,
+    31→  Briefcase,
+    32→  Award,
+    33→  Globe,
+    34→  Sparkles,
+    35→  Loader2,
+    36→  X,
+    37→  Download,
+    38→  Code2,
+    39→  Languages,
+    40→  MapPin,
+    41→  ListChecks,
+    42→} from "lucide-react";
+    43→import { motion } from "framer-motion";
+    44→import { toast } from "sonner";
+    45→import { cn } from "@/lib/utils";
+    46→import { PDFDownloadLink } from "@react-pdf/renderer";
+    47→import { EnglishResumePDF } from "@/lib/pdf-templates/english-resume-pdf";
+    48→import { JapaneseResumePDF } from "@/lib/pdf-templates/japanese-resume-pdf";
+    49→import {
+    50→  EMPTY_RESUME,
+    51→  GENDER_OPTIONS,
+    52→  NATIONALITY_OPTIONS,
+    53→  INDIAN_STATES,
+    54→  LANGUAGE_OPTIONS,
+    55→  JLPT_OPTIONS,
+    56→  type ResumeData,
+    57→  type ResumeEducation,
+    58→  type ResumeProject,
+    59→  type ResumeActivity,
+    60→  type ResumeAward,
+    61→  type ResumeSkill,
+    62→  type JlptLevel,
+    63→} from "@/lib/resume-types";
+    64→import { ResumePreview } from "./resume-preview";
+    65→import { useJpFont } from "@/lib/pdf-templates/use-jp-font";
+    66→
+    67→type Tab = "edit" | "preview-en" | "translate" | "preview-ja";
+    68→
+    69→/** Sidebar navigation entries — id MUST match the `id` on each <Section>. */
+    70→const SECTIONS: {
+    71→  id: string;
+    72→  icon: React.ComponentType<{ className?: string }>;
+    73→  label: string;
+    74→}[] = [
+    75→  { id: "section-personal", icon: User, label: "Personal Info" },
+    76→  { id: "section-education", icon: GraduationCap, label: "Education" },
+    77→  { id: "section-experience", icon: Briefcase, label: "Work Experience" },
+    78→  { id: "section-certifications", icon: Award, label: "Certifications" },
+    79→  { id: "section-projects", icon: Code2, label: "Projects" },
+    80→  { id: "section-skills", icon: Code2, label: "Skills" },
+    81→  { id: "section-excel", icon: ListChecks, label: "Skills I Excel In" },
+    82→  { id: "section-jlpt", icon: Languages, label: "Japanese & Languages" },
+    83→  { id: "section-japan", icon: MapPin, label: "Why Japan?" },
+    84→  { id: "section-selfpr", icon: Sparkles, label: "Self-PR & Hobbies" },
+    85→];
+    86→
+    87→/**
+    88→ * Returns a 0–100 percentage of how many resume sections have at least some
+    89→ * data filled. Pure function — used to render the sidebar progress bar.
+    90→ */
+    91→function computeProgress(data: ResumeData): number {
+    92→  const filled: boolean[] = [
+    93→    !!(data.name?.trim() || data.email?.trim() || data.phone?.trim()),
+    94→    data.education.length > 0,
+    95→    data.activities.length > 0,
+    96→    data.awards.length > 0,
+    97→    data.projects.length > 0,
+    98→    data.skills.length > 0,
+    99→    (data.skillsExcelSummary?.length ?? 0) > 0,
+   100→    !!(data.currentJlpt || data.expectedJlpt || data.otherLanguages?.trim()),
+   101→    !!(data.japanMotivation?.whyJapan?.trim() ||
+   102→      data.japanMotivation?.careerInJapan?.trim() ||
+   103→      data.japanMotivation?.challenges?.trim()),
+   104→    !!(data.selfPr?.trim() || data.hobbies?.trim()),
+   105→  ];
+   106→  return Math.round(
+   107→    (filled.filter(Boolean).length / filled.length) * 100,
+   108→  );
+   109→}
+   110→
+   111→export function ResumeBuilder() {
+   112→  const { t } = useT();
+   113→  const navigate = useApp((s) => s.navigate);
+   114→  const candidate = useApp((s) => s.candidate);
+   115→  const user = useApp((s) => s.user);
+   116→  const [data, setData] = useState<ResumeData>(EMPTY_RESUME);
+   117→  const [loading, setLoading] = useState(true);
+   118→  const [saving, setSaving] = useState(false);
+   119→  const [tab, setTab] = useState<Tab>("edit");
+   120→  const [langInput, setLangInput] = useState("");
+   121→  const [activeSection, setActiveSection] = useState<string>(
+   122→    "section-personal",
+   123→  );
+   124→  const [translating, setTranslating] = useState(false);
+   125→  const [translated, setTranslated] = useState(false);
+   126→  const jpFontReady = useJpFont();
+   127→
+   128→  // Keep the sidebar active-section indicator in sync with the scroll position.
+   129→  // Only runs in the Edit tab (sidebar is hidden in previews / print).
+   130→  useEffect(() => {
+   131→    if (tab !== "edit") return;
+   132→    if (typeof IntersectionObserver === "undefined") return;
+   133→    const observer = new IntersectionObserver(
+   134→      (entries) => {
+   135→        const visible = entries
+   136→          .filter((e) => e.isIntersecting)
+   137→          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+   138→        if (visible[0]) setActiveSection(visible[0].target.id);
+   139→      },
+   140→      { rootMargin: "-15% 0px -70% 0px", threshold: [0, 0.25, 0.5, 1] },
+   141→    );
+   142→    SECTIONS.forEach((s) => {
+   143→      const el = document.getElementById(s.id);
+   144→      if (el) observer.observe(el);
+   145→    });
+   146→    return () => observer.disconnect();
+   147→  }, [tab]);
+   148→
+   149→  function scrollToSection(id: string) {
+   150→    const el = document.getElementById(id);
+   151→    if (el) {
+   152→      el.scrollIntoView({ behavior: "smooth", block: "start" });
+   153→      setActiveSection(id);
+   154→    }
+   155→  }
+   156→
+   157→  const load = useCallback(async () => {
+   158→    setLoading(true);
+   159→    try {
+   160→      const res = await api<{ resumeData: ResumeData | null }>(
+   161→        "/api/candidates/me/resume",
+   162→      );
+   163→      if (res.resumeData) {
+   164→        // Merge with EMPTY_RESUME so new sub-objects (`japanMotivation`,
+   165→        // `skills`, …) always exist even on previously-saved resumes.
+   166→        setData({
+   167→          ...EMPTY_RESUME,
+   168→          ...res.resumeData,
+   169→          japanMotivation: {
+   170→            ...EMPTY_RESUME.japanMotivation,
+   171→            ...(res.resumeData.japanMotivation ?? {}),
+   172→          },
+   173→        });
+   174→      } else if (candidate) {
+   175→        setData({
+   176→          ...EMPTY_RESUME,
+   177→          name: candidate.fullName,
+   178→          email: user?.email ?? "",
+   179→          phone: candidate.phone ?? "",
+   180→          nationality: "India",
+   181→          languages: ["English"],
+   182→          languagesJa: ["英語"],
+   183→        });
+   184→      }
+   185→    } catch {
+   186→      toast.error("Failed to load resume data.");
+   187→    } finally {
+   188→      setLoading(false);
+   189→    }
+   190→  }, [candidate?.id, user?.email]);
+   191→
+   192→  useEffect(() => {
+   193→    load();
+   194→  }, [load]);
+   195→
+   196→  // Detect if the resume has already been translated (has *Ja content).
+   197→  useEffect(() => {
+   198→    if (
+   199→      data.selfPrJa?.trim() ||
+   200→      data.projects.some((p) => p.descriptionJa?.trim()) ||
+   201→      data.activities.some((a) => a.dutiesJa?.trim())
+   202→    ) {
+   203→      setTranslated(true);
+   204→    } else {
+   205→      setTranslated(false);
+   206→    }
+   207→  }, [data]);
+   208→
+   209→  async function save() {
+   210→    setSaving(true);
+   211→    try {
+   212→      await api("/api/candidates/me/resume", {
+   213→        method: "PUT",
+   214→        body: JSON.stringify(data),
+   215→      });
+   216→      toast.success("Resume saved!");
+   217→    } catch (e) {
+   218→      toast.error(e instanceof Error ? e.message : "Failed to save.");
+   219→    } finally {
+   220→      setSaving(false);
+   221→    }
+   222→  }
+   223→
+   224→  /** Calls the translation API — saves first, then AI translates + saves server-side. */
+   225→  async function handleTranslate() {
+   226→    setTranslating(true);
+   227→    try {
+   228→      // Save first so the API has the latest data.
+   229→      await api("/api/candidates/me/resume", {
+   230→        method: "PUT",
+   231→        body: JSON.stringify(data),
+   232→      });
+   233→      // Call the translation API (loads from DB, translates, saves, returns full data).
+   234→      const result = await api<{ resumeData: ResumeData }>(
+   235→        "/api/candidates/me/resume/translate",
+   236→        { method: "POST" },
+   237→      );
+   238→      // Replace state with the merged translated data.
+   239→      setData(result.resumeData);
+   240→      setTranslated(true);
+   241→      toast.success("Translation complete! Your Japanese resume is ready.");
+   242→      setTab("preview-ja");
+   243→    } catch (e) {
+   244→      toast.error(e instanceof Error ? e.message : "Translation failed. Please try again.");
+   245→    } finally {
+   246→      setTranslating(false);
+   247→    }
+   248→  }
+   249→
+   250→  function print() {
+   251→    window.print();
+   252→  }
+   253→
+   254→  function update<K extends keyof ResumeData>(key: K, value: ResumeData[K]) {
+   255→    setData((prev) => ({ ...prev, [key]: value }));
+   256→  }
+   257→
+   258→  // Language tag management — the JP labels are auto-synced from the EN list
+   259→  // via LANGUAGE_OPTIONS so the candidate never types Japanese.
+   260→  function addLanguage(lang: string) {
+   261→    if (!lang.trim()) return;
+   262→    const opt = LANGUAGE_OPTIONS.find((l) => l.value === lang);
+   263→    if (data.languages.includes(lang)) return;
+   264→    update("languages", [...data.languages, lang]);
+   265→    update("languagesJa", [...data.languagesJa, opt?.labelJa ?? lang]);
+   266→    setLangInput("");
+   267→  }
+   268→  function removeLanguage(idx: number) {
+   269→    update(
+   270→      "languages",
+   271→      data.languages.filter((_, i) => i !== idx),
+   272→    );
+   273→    update(
+   274→      "languagesJa",
+   275→      data.languagesJa.filter((_, i) => i !== idx),
+   276→    );
+   277→  }
+   278→
+   279→  // Education
+   280→  function addEducation() {
+   281→    update("education", [
+   282→      ...data.education,
+   283→      { year: "", month: "", degree: "", field: "", institution: "" },
+   284→    ]);
+   285→  }
+   286→  function updateEducation(i: number, patch: Partial<ResumeEducation>) {
+   287→    update("education", data.education.map((e, j) => (j === i ? { ...e, ...patch } : e)));
+   288→  }
+   289→  function removeEducation(i: number) {
+   290→    update("education", data.education.filter((_, j) => j !== i));
+   291→  }
+   292→
+   293→  // Projects
+   294→  function addProject() {
+   295→    update("projects", [
+   296→      ...data.projects,
+   297→      { year: "", period: "", name: "", description: "", techStack: "" },
+   298→    ]);
+   299→  }
+   300→  function updateProject(i: number, patch: Partial<ResumeProject>) {
+   301→    update("projects", data.projects.map((e, j) => (j === i ? { ...e, ...patch } : e)));
+   302→  }
+   303→  function removeProject(i: number) {
+   304→    update("projects", data.projects.filter((_, j) => j !== i));
+   305→  }
+   306→
+   307→  // Activities (Work Experience)
+   308→  function addActivity() {
+   309→    update("activities", [
+   310→      ...data.activities,
+   311→      { year: "", period: "", duration: "", organization: "", role: "", duties: "" },
+   312→    ]);
+   313→  }
+   314→  function updateActivity(i: number, patch: Partial<ResumeActivity>) {
+   315→    update("activities", data.activities.map((e, j) => (j === i ? { ...e, ...patch } : e)));
+   316→  }
+   317→  function removeActivity(i: number) {
+   318→    update("activities", data.activities.filter((_, j) => j !== i));
+   319→  }
+   320→
+   321→  // Awards (Certifications)
+   322→  function addAward() {
+   323→    update("awards", [
+   324→      ...data.awards,
+   325→      { year: "", month: "", title: "", description: "", organization: "" },
+   326→    ]);
+   327→  }
+   328→  function updateAward(i: number, patch: Partial<ResumeAward>) {
+   329→    update("awards", data.awards.map((e, j) => (j === i ? { ...e, ...patch } : e)));
+   330→  }
+   331→  function removeAward(i: number) {
+   332→    update("awards", data.awards.filter((_, j) => j !== i));
+   333→  }
+   334→
+   335→  // Skills
+   336→  function addSkill() {
+   337→    update("skills", [
+   338→      ...data.skills,
+   339→      { name: "", learnedInClass: false, canOperate: false, canTeach: false },
+   340→    ]);
+   341→  }
+   342→  function updateSkill(i: number, patch: Partial<ResumeSkill>) {
+   343→    update("skills", data.skills.map((s, j) => (j === i ? { ...s, ...patch } : s)));
+   344→  }
+   345→  function removeSkill(i: number) {
+   346→    update("skills", data.skills.filter((_, j) => j !== i));
+   347→  }
+   348→
+   349→  // Skills in Which I Excel — dynamic bullet list
+   350→  function addExcelItem() {
+   351→    update("skillsExcelSummary", [...(data.skillsExcelSummary ?? []), ""]);
+   352→  }
+   353→  function updateExcelItem(i: number, value: string) {
+   354→    update(
+   355→      "skillsExcelSummary",
+   356→      (data.skillsExcelSummary ?? []).map((s, j) => (j === i ? value : s)),
+   357→    );
+   358→  }
+   359→  function removeExcelItem(i: number) {
+   360→    update(
+   361→      "skillsExcelSummary",
+   362→      (data.skillsExcelSummary ?? []).filter((_, j) => j !== i),
+   363→    );
+   364→  }
+   365→
+   366→  // Japan motivation
+   367→  function updateJapan<K extends keyof NonNullable<ResumeData["japanMotivation"]>>(
+   368→    key: K,
+   369→    value: string,
+   370→  ) {
+   371→    setData((prev) => ({
+   372→      ...prev,
+   373→      japanMotivation: {
+   374→        ...EMPTY_RESUME.japanMotivation,
+   375→        ...(prev.japanMotivation ?? {}),
+   376→        [key]: value,
+   377→      },
+   378→    }));
+   379→  }
+   380→
+   381→  if (loading) {
+   382→    return (
+   383→      <div className="flex-1 grid place-items-center py-20">
+   384→        <Loader2 className="h-8 w-8 animate-spin text-saffron" />
+   385→      </div>
+   386→    );
+   387→  }
+   388→
+   389→  const progress = computeProgress(data);
+   390→
+   391→  return (
+   392→    <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8 print:max-w-none print:p-0">
+   393→      {/* Header */}
+   394→      <div className="print:hidden flex items-center justify-between flex-wrap gap-4 mb-6">
+   395→        <div>
+   396→          <button
+   397→            onClick={() => navigate("candidate")}
+   398→            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground mb-2"
+   399→          >
+   400→            <ArrowLeft className="h-4 w-4" />
+   401→            {t("common.back")}
+   402→          </button>
+   403→          <h1 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight flex items-center gap-2">
+   404→            <FileText className="h-7 w-7 text-saffron" />
+   405→            Resume Builder
+   406→          </h1>
+   407→          <p className="mt-1 text-sm text-muted-foreground">
+   408→            Create your resume in English first, then translate to Japanese with AI.
+   409→          </p>
+   410→        </div>
+   411→        <div className="flex items-center gap-2 flex-wrap">
+   412→          <Button onClick={save} disabled={saving} className="bg-brand-gradient text-white hover:opacity-90 font-semibold">
+   413→            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+   414→            Save
+   415→          </Button>
+   416→          <Button onClick={print} variant="ghost" size="sm" className="font-semibold h-9">
+   417→            <Printer className="h-4 w-4 mr-1.5" />
+   418→            Print
+   419→          </Button>
+   420→        </div>
+   421→      </div>
+   422→
+   423→      {/* 4-step stepper */}
+   424→      <div className="print:hidden flex items-center gap-0 mb-8 overflow-x-auto pb-1">
+   425→        {[
+   426→          { key: "edit" as const, step: 1, label: "Fill English Form", icon: FileText },
+   427→          { key: "preview-en" as const, step: 2, label: "Preview & Download EN", icon: Eye },
+   428→          { key: "translate" as const, step: 3, label: "AI Translate to 日本語", icon: Languages },
+   429→          { key: "preview-ja" as const, step: 4, label: "Japanese 履歴書", icon: Globe },
+   430→        ].map((s, i, arr) => {
+   431→          const isActive = tab === s.key;
+   432→          const isDone =
+   433→            (s.key === "edit" && tab !== "edit") ||
+   434→            (s.key === "preview-en" && (tab === "translate" || tab === "preview-ja")) ||
+   435→            (s.key === "translate" && tab === "preview-ja" && translated);
+   436→          const isDisabled =
+   437→            (s.key === "translate" && !data.name) ||
+   438→            (s.key === "preview-ja" && !translated);
+   439→          return (
+   440→            <div key={s.key} className="flex items-center">
+   441→              <button
+   442→                onClick={() => !isDisabled && setTab(s.key)}
+   443→                disabled={isDisabled}
+   444→                className={cn(
+   445→                  "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all",
+   446→                  isActive && "bg-card shadow-premium text-foreground border border-border",
+   447→                  isDone && !isActive && "text-saffron hover:text-saffron/80",
+   448→                  !isActive && !isDone && !isDisabled && "text-muted-foreground hover:text-foreground",
+   449→                  isDisabled && "text-muted-foreground/40 cursor-not-allowed",
+   450→                )}
+   451→              >
+   452→                <span className={cn(
+   453→                  "grid place-items-center h-6 w-6 rounded-full text-xs font-bold shrink-0 transition-colors",
+   454→                  isActive && "bg-saffron text-white",
+   455→                  isDone && !isActive && "bg-saffron/20 text-saffron",
+   456→                  !isActive && !isDone && "bg-muted text-muted-foreground",
+   457→                )}>
+   458→                  {isDone ? "✓" : s.step}
+   459→                </span>
+   460→                {s.label}
+   461→              </button>
+   462→              {i < arr.length - 1 && (
+   463→                <div className="w-6 h-px bg-border mx-1 shrink-0" />
+   464→              )}
+   465→            </div>
+   466→          );
+   467→        })}
+   468→      </div>
+   469→
+   470→      {/* Edit form */}
+   471→      {tab === "edit" && (
+   472→        <motion.div
+   473→          initial={{ opacity: 0, y: 8 }}
+   474→          animate={{ opacity: 1, y: 0 }}
+   475→          className="print:hidden space-y-6"
+   476→        >
+   477→          <div className="lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-6 xl:gap-8 items-start">
+   478→            {/* Sidebar — sticky nav (lg+ only; mobile keeps single column) */}
+   479→            <aside className="hidden lg:block print:hidden">
+   480→              <div className="sticky top-6 space-y-3">
+   481→                {/* Progress card */}
+   482→                <div className="rounded-2xl border border-border bg-card p-4 shadow-premium">
+   483→                  <div className="flex items-center justify-between mb-2">
+   484→                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+   485→                      Progress
+   486→                    </span>
+   487→                    <span className="font-display text-sm font-bold text-gradient-brand">
+   488→                      {progress}%
+   489→                    </span>
+   490→                  </div>
+   491→                  <Progress value={progress} className="h-2 bg-muted" />
+   492→                  <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+   493→                    {progress === 100
+   494→                      ? "Looking great — resume is complete!"
+   495→                      : "Fill in each section to complete your resume."}
+   496→                  </p>
+   497→                </div>
+   498→                {/* Section nav */}
+   499→                <nav
+   500→                  aria-label="Resume sections"
+   501→                  className="rounded-2xl border border-border bg-card p-2 shadow-premium"
+   502→                >
+   503→                  <ul className="space-y-0.5">
+   504→                    {SECTIONS.map((s) => {
+   505→                      const active = activeSection === s.id;
+   506→                      const Icon = s.icon;
+   507→                      return (
+   508→                        <li key={s.id}>
+   509→                          <button
+   510→                            type="button"
+   511→                            onClick={() => scrollToSection(s.id)}
+   512→                            aria-current={active ? "true" : undefined}
+   513→                            className={cn(
+   514→                              "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left",
+   515→                              active
+   516→                                ? "bg-saffron/10 text-saffron shadow-sm"
+   517→                                : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
+   518→                            )}
+   519→                          >
+   520→                            <Icon className="h-4 w-4 shrink-0" />
+   521→                            <span className="truncate">{s.label}</span>
+   522→                            {active && (
+   523→                              <span className="ml-auto h-1.5 w-1.5 rounded-full bg-saffron shadow-glow-brand" />
+   524→                            )}
+   525→                          </button>
+   526→                        </li>
+   527→                      );
+   528→                    })}
+   529→                  </ul>
+   530→                </nav>
+   531→              </div>
+   532→            </aside>
+   533→
+   534→            {/* Content — form sections (English only) */}
+   535→            <div className="space-y-6 lg:min-w-0">
+   536→          {/* Personal Info */}
+   537→          <Section id="section-personal" icon={User} title="Personal Information" desc="Your basic details — selectable fields make it faster">
+   538→            <div className="grid sm:grid-cols-2 gap-4">
+   539→              <Field label="Full name">
+   540→                <Input value={data.name} onChange={(e) => update("name", e.target.value)} placeholder="Abhishek" />
+   541→              </Field>
+   542→              <Field label="Date of birth">
+   543→                <Input type="date" value={data.dob ?? ""} onChange={(e) => update("dob", e.target.value)} />
+   544→              </Field>
+   545→              <Field label="Gender">
+   546→                <Select value={data.gender ?? ""} onValueChange={(v) => update("gender", v)}>
+   547→                  <SelectTrigger className="h-10">
+   548→                    <SelectValue placeholder="Select gender" />
+   549→                  </SelectTrigger>
+   550→                  <SelectContent>
+   551→                    {GENDER_OPTIONS.map((g) => (
+   552→                      <SelectItem key={g.value} value={g.value}>
+   553→                        {g.labelEn}
+   554→                      </SelectItem>
+   555→                    ))}
+   556→                  </SelectContent>
+   557→                </Select>
+   558→              </Field>
+   559→              <Field label="Email">
+   560→                <Input type="email" value={data.email} onChange={(e) => update("email", e.target.value)} placeholder="you@example.com" />
+   561→              </Field>
+   562→              <Field label="Phone">
+   563→                <Input value={data.phone ?? ""} onChange={(e) => update("phone", e.target.value)} placeholder="+91 98765 43210" />
+   564→              </Field>
+   565→              <Field label="Nationality">
+   566→                <Select value={data.nationality ?? ""} onValueChange={(v) => update("nationality", v)}>
+   567→                  <SelectTrigger className="h-10">
+   568→                    <SelectValue placeholder="Select nationality" />
+   569→                  </SelectTrigger>
+   570→                  <SelectContent>
+   571→                    {NATIONALITY_OPTIONS.map((n) => (
+   572→                      <SelectItem key={n.value} value={n.value}>
+   573→                        {n.value}
+   574→                      </SelectItem>
+   575→                    ))}
+   576→                  </SelectContent>
+   577→                </Select>
+   578→              </Field>
+   579→              <Field label="State / Place of origin (India)">
+   580→                <Select
+   581→                  value={data.placeOfOrigin ?? ""}
+   582→                  onValueChange={(v) => update("placeOfOrigin", v)}
+   583→                  disabled={data.nationality !== "India"}
+   584→                >
+   585→                  <SelectTrigger className="h-10">
+   586→                    <SelectValue placeholder={data.nationality === "India" ? "Select state" : "Select nationality first"} />
+   587→                  </SelectTrigger>
+   588→                  <SelectContent>
+   589→                    {INDIAN_STATES.map((s) => (
+   590→                      <SelectItem key={s} value={s}>
+   591→                        {s}
+   592→                      </SelectItem>
+   593→                    ))}
+   594→                  </SelectContent>
+   595→                </Select>
+   596→              </Field>
+   597→              <Field label="Address" className="sm:col-span-2">
+   598→                <Input value={data.address ?? ""} onChange={(e) => update("address", e.target.value)} placeholder="Nellore, Andhra Pradesh, 524344, India" />
+   599→              </Field>
+   600→              <Field label="Current degree being pursued" className="sm:col-span-2">
+   601→                <Input value={data.currentDegree ?? ""} onChange={(e) => update("currentDegree", e.target.value)} placeholder="Bachelors in Technology, Computer Science Engineering" />
+   602→              </Field>
+   603→              <Field label="Expected time of graduation" className="sm:col-span-2">
+   604→                <Input value={data.expectedGraduation ?? ""} onChange={(e) => update("expectedGraduation", e.target.value)} placeholder="06/2026" />
+   605→              </Field>
+   606→              <Field label="Languages known" className="sm:col-span-2">
+   607→                <div className="space-y-2">
+   608→                  <div className="flex gap-2">
+   609→                    <Select value={langInput} onValueChange={(v) => { addLanguage(v); }}>
+   610→                      <SelectTrigger className="h-10">
+   611→                        <SelectValue placeholder="Add a language…" />
+   612→                      </SelectTrigger>
+   613→                      <SelectContent>
+   614→                        {LANGUAGE_OPTIONS.filter((l) => !data.languages.includes(l.value)).map((l) => (
+   615→                          <SelectItem key={l.value} value={l.value}>
+   616→                            {l.value}
+   617→                          </SelectItem>
+   618→                        ))}
+   619→                      </SelectContent>
+   620→                    </Select>
+   621→                  </div>
+   622→                  {data.languages.length > 0 && (
+   623→                    <div className="flex flex-wrap gap-2">
+   624→                      {data.languages.map((lang, i) => (
+   625→                        <Badge key={i} variant="secondary" className="px-3 py-1.5 gap-1.5">
+   626→                          {lang}
+   627→                          <button
+   628→                            onClick={() => removeLanguage(i)}
+   629→                            className="ml-1 hover:text-destructive"
+   630→                            aria-label="Remove"
+   631→                          >
+   632→                            <X className="h-3 w-3" />
+   633→                          </button>
+   634→                        </Badge>
+   635→                      ))}
+   636→                    </div>
+   637→                  )}
+   638→                </div>
+   639→              </Field>
+   640→            </div>
+   641→          </Section>
+   642→
+   643→          {/* Education */}
+   644→          <Section id="section-education" icon={GraduationCap} title="Education" desc="Academic history" action={<AddButton onClick={addEducation} />}>
+   645→            <div className="space-y-4">
+   646→              {data.education.length === 0 && <EmptyHint text="No education entries yet. Click Add to start." />}
+   647→              {data.education.map((edu, i) => (
+   648→                <Card key={i} onRemove={() => removeEducation(i)}>
+   649→                  <div className="grid sm:grid-cols-2 gap-3">
+   650→                    <Field label="Year (graduation)">
+   651→                      <Input value={edu.year} onChange={(e) => updateEducation(i, { year: e.target.value })} placeholder="2026" />
+   652→                    </Field>
+   653→                    <Field label="Month">
+   654→                      <Input value={edu.month ?? ""} onChange={(e) => updateEducation(i, { month: e.target.value })} placeholder="6" />
+   655→                    </Field>
+   656→                    <Field label="Institution (School / University)" className="sm:col-span-2">
+   657→                      <Input value={edu.institution} onChange={(e) => updateEducation(i, { institution: e.target.value })} placeholder="SRM UNIVERSITY AP, India" />
+   658→                    </Field>
+   659→                    <Field label="Degree (combined text shown in PDF)" className="sm:col-span-2">
+   660→                      <Input value={edu.degree} onChange={(e) => updateEducation(i, { degree: e.target.value })} placeholder="Bachelors in Technology with Major in Computer Science." />
+   661→                    </Field>
+   662→                    <Field label="Field / Specialization" className="sm:col-span-2">
+   663→                      <Input value={edu.field} onChange={(e) => updateEducation(i, { field: e.target.value })} placeholder="Computer Science" />
+   664→                    </Field>
+   665→                  </div>
+   666→                </Card>
+   667→              ))}
+   668→            </div>
+   669→          </Section>
+   670→
+   671→          {/* Work Experience */}
+   672→          <Section id="section-experience" icon={Briefcase} title="Work Experience (Apprenticeship/Internship)" desc="Internships, apprenticeships, and other work experience" action={<AddButton onClick={addActivity} />}>
+   673→            <div className="space-y-4">
+   674→              {data.activities.length === 0 && <EmptyHint text="No work experience yet. Click Add to start." />}
+   675→              {data.activities.map((act, i) => (
+   676→                <Card key={i} onRemove={() => removeActivity(i)}>
+   677→                  <div className="grid sm:grid-cols-3 gap-3">
+   678→                    <Field label="Year">
+   679→                      <Input value={act.year ?? ""} onChange={(e) => updateActivity(i, { year: e.target.value })} placeholder="2025" />
+   680→                    </Field>
+   681→                    <Field label="Month (range)">
+   682→                      <Input value={act.period} onChange={(e) => updateActivity(i, { period: e.target.value })} placeholder="1-5" />
+   683→                    </Field>
+   684→                    <Field label="Duration (for JP resume, e.g. '9 months')">
+   685→                      <Input value={act.duration ?? ""} onChange={(e) => updateActivity(i, { duration: e.target.value })} placeholder="9 months" />
+   686→                    </Field>
+   687→                    <Field label="Role">
+   688→                      <Input value={act.role} onChange={(e) => updateActivity(i, { role: e.target.value })} placeholder="Research Intern" />
+   689→                    </Field>
+   690→                    <Field label="Organization" className="sm:col-span-2">
+   691→                      <Input value={act.organization} onChange={(e) => updateActivity(i, { organization: e.target.value })} placeholder="SRM University AP" />
+   692→                    </Field>
+   693→                  </div>
+   694→                  <Field label="Description (what you did)" className="mt-3">
+   695→                    <Textarea rows={3} value={act.duties} onChange={(e) => updateActivity(i, { duties: e.target.value })} placeholder="Engineered an automated skin disease prediction system using Deep Learning..." />
+   696→                  </Field>
+   697→                </Card>
+   698→              ))}
+   699→            </div>
+   700→          </Section>
+   701→
+   702→          {/* Certifications / Awards */}
+   703→          <Section id="section-certifications" icon={Award} title="Certifications / Achievements" desc="Professional certifications and honors" action={<AddButton onClick={addAward} />}>
+   704→            <div className="space-y-4">
+   705→              {data.awards.length === 0 && <EmptyHint text="No certifications yet. Click Add to start." />}
+   706→              {data.awards.map((aw, i) => (
+   707→                <Card key={i} onRemove={() => removeAward(i)}>
+   708→                  <div className="grid sm:grid-cols-3 gap-3">
+   709→                    <Field label="Year">
+   710→                      <Input value={aw.year} onChange={(e) => updateAward(i, { year: e.target.value })} placeholder="2025" />
+   711→                    </Field>
+   712→                    <Field label="Month">
+   713→                      <Input value={aw.month ?? ""} onChange={(e) => updateAward(i, { month: e.target.value })} placeholder="4" />
+   714→                    </Field>
+   715→                    <Field label="Organization / Issuer">
+   716→                      <Input value={aw.organization} onChange={(e) => updateAward(i, { organization: e.target.value })} placeholder="MongoDB, Inc." />
+   717→                    </Field>
+   718→                    <Field label="Title" className="sm:col-span-3">
+   719→                      <Input value={aw.title} onChange={(e) => updateAward(i, { title: e.target.value })} placeholder="MongoDB Certified Associate Developer" />
+   720→                    </Field>
+   721→                  </div>
+   722→                  <Field label="Description (details / credential ID / tasks)" className="mt-3">
+   723→                    <Textarea rows={2} value={aw.description} onChange={(e) => updateAward(i, { description: e.target.value })} placeholder="Issued: April 2025. Credential ID: MDB4amndwj352" />
+   724→                  </Field>
+   725→                </Card>
+   726→              ))}
+   727→            </div>
+   728→          </Section>
+   729→
+   730→          {/* Projects */}
+   731→          <Section id="section-projects" icon={Code2} title="Projects / Co-Curricular Activities" desc="Technical projects and co-curricular work" action={<AddButton onClick={addProject} />}>
+   732→            <div className="space-y-4">
+   733→              {data.projects.length === 0 && <EmptyHint text="No projects yet. Click Add to start." />}
+   734→              {data.projects.map((proj, i) => (
+   735→                <Card key={i} onRemove={() => removeProject(i)}>
+   736→                  <div className="grid sm:grid-cols-2 gap-3">
+   737→                    <Field label="Year">
+   738→                      <Input value={proj.year ?? ""} onChange={(e) => updateProject(i, { year: e.target.value })} placeholder="2025" />
+   739→                    </Field>
+   740→                    <Field label="Month (range)">
+   741→                      <Input value={proj.period} onChange={(e) => updateProject(i, { period: e.target.value })} placeholder="2-5" />
+   742→                    </Field>
+   743→                    <Field label="Project name" className="sm:col-span-2">
+   744→                      <Input value={proj.name} onChange={(e) => updateProject(i, { name: e.target.value })} placeholder="CollabLearn – Online Collaborative Learning Platform" />
+   745→                    </Field>
+   746→                    <Field label="Tech stack" className="sm:col-span-2">
+   747→                      <Input value={proj.techStack ?? ""} onChange={(e) => updateProject(i, { techStack: e.target.value })} placeholder="React.js, Tailwind CSS, Firebase, JavaScript" />
+   748→                    </Field>
+   749→                  </div>
+   750→                  <Field label="Description" className="mt-3">
+   751→                    <Textarea rows={3} value={proj.description} onChange={(e) => updateProject(i, { description: e.target.value })} placeholder="Built a real-time learning portal with Firebase authentication..." />
+   752→                  </Field>
+   753→                </Card>
+   754→              ))}
+   755→            </div>
+   756→          </Section>
+   757→
+   758→          {/* Skills */}
+   759→          <Section id="section-skills" icon={Code2} title="Skills" desc="Mark your proficiency for each skill" action={<AddButton onClick={addSkill} />}>
+   760→            <div className="space-y-3">
+   761→              {data.skills.length === 0 && <EmptyHint text="No skills yet. Click Add to start." />}
+   762→              {data.skills.map((s, i) => (
+   763→                <div key={i} className="relative rounded-xl border border-border bg-background p-4 pr-12">
+   764→                  <button
+   765→                    onClick={() => removeSkill(i)}
+   766→                    className="absolute top-3 right-3 grid place-items-center h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
+   767→                    aria-label="Remove"
+   768→                  >
+   769→                    <Trash2 className="h-4 w-4" />
+   770→                  </button>
+   771→                  <Field label="Skill name">
+   772→                    <Input value={s.name} onChange={(e) => updateSkill(i, { name: e.target.value })} placeholder="HTML, CSS, JavaScript, React..." />
+   773→                  </Field>
+   774→                  <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 pl-0.5">
+   775→                    <CheckboxField
+   776→                      label="Learned in class"
+   777→                      checked={s.learnedInClass}
+   778→                      onChange={(v) => updateSkill(i, { learnedInClass: v })}
+   779→                    />
+   780→                    <CheckboxField
+   781→                      label="Can operate alone"
+   782→                      checked={s.canOperate}
+   783→                      onChange={(v) => updateSkill(i, { canOperate: v })}
+   784→                    />
+   785→                    <CheckboxField
+   786→                      label="Can teach others"
+   787→                      checked={s.canTeach}
+   788→                      onChange={(v) => updateSkill(i, { canTeach: v })}
+   789→                    />
+   790→                  </div>
+   791→                </div>
+   792→              ))}
+   793→            </div>
+   794→          </Section>
+   795→
+   796→          {/* Skills in Which I Excel */}
+   797→          <Section id="section-excel" icon={ListChecks} title="Skills in Which I Excel" desc="Numbered summary of strengths and growth areas" action={<AddButton onClick={addExcelItem} />}>
+   798→            <div className="space-y-3">
+   799→              {(data.skillsExcelSummary ?? []).length === 0 && <EmptyHint text="No summary points yet. Click Add to start." />}
+   800→              {(data.skillsExcelSummary ?? []).map((line, i) => (
+   801→                <div key={i} className="relative rounded-xl border border-border bg-background p-4 pr-12">
+   802→                  <button
+   803→                    onClick={() => removeExcelItem(i)}
+   804→                    className="absolute top-3 right-3 grid place-items-center h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
+   805→                    aria-label="Remove"
+   806→                  >
+   807→                    <Trash2 className="h-4 w-4" />
+   808→                  </button>
+   809→                  <div className="flex gap-3">
+   810→                    <span className="grid place-items-center h-7 w-7 rounded-full bg-saffron/10 text-saffron font-bold text-sm shrink-0">
+   811→                      {i + 1}
+   812→                    </span>
+   813→                    <Textarea
+   814→                      rows={2}
+   815→                      value={line}
+   816→                      onChange={(e) => updateExcelItem(i, e.target.value)}
+   817→                      placeholder="I have developed strong expertise in web development technologies, including HTML, CSS, JavaScript and React..."
+   818→                      className="flex-1"
+   819→                    />
+   820→                  </div>
+   821→                </div>
+   822→              ))}
+   823→            </div>
+   824→          </Section>
+   825→
+   826→          {/* Japanese Proficiency & Other Languages */}
+   827→          <Section id="section-jlpt" icon={Languages} title="Japanese Proficiency & Other Languages" desc="JLPT levels and additional languages">
+   828→            <div className="space-y-4">
+   829→              <Field label="Current Japanese Proficiency Level (JLPT)">
+   830→                <Select
+   831→                  value={data.currentJlpt ?? ""}
+   832→                  onValueChange={(v) => update("currentJlpt", v as JlptLevel)}
+   833→                >
+   834→                  <SelectTrigger className="h-10">
+   835→                    <SelectValue placeholder="Select current JLPT level" />
+   836→                  </SelectTrigger>
+   837→                  <SelectContent>
+   838→                    {JLPT_OPTIONS.map((lvl) => (
+   839→                      <SelectItem key={lvl} value={lvl}>
+   840→                        {lvl}
+   841→                      </SelectItem>
+   842→                    ))}
+   843→                  </SelectContent>
+   844→                </Select>
+   845→              </Field>
+   846→              <Field label="Expected JLPT level by graduation time">
+   847→                <Select
+   848→                  value={data.expectedJlpt ?? ""}
+   849→                  onValueChange={(v) => update("expectedJlpt", v as JlptLevel)}
+   850→                >
+   851→                  <SelectTrigger className="h-10">
+   852→                    <SelectValue placeholder="Select expected JLPT level" />
+   853→                  </SelectTrigger>
+   854→                  <SelectContent>
+   855→                    {JLPT_OPTIONS.map((lvl) => (
+   856→                      <SelectItem key={lvl} value={lvl}>
+   857→                        {lvl}
+   858→                      </SelectItem>
+   859→                    ))}
+   860→                  </SelectContent>
+   861→                </Select>
+   862→              </Field>
+   863→              <Field label="Other languages (comma-separated, e.g. 'English, Telugu, Hindi')">
+   864→                <Input
+   865→                  value={data.otherLanguages ?? ""}
+   866→                  onChange={(e) => update("otherLanguages", e.target.value)}
+   867→                  placeholder="English, Telugu, Hindi"
+   868→                />
+   869→              </Field>
+   870→            </div>
+   871→          </Section>
+   872→
+   873→          {/* Why Japan? */}
+   874→          <Section id="section-japan" icon={MapPin} title="More About Why You Want to Work in Japan" desc="Three short essays — these appear on the English resume only">
+   875→            <Field label="Why do you want to work in Japan? (日本で働きたい理由は何ですか？)">
+   876→              <Textarea
+   877→                rows={4}
+   878→                value={data.japanMotivation?.whyJapan ?? ""}
+   879→                onChange={(e) => updateJapan("whyJapan", e.target.value)}
+   880→                placeholder="Japan is known for its hard work, focus on quality, and constant improvement..."
+   881→              />
+   882→            </Field>
+   883→            <Field label="What kind of career would you like to create in Japan? (日本でどのようなキャリアを作りたいと思いますか？)" className="mt-4">
+   884→              <Textarea
+   885→                rows={4}
+   886→                value={data.japanMotivation?.careerInJapan ?? ""}
+   887→                onChange={(e) => updateJapan("careerInJapan", e.target.value)}
+   888→                placeholder="Aspire to build a career in Japan by contributing to innovative, socially impactful projects..."
+   889→              />
+   890→            </Field>
+   891→            <Field label="What challenges do you foresee in adjusting to life in Japan, and how would you address them? (日本生活への適応において、どのような課題を予想し、どう対処しますか？)" className="mt-4">
+   892→              <Textarea
+   893→                rows={4}
+   894→                value={data.japanMotivation?.challenges ?? ""}
+   895→                onChange={(e) => updateJapan("challenges", e.target.value)}
+   896→                placeholder="Challenges: Adaptation to Work Practices..."
+   897→              />
+   898→            </Field>
+   899→          </Section>
+   900→
+   901→          {/* Self-PR & Hobbies */}
+   902→          <Section id="section-selfpr" icon={Sparkles} title="Self-PR & Hobbies" desc="Personal statement and interests (shown on the JP resume)">
+   903→            <Field label="Self-PR (English)">
+   904→              <Textarea rows={5} value={data.selfPr ?? ""} onChange={(e) => update("selfPr", e.target.value)} placeholder="I am a Computer Science student passionate about full-stack development and AI..." />
+   905→            </Field>
+   906→            <Field label="Hobbies" className="mt-3">
+   907→              <Input value={data.hobbies ?? ""} onChange={(e) => update("hobbies", e.target.value)} placeholder="Badminton, Fitness, Reading" />
+   908→            </Field>
+   909→          </Section>
+   910→
+   911→            </div>
+   912→          </div>
+   913→
+   914→          {/* CTA: Save & Preview English Resume */}
+   915→          <div className="mt-8 pt-6 border-t border-border flex items-center justify-between flex-wrap gap-4">
+   916→            <p className="text-sm text-muted-foreground">
+   917→              Fill in English — we'll handle the Japanese translation next.
+   918→            </p>
+   919→            <Button
+   920→              onClick={async () => { await save(); setTab("preview-en"); }}
+   921→              disabled={saving}
+   922→              className="bg-brand-gradient text-white font-semibold"
+   923→            >
+   924→              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+   925→              Save & Preview English Resume
+   926→              <ArrowRight className="ml-2 h-4 w-4" />
+   927→            </Button>
+   928→          </div>
+   929→        </motion.div>
+   930→      )}
+   931→
+   932→      {/* Preview EN tab */}
+   933→      {tab === "preview-en" && (
+   934→        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+   935→          <div className="print:hidden flex items-center justify-between gap-4 mb-6 p-4 rounded-2xl border border-border bg-card flex-wrap">
+   936→            <div>
+   937→              <p className="font-display font-bold text-[15px]">English Resume Preview</p>
+   938→              <p className="text-xs text-muted-foreground mt-0.5">
+   939→                This is exactly what employers will see. Download or continue to Japanese translation.
+   940→              </p>
+   941→            </div>
+   942→            <div className="flex items-center gap-2">
+   943→              <PDFDownloadLink
+   944→                document={<EnglishResumePDF data={data} />}
+   945→                fileName={`${data.name || "resume"}_EN.pdf`}
+   946→              >
+   947→                {({ loading: pdfLoading }) => (
+   948→                  <Button variant="outline" disabled={pdfLoading} className="font-semibold">
+   949→                    <Download className="h-4 w-4 mr-1.5" />
+   950→                    {pdfLoading ? "Generating…" : "Download EN PDF"}
+   951→                  </Button>
+   952→                )}
+   953→              </PDFDownloadLink>
+   954→              <Button
+   955→                onClick={() => setTab("translate")}
+   956→                disabled={!data.name}
+   957→                className="bg-brand-gradient text-white font-semibold"
+   958→              >
+   959→                <Languages className="h-4 w-4 mr-1.5" />
+   960→                Translate to Japanese
+   961→              </Button>
+   962→            </div>
+   963→          </div>
+   964→          <div className="bg-muted/60 rounded-2xl p-4 sm:p-8">
+   965→            <div className="max-w-[860px] mx-auto">
+   966→              <ResumePreview data={data} lang="en" />
+   967→            </div>
+   968→          </div>
+   969→        </motion.div>
+   970→      )}
+   971→
+   972→      {/* Translate tab */}
+   973→      {tab === "translate" && (
+   974→        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+   975→          <div className="max-w-2xl mx-auto py-8">
+   976→            <div className="text-center mb-8">
+   977→              <div className="grid place-items-center h-16 w-16 rounded-2xl bg-saffron/10 border border-saffron/20 mx-auto mb-4">
+   978→                <Languages className="h-8 w-8 text-saffron" />
+   979→              </div>
+   980→              <h2 className="font-display font-bold text-2xl tracking-tight mb-2">
+   981→                AI Japanese Translation
+   982→              </h2>
+   983→              <p className="text-muted-foreground text-sm max-w-md mx-auto">
+   984→                Our AI will translate your English resume content into professional Japanese.
+   985→                Personal details (name, email, phone) stay in English — only descriptions,
+   986→                project summaries, and self-PR are translated.
+   987→              </p>
+   988→            </div>
+   989→
+   990→            <div className="card-premium p-5 mb-6">
+   991→              <p className="font-semibold text-sm mb-3">What the AI will translate:</p>
+   992→              <div className="grid sm:grid-cols-2 gap-2">
+   993→                {[
+   994→                  "Self-PR / Introduction",
+   995→                  "Hobbies & Interests",
+   996→                  "Project descriptions",
+   997→                  "Work experience duties",
+   998→                  "Certification descriptions",
+   999→                  "Why Japan motivation answers",
+  1000→                ].map((item) => (
+  1001→                  <div key={item} className="flex items-center gap-2 text-sm text-muted-foreground">
+  1002→                    <span className="h-1.5 w-1.5 rounded-full bg-saffron flex-shrink-0" />
+  1003→                    {item}
+  1004→                  </div>
+  1005→                ))}
+  1006→              </div>
+  1007→              <div className="mt-3 pt-3 border-t border-border/60 text-xs text-muted-foreground">
+  1008→                Personal info (name, email, phone, DOB) is kept as-is.
+  1009→                Education institution names and skill names are kept in English.
+  1010→              </div>
+  1011→            </div>
+  1012→
+  1013→            {translated && (
+  1014→              <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 p-4 mb-6 flex items-start gap-3">
+  1015→                <span className="text-emerald-600 text-lg mt-0.5">✓</span>
+  1016→                <div>
+  1017→                  <p className="font-semibold text-emerald-800 dark:text-emerald-300 text-sm">
+  1018→                    Translation complete!
+  1019→                  </p>
+  1020→                  <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">
+  1021→                    Your resume has been translated. You can re-translate if you updated your English content.
+  1022→                  </p>
+  1023→                </div>
+  1024→              </div>
+  1025→            )}
+  1026→
+  1027→            <div className="flex flex-col sm:flex-row gap-3">
+  1028→              <Button
+  1029→                onClick={handleTranslate}
+  1030→                disabled={translating}
+  1031→                className="flex-1 bg-brand-gradient text-white font-semibold h-11 text-[15px]"
+  1032→              >
+  1033→                {translating ? (
+  1034→                  <>
+  1035→                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+  1036→                    Translating… (15–30 seconds)
+  1037→                  </>
+  1038→                ) : translated ? (
+  1039→                  <>
+  1040→                    <Languages className="h-4 w-4 mr-2" />
+  1041→                    Re-translate (content updated)
+  1042→                  </>
+  1043→                ) : (
+  1044→                  <>
+  1045→                    <Sparkles className="h-4 w-4 mr-2" />
+  1046→                    Translate to Japanese with AI
+  1047→                  </>
+  1048→                )}
+  1049→              </Button>
+  1050→              {translated && (
+  1051→                <Button
+  1052→                  variant="outline"
+  1053→                  onClick={() => setTab("preview-ja")}
+  1054→                  className="flex-1 font-semibold h-11"
+  1055→                >
+  1056→                  <Globe className="h-4 w-4 mr-2" />
+  1057→                  View Japanese 履歴書
+  1058→                </Button>
+  1059→              )}
+  1060→            </div>
+  1061→
+  1062→            {translating && (
+  1063→              <div className="mt-4">
+  1064→                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+  1065→                  <motion.div
+  1066→                    className="h-full bg-brand-gradient rounded-full"
+  1067→                    initial={{ width: "0%" }}
+  1068→                    animate={{ width: "100%" }}
+  1069→                    transition={{ duration: 25, ease: "linear" }}
+  1070→                  />
+  1071→                </div>
+  1072→                <p className="text-xs text-muted-foreground text-center mt-2">
+  1073→                  AI is translating your content…
+  1074→                </p>
+  1075→              </div>
+  1076→            )}
+  1077→          </div>
+  1078→        </motion.div>
+  1079→      )}
+  1080→
+  1081→      {/* Preview JP tab */}
+  1082→      {tab === "preview-ja" && (
+  1083→        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+  1084→          <div className="print:hidden flex items-center justify-between gap-4 mb-6 p-4 rounded-2xl border border-border bg-card flex-wrap">
+  1085→            <div>
+  1086→              <p className="font-display font-bold text-[15px]">Japanese 履歴書 Preview</p>
+  1087→              <p className="text-xs text-muted-foreground mt-0.5">
+  1088→                AI-translated Japanese resume. Download the PDF to share with Japanese employers.
+  1089→              </p>
+  1090→            </div>
+  1091→            <div className="flex items-center gap-2">
+  1092→              <Button variant="outline" size="sm" onClick={() => setTab("translate")}>
+  1093→                <Languages className="h-4 w-4 mr-1.5" />
+  1094→                Re-translate
+  1095→              </Button>
+  1096→              <PDFDownloadLink
+  1097→                document={<JapaneseResumePDF data={data} />}
+  1098→                fileName={`${data.name || "resume"}_JP_履歴書.pdf`}
+  1099→              >
+  1100→                {({ loading: pdfLoading }) => (
+  1101→                  <Button disabled={pdfLoading || !jpFontReady} className="bg-brand-gradient text-white font-semibold">
+  1102→                    <Download className="h-4 w-4 mr-1.5" />
+  1103→                    {!jpFontReady ? "Loading font…" : pdfLoading ? "生成中…" : "Download 履歴書 PDF"}
+  1104→                  </Button>
+  1105→                )}
+  1106→              </PDFDownloadLink>
+  1107→            </div>
+  1108→          </div>
+  1109→          <div className="bg-muted/60 rounded-2xl p-4 sm:p-8">
+  1110→            <div className="max-w-[860px] mx-auto">
+  1111→              <ResumePreview data={data} lang="ja" />
+  1112→            </div>
+  1113→          </div>
+  1114→        </motion.div>
+  1115→      )}
+  1116→    </div>
+  1117→  );
+  1118→}
+  1119→
+  1120→function Section({
+  1121→  id,
+  1122→  icon: Icon,
+  1123→  title,
+  1124→  desc,
+  1125→  action,
+  1126→  children,
+  1127→}: {
+  1128→  id?: string;
+  1129→  icon: React.ComponentType<{ className?: string }>;
+  1130→  title: string;
+  1131→  desc?: string;
+  1132→  action?: React.ReactNode;
+  1133→  children: React.ReactNode;
+  1134→}) {
+  1135→  return (
+  1136→    <section
+  1137→      id={id}
+  1138→      className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-premium scroll-mt-6"
+  1139→    >
+  1140→      <div className="flex items-start justify-between mb-4">
+  1141→        <div className="flex items-start gap-3">
+  1142→          <div className="grid place-items-center h-10 w-10 rounded-lg bg-saffron/10 text-saffron shrink-0">
+  1143→            <Icon className="h-5 w-5" />
+  1144→          </div>
+  1145→          <div>
+  1146→            <h2 className="font-display text-lg font-bold">{title}</h2>
+  1147→            {desc && <p className="text-sm text-muted-foreground">{desc}</p>}
+  1148→          </div>
+  1149→        </div>
+  1150→        {action}
+  1151→      </div>
+  1152→      {children}
+  1153→    </section>
+  1154→  );
+  1155→}
+  1156→
+  1157→function Card({ children, onRemove }: { children: React.ReactNode; onRemove: () => void }) {
+  1158→  return (
+  1159→    <div className="relative rounded-xl border border-border bg-background p-4">
+  1160→      <button
+  1161→        onClick={onRemove}
+  1162→        className="absolute top-3 right-3 grid place-items-center h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
+  1163→        aria-label="Remove"
+  1164→      >
+  1165→        <Trash2 className="h-4 w-4" />
+  1166→      </button>
+  1167→      {children}
+  1168→    </div>
+  1169→  );
+  1170→}
+  1171→
+  1172→function Field({
+  1173→  label,
+  1174→  children,
+  1175→  className,
+  1176→}: {
+  1177→  label: string;
+  1178→  children: React.ReactNode;
+  1179→  className?: string;
+  1180→}) {
+  1181→  return (
+  1182→    <label className={cn("block", className)}>
+  1183→      <span className="text-xs font-medium text-muted-foreground mb-1 block">{label}</span>
+  1184→      {children}
+  1185→    </label>
+  1186→  );
+  1187→}
+  1188→
+  1189→function CheckboxField({
+  1190→  label,
+  1191→  checked,
+  1192→  onChange,
+  1193→}: {
+  1194→  label: string;
+  1195→  checked: boolean;
+  1196→  onChange: (v: boolean) => void;
+  1197→}) {
+  1198→  return (
+  1199→    <label className="flex items-center gap-2 cursor-pointer select-none">
+  1200→      <Checkbox checked={checked} onCheckedChange={(v) => onChange(!!v)} />
+  1201→      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+  1202→    </label>
+  1203→  );
+  1204→}
+  1205→
+  1206→function AddButton({ onClick }: { onClick: () => void }) {
+  1207→  return (
+  1208→    <Button size="sm" variant="outline" onClick={onClick} className="font-medium">
+  1209→      <Plus className="mr-1 h-3.5 w-3.5" />
+  1210→      Add
+  1211→    </Button>
+  1212→  );
+  1213→}
+  1214→
+  1215→function EmptyHint({ text }: { text: string }) {
+  1216→  return (
+  1217→    <div className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
+  1218→      {text}
+  1219→    </div>
+  1220→  );
+  1221→}
+  1222→

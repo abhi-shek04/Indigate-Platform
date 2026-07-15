@@ -544,13 +544,13 @@ html {
   @page { size: A4; margin: 12mm; }
 }
 .resume-page {
-  max-width: 800px; padding: 40px;
+  max-width: 800px; padding: 50px 56px;
   font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", var(--font-sans), sans-serif;
-  font-size: 13px; line-height: 1.6; border-radius: 8px;
+  font-size: 13px; line-height: 1.65; border-radius: 4px;
   color-scheme: light;
   isolation: isolate;
   border: 1px solid #e2e2e2;
-  box-shadow: 0 4px 24px -4px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
+  box-shadow: 0 12px 40px -8px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.04);
 }
 /* Force all resume content to black-on-white regardless of page theme */
 .resume-page,
@@ -567,22 +567,23 @@ html {
   background-color: transparent;
 }
 .resume-page { background-color: #ffffff !important; }
-.resume-table th { background-color: #f5f5f5 !important; }
-.resume-title { font-size: 28px; font-weight: 800; text-align: center; margin-bottom: 24px; letter-spacing: 0.3em; }
-.resume-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-.resume-table th, .resume-table td { border: 1px solid #d4d4d4; padding: 8px 10px; text-align: left; vertical-align: top; }
-.resume-table th { background: #f5f5f5; font-weight: 600; white-space: nowrap; }
-.resume-section { margin-top: 20px; }
-.resume-section-title { font-size: 15px; font-weight: 700; border-bottom: 2px solid #1a1a1a; padding-bottom: 4px; margin-bottom: 10px; }
-.resume-text { font-size: 13px; line-height: 1.7; }
-.resume-declaration { margin-top: 32px; padding-top: 16px; border-top: 1px solid #d4d4d4; font-size: 12px; }
+.resume-table th { background-color: #f7f7f8 !important; }
+.resume-title { font-size: 24px; font-weight: 800; text-align: center; margin-bottom: 28px; letter-spacing: 0.45em; padding-bottom: 16px; border-bottom: 2px solid #1a1a1a; }
+.resume-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+.resume-table th, .resume-table td { border: 1px solid #ccc; padding: 10px 14px; text-align: left; vertical-align: top; font-size: 12.5px; }
+.resume-table th { background: #f7f7f8; font-weight: 600; white-space: nowrap; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
+.resume-table td { line-height: 1.6; }
+.resume-section { margin-top: 26px; }
+.resume-section-title { font-size: 13px; font-weight: 700; border-bottom: 2px solid #1a1a1a; padding-bottom: 6px; margin-bottom: 12px; letter-spacing: 0.03em; }
+.resume-text { font-size: 13px; line-height: 1.75; }
+.resume-declaration { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccc; font-size: 11.5px; line-height: 1.7; }
 .resume-en { font-family: var(--font-sans), "Helvetica Neue", Arial, sans-serif; }
 .resume-header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #1a1a1a; }
 .resume-name { font-size: 28px; font-weight: 800; letter-spacing: 0.02em; }
 .resume-contact { font-size: 13px; color: #555; margin-top: 4px; }
 .resume-meta { font-size: 12px; color: #777; margin-top: 2px; }
-.resume-section-en { margin-top: 20px; }
-.resume-section-title-en { font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #d4d4d4; padding-bottom: 4px; margin-bottom: 10px; }
+.resume-section-en { margin-top: 24px; }
+.resume-section-title-en { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 2px solid #1a1a1a; padding-bottom: 6px; margin-bottom: 12px; color: #1a1a1a; }
 .resume-entry { margin-bottom: 8px; }
 .resume-entry-header { display: flex; justify-content: space-between; align-items: baseline; }
-.resume-declaration-en { margin-top: 32px; padding-top: 16px; border-top: 1px solid #d4d4d4; }
+.resume-declaration-en { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccc; }

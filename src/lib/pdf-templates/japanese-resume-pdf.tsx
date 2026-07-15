@@ -1,4 +1,3 @@
-"use client";
 
 import {
   Document,
@@ -6,7 +5,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Font,
 } from "@react-pdf/renderer";
 import {
   GENDER_OPTIONS,
@@ -16,11 +14,11 @@ import {
   type ResumeSkill,
 } from "@/lib/resume-types";
 
-// Register IPA Gothic for Japanese text rendering (6.2MB — smaller than NotoSansJP)
-Font.register({
-  family: "NotoSansJP",
-  src: "/fonts/ipag.ttf",
-});
+// The Japanese font is registered by the server-side PDF API route
+// (src/app/api/candidates/me/resume/pdf/route.ts) using a base64 data URL
+// loaded synchronously from the filesystem. This ensures the font is always
+// ready before PDF generation — no garbled text.
+// On the client side, use-jp-font.ts handles preloading for <PDFDownloadLink>.
 
 // Checkmark glyphs used in the Skills proficiency table.
 const CHECKED = "☒";

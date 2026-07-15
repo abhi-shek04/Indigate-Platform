@@ -37,8 +37,8 @@ export function AdminDashboard() {
       subtitle="Platform oversight & moderation"
       avatar={
         <div className="hidden sm:flex items-center gap-2 pl-2 ml-1 border-l border-border">
-          <div className="grid place-items-center h-8 w-8 rounded-lg bg-brand-gradient text-white text-xs font-bold">
-            AD
+          <div className="grid place-items-center h-8 w-8 rounded-lg bg-brand-gradient text-white text-[10px] font-bold">
+            ADMIN
           </div>
         </div>
       }

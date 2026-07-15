@@ -1348,3 +1348,37 @@ Stage Summary:
 - Home page completely redesigned: asymmetric hero with custom journey visual, bento stats grid, connected timeline, premium job cards, featured testimonials, 2-column contact.
 - Admin job changes DO update the home page stats — verified end-to-end (pause → 24+, re-activate → 25+).
 - The page is now distinctive and premium, not generic/template-looking.
+
+---
+Task ID: HOME-PREMIUM-CLEANUP
+Agent: main (Z.ai Code)
+Task: Fix India→Japan (not Bengaluru→Tokyo), premium Go to Dashboard button, remove percentages/fake data, redesign footer.
+
+Work Log:
+- Fixed "Bengaluru → Tokyo" → "India → Japan" in 4 places: hero visual header, India/Japan pins, bento featured subtitle, testimonials subtitle, contact info.
+- Fixed "Go to Dashboard" button: added LayoutDashboard icon (saffron, scales on hover), ArrowRight icon (translates on hover), hover bg-saffron/5 — now premium instead of generic plain text.
+- Removed "+24% YoY" badge and "Headline metric" label from BentoFeatured — replaced with the actual stat label as the pill.
+- Removed the mini bar chart (7 fake bars) from BentoFeatured — no longer shows fake trend data.
+- Removed the fake pipeline data (1,947 / 612 / 428 / 312 / 287 with percentages) from the "India → Japan pipeline" section. Replaced with clean 4-step icon rows: Profile created → Matched with jobs → Interview scheduled → Relocated to Japan. Each step has an icon, label, description, and step number — no fake numbers or percentages.
+- Removed the "33%/66%/100%" progress bars from the How It Works section — was unnecessary visual clutter.
+- Removed the unused PipelineBar component.
+- Completely redesigned the footer (`src/components/layout/footer.tsx`):
+  - Dark sidebar background with subtle mesh + saffron/crimson glow accents
+  - 3-column layout: Brand + "India × Japan Talent Platform" badge | Quick Links with hover arrow icons | Indobox Inc description + visit link
+  - 2-column office info: Japan Office (Nagoya) + India Office (Hyderabad) with MapPin icons, staggered reveal animations
+  - Contact bar: email with icon badge + license number
+  - Bottom bar: copyright + legal links
+  - VLM-rated 9/10 for premium professional design
+- Agent Browser verification:
+  - Hero: "India → Japan" confirmed, premium Go to Dashboard button with icon.
+  - Stats: no "+24% YoY", no mini bar chart — clean stats (4+, 25+, 6+, 7+).
+  - Pipeline: 4 clean step rows, no fake numbers/percentages.
+  - Footer: 9/10 premium professional design with offices, contact, quick links.
+  - `npx tsc --noEmit` → 0 errors. `bun run lint` → 0 errors.
+
+Stage Summary:
+- All "Bengaluru → Tokyo" changed to "India → Japan".
+- "Go to Dashboard" button is now premium with icons + hover effects.
+- All fake percentages (+24% YoY, 33%/66%/100%) and fake numbers (1,947 etc.) removed.
+- Footer completely redesigned: dark premium background, 3-column layout, office locations, contact bar, staggered animations.
+- Files modified: `src/components/landing/landing-page.tsx`, `src/components/layout/footer.tsx`.

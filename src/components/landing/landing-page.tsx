@@ -30,6 +30,7 @@ import {
   FileText,
   Plane,
   PlaneTakeoff,
+  LayoutDashboard,
   Sparkles,
   CheckCircle2,
   Quote,
@@ -219,18 +220,19 @@ function BentoFeatured({
   value,
   suffix,
   label,
+  subLabel,
   delay,
   className,
 }: {
   value: number;
   suffix?: string;
   label: string;
+  subLabel: string;
   delay: number;
   className?: string;
 }) {
   const count = useCountUp(value, 2000);
   const { ref, visible } = useInView(0.25);
-  const bars = [42, 58, 51, 67, 74, 82, 95];
 
   return (
     <motion.div
@@ -258,11 +260,7 @@ function BentoFeatured({
         <div className="flex items-center justify-between">
           <span className="inline-flex items-center gap-2 rounded-full border border-crimson/30 bg-crimson/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-crimson">
             <Award className="h-3 w-3" />
-            Headline metric
-          </span>
-          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-            <TrendingUp className="h-3 w-3" />
-            +24% YoY
+            {label}
           </span>
         </div>
         <div className="mt-6">
@@ -273,29 +271,9 @@ function BentoFeatured({
             </span>
           </div>
           <p className="mt-3 text-sm sm:text-base font-semibold text-foreground uppercase tracking-wide">
-            {label}
-          </p>
-          <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed max-w-sm">
-            From profile creation to Tokyo touchdown — fully supported, end to end.
+            {subLabel}
           </p>
         </div>
-      </div>
-
-      {/* Mini bar chart */}
-      <div className="relative mt-6 flex items-end gap-1.5 h-14 sm:h-16">
-        {bars.map((h, i) => (
-          <motion.div
-            key={i}
-            className="flex-1 rounded-t bg-brand-gradient opacity-80"
-            initial={{ height: 0 }}
-            animate={visible ? { height: `${h}%` } : {}}
-            transition={{
-              duration: 0.8,
-              ease: easeOutExpo,
-              delay: delay / 1000 + 0.3 + i * 0.07,
-            }}
-          />
-        ))}
       </div>
     </motion.div>
   );
@@ -332,7 +310,7 @@ function HeroJourneyVisual({ featured }: { featured: JobDTO[] }) {
             Live journey
           </span>
           <span className="text-[11px] text-muted-foreground font-medium">
-            Bengaluru → Tokyo
+            India → Japan
           </span>
         </div>
 
@@ -373,23 +351,23 @@ function HeroJourneyVisual({ featured }: { featured: JobDTO[] }) {
             />
           </svg>
 
-          {/* Bengaluru pin */}
+          {/* India pin */}
           <div className="absolute left-[6%] bottom-[18%] flex flex-col items-center">
             <div className="grid place-items-center h-9 w-9 rounded-full bg-saffron/15 ring-2 ring-saffron/40 text-saffron backdrop-blur-sm">
               <MapPin className="h-4 w-4" />
             </div>
             <span className="mt-1.5 text-[10px] font-bold uppercase tracking-wider">
-              Bengaluru
+              India
             </span>
           </div>
 
-          {/* Tokyo pin */}
+          {/* Japan pin */}
           <div className="absolute right-[4%] top-[22%] flex flex-col items-center">
             <div className="grid place-items-center h-9 w-9 rounded-full bg-crimson/15 ring-2 ring-crimson/40 text-crimson backdrop-blur-sm">
               <MapPin className="h-4 w-4" />
             </div>
             <span className="mt-1.5 text-[10px] font-bold uppercase tracking-wider">
-              Tokyo
+              Japan
             </span>
           </div>
 
@@ -481,40 +459,6 @@ function HeroJourneyVisual({ featured }: { featured: JobDTO[] }) {
         </div>
       </div>
     </TiltCard>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/*  Pipeline bar (used in Why IndiGate)                                       */
-/* -------------------------------------------------------------------------- */
-
-function PipelineBar({
-  stage,
-  count,
-  pct,
-  delay,
-}: {
-  stage: string;
-  count: string;
-  pct: number;
-  delay: number;
-}) {
-  const { ref, visible } = useInView(0.4);
-  return (
-    <div ref={ref}>
-      <div className="flex justify-between text-xs mb-1.5">
-        <span className="font-medium">{stage}</span>
-        <span className="text-muted-foreground">{count}</span>
-      </div>
-      <div className="h-2.5 rounded-full bg-muted overflow-hidden">
-        <motion.div
-          className="h-full bg-brand-gradient rounded-full"
-          initial={{ width: 0 }}
-          animate={visible ? { width: `${pct}%` } : {}}
-          transition={{ duration: 1.1, ease: easeOutExpo, delay: delay / 1000 }}
-        />
-      </div>
-    </div>
   );
 }
 
@@ -714,9 +658,11 @@ export function LandingPage() {
                             : "admin",
                       )
                     }
-                    className="bg-background border-2 border-border hover:border-saffron/50 font-semibold text-base h-12 px-7 rounded-xl inline-flex items-center gap-2 cursor-pointer"
+                    className="bg-background border-2 border-border hover:border-saffron/50 hover:bg-saffron/5 font-semibold text-base h-12 px-7 rounded-xl inline-flex items-center gap-2 cursor-pointer group transition-all"
                   >
+                    <LayoutDashboard className="h-4 w-4 text-saffron transition-transform group-hover:scale-110" />
                     {pick("Go to Dashboard", "ダッシュボードへ")}
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </MagneticButton>
                 ) : (
                   <MagneticButton
@@ -805,6 +751,7 @@ export function LandingPage() {
               value={stats?.placementCount ?? 312}
               suffix="+"
               label={t("stats.placements")}
+              subLabel={pick("Successful placements", "内定成立")}
               delay={0}
               className="col-span-2 lg:row-span-2"
             />
@@ -967,25 +914,6 @@ export function LandingPage() {
                     <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
                       {s.desc}
                     </p>
-                    {/* Progress indicator */}
-                    <div className="mt-5 flex items-center gap-2">
-                      <div className="h-1 flex-1 rounded-full bg-muted overflow-hidden">
-                        <motion.div
-                          className="h-full bg-brand-gradient rounded-full"
-                          initial={{ width: 0 }}
-                          whileInView={{ width: `${(i + 1) * 33}%` }}
-                          viewport={{ once: true }}
-                          transition={{
-                            duration: 1,
-                            ease: easeOutExpo,
-                            delay: 0.3 + i * 0.15,
-                          }}
-                        />
-                      </div>
-                      <span className="text-[10px] font-bold text-muted-foreground">
-                        {(i + 1) * 33}%
-                      </span>
-                    </div>
                   </SpotlightCard>
                 </motion.div>
               ))}
@@ -1134,7 +1062,7 @@ export function LandingPage() {
               icon={ShieldCheck}
               label="Why IndiGate"
               title="Built for the cross-border journey"
-              subtitle="From Bengaluru to Tokyo, Hyderabad to Osaka — we handle the friction so you can focus on what you do best: great work."
+              subtitle="From India to Japan — we handle the friction so you can focus on what you do best: great work."
             />
           </Reveal>
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
@@ -1216,30 +1144,34 @@ export function LandingPage() {
                         India → Japan pipeline
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Live placement flow
+                        Real-time placement flow
                       </p>
                     </div>
-                    <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-70 animate-ping-soft" />
-                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                      </span>
-                      Live
-                    </span>
                   </div>
-                  <div className="relative mt-5 space-y-3">
+                  <div className="relative mt-6 space-y-4">
                     {[
-                      { stage: "Profile created", count: "1,947", pct: 100 },
-                      {
-                        stage: "Shortlisted by companies",
-                        count: "612",
-                        pct: 62,
-                      },
-                      { stage: "Interviews scheduled", count: "428", pct: 44 },
-                      { stage: "Offers extended", count: "312", pct: 31 },
-                      { stage: "Relocated to Japan", count: "287", pct: 28 },
-                    ].map((row, i) => (
-                      <PipelineBar key={row.stage} {...row} delay={i * 120} />
+                      { icon: FileText, label: pick("Profile created", "プロフィール作成"), desc: pick("Complete your resume", "履歴書を完成") },
+                      { icon: Search, label: pick("Matched with jobs", "求人とマッチング"), desc: pick("Apply to roles", "求人に応募") },
+                      { icon: Calendar, label: pick("Interview scheduled", "面接調整"), desc: pick("Company reviews", "企業審査") },
+                      { icon: PlaneTakeoff, label: pick("Relocated to Japan", "日本へ移住"), desc: pick("Visa + onboarding", "ビザ＋オンボーディング") },
+                    ].map((step, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -12 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: i * 0.1, duration: 0.5 }}
+                        className="flex items-center gap-3"
+                      >
+                        <div className="grid place-items-center h-9 w-9 rounded-lg bg-saffron/10 border border-saffron/20 text-saffron shrink-0">
+                          <step.icon className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate">{step.label}</p>
+                          <p className="text-xs text-muted-foreground truncate">{step.desc}</p>
+                        </div>
+                        <span className="text-xs font-bold text-muted-foreground/50">{String(i + 1).padStart(2, "0")}</span>
+                      </motion.div>
                     ))}
                   </div>
                 </div>
@@ -1537,7 +1469,7 @@ function ContactSection() {
                   {
                     icon: MapPin,
                     title: "Hyderabad, India",
-                    desc: "With partners across Tokyo & Osaka.",
+                    desc: "With partners across Japan.",
                   },
                   {
                     icon: MessageCircle,

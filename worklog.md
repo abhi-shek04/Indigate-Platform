@@ -543,3 +543,61 @@ Files modified (10):
 - `src/components/landing/landing-page.tsx` — hero with ping-dot + gradient headline + `.hero-stat` cards, section-rule dividers, `.card-premium` step cards, bg-sidebar CTA with bg-mesh overlay, saffron/crimson-only `companyColors`.
 
 No API routes, auth logic, Prisma schema, i18n keys, or `src/components/ui/*` / `src/components/auth/*` / `src/components/brand/logo.tsx` files were touched.
+
+---
+Task ID: JOB-POSTING-PREMIUM
+Agent: frontend-styling-expert
+Task: Redesign job posting UI to be premium, professional, and feature-rich — multi-step form, JD file import, premium table, Framer Motion animations.
+
+Work Log:
+- Read `src/components/admin/tabs/jobs.tsx` (627 lines), `src/components/company/tabs/new-job.tsx` (267 lines), plus supporting files (`widgets.tsx`, `dashboard-shell.tsx`, `motion.tsx`, `types.ts`, `globals.css`, `sheet.tsx`, `tooltip.tsx`, `avatar.tsx`, `progress.tsx`, API routes `/api/admin/jobs`, `/api/jobs`, `/api/admin/list/[resource]`).
+- Confirmed framer-motion v12 is already a dependency and `src/lib/motion.tsx` exports `easeOutExpo`.
+
+### File 1: `src/components/admin/tabs/jobs.tsx` (full rewrite, ~860 lines)
+**Jobs list — premium table:**
+- Wrapped `<Table>` with `.table-premium` class.
+- First column now shows company `<Avatar>` (logoUrl image or saffron initials fallback) + job title (EN + JA subtitle) + relative timestamp.
+- Added explicit "Type" column with outline badge (`FULL_TIME` etc.).
+- Added explicit "Location" column with `MapPin` icon (lg+ screens).
+- Apps column centered with `Users` icon.
+- Status column: colored pill (`bg-emerald-100 text-emerald-700` for active, muted for paused) with status dot — replaces the inline Switch.
+- Action column: 3 icon-only `<Button size="icon">` (Power toggle, Pencil edit, Trash2 delete) each wrapped in `<Tooltip>` with content labels.
+- Toggle action uses `Power` icon and contextual hover color (amber for pause, emerald for activate).
+- "Post Job" button in header uses `bg-brand-gradient + shadow-premium`. Added a secondary "Post Job" CTA inside the empty state.
+- Header now shows subtitle ("Create, edit, and manage job postings...").
+
+**JobEditorSheet — multi-step form (4 steps):**
+- Sheet width bumped from `440px` → `560px` (`w-[560px] sm:max-w-[560px]`).
+- Added sticky header with brand icon + title + description + 4-step `StepIndicator` (clickable to jump back to completed steps).
+- Step 1 — Basic Info: Company select (create mode only), Title EN (`maxLength=120`, char counter), Title JP, Location, Job Type.
+- Step 2 — Role Details: Description EN (textarea with `Progress` bar showing chars/50 min), **JD file import button** (`<input type="file" accept=".txt,.md,.pdf,.docx,.doc">` hidden behind a styled dashed outline button with `FileUp` icon), Description JP, section-rule divider, Skills via `SkillsInput` (array, not comma string), JLPT select.
+- Step 3 — Compensation: Salary Min/Max side-by-side, Salary Type select, **Currency select** (JPY/USD/INR/EUR — new field), Clear-button date picker with "No deadline = open until filled" hint, salary range summary card.
+- Step 4 — Review: prominent Active toggle card (Switch + status label), full `ReviewRow` summary of every field (company, title, location, type, JLPT, salary, skills, deadline), description preview.
+- Framer Motion `AnimatePresence` with custom direction (`slide left/right 36px + fade`) for step transitions using `easeOutExpo`.
+- Per-step validation (`validateStep`) with toast errors; final submit re-validates all steps and jumps back to first failing step.
+- Submit handler preserves same API endpoints (`/api/admin/jobs` POST, `/api/admin/jobs/{id}` PUT) and same payload shape; only adds optional `currency` field (Zod strips unknown keys safely).
+- Sticky footer with Cancel / Back (ChevronLeft) / Next (ChevronRight) / Publish Job buttons. Next uses `bg-brand-gradient`; Enter in inputs advances to next step, Enter on step 4 submits.
+- JD import handler: reads `.txt`/`.md` as text via `file.text()`, fills description, toasts "JD imported from {filename}" with char count. For PDF/DOCX, shows toast "File attached — please paste JD text manually" with explanation.
+
+### File 2: `src/components/company/tabs/new-job.tsx` (full rewrite, ~560 lines)
+- Applied same multi-step design as admin JobEditorSheet (no Company select — company posts as themselves, no isActive toggle — defaults to active on create).
+- Added Japanese title + description fields (previously missing; API already supports `titleJa`/`descriptionJa`).
+- Wrapped form in a `card-premium` container with sticky step-indicator header, animated step body, and sticky footer.
+- Added the same JD file import button (Step 2).
+- Added Currency selector alongside Salary Type (Step 3).
+- Step 4 review shows an emerald "goes live immediately" banner instead of the admin's Active toggle.
+- Preserved the original `setTab("applicants", { jobId: res.id })` redirect on successful post.
+- All i18n keys retained (`dash.company.post.*`, `jobtype.*`, `salarytype.*`, `common.*`).
+
+### Quality gates:
+- `npx tsc --noEmit` → 0 errors.
+- `bun run lint` → 0 errors.
+- Dev server (port 3000) recompiled cleanly: `✓ Compiled in 953ms`, `GET / 200`. Smoke-tested `/api/admin/list/jobs` after admin login → 200 with item payload.
+
+### Constraints honored:
+- No changes to `src/app/api/*`, `src/lib/*`, `prisma/*`, or `src/components/ui/*`.
+- Same API endpoints, same payload schema (only added optional `currency` which Zod safely strips), same auth/store flow.
+- All existing fields still sent: title, titleJa, description, descriptionJa, location, jobType, jlptRequired, salaryMin, salaryMax, salaryType, skillsRequired, deadline, isActive, companyId (admin only).
+- Used existing shadcn/ui components (Sheet, Table, Avatar, Progress, Tooltip, Switch, AlertDialog, Select, Input, Textarea, Label, Badge, Button).
+- Used existing design tokens: `bg-brand-gradient`, `card-premium`, `section-rule`, `table-premium`, `shadow-premium`, `font-display`, saffron/crimson palette.
+- Used existing `SkillsInput` from `widgets.tsx` and `easeOutExpo` from `lib/motion.tsx`.

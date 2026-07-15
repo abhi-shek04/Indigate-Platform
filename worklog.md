@@ -986,3 +986,36 @@ Stage Summary:
 - Translation API refactored: loads from DB, translates, merges, saves, returns full data — client just calls POST.
 - JaText helper shows ※未翻訳 for untranslated fields in the JP preview.
 - Files modified: `src/app/api/candidates/me/resume/translate/route.ts`, `src/app/globals.css`, `src/components/candidate/resume-preview.tsx`, `src/lib/pdf-templates/english-resume-pdf.tsx`, `src/components/candidate/resume-builder.tsx`.
+
+---
+Task ID: RESUME-ALIGN-FIX
+Agent: main (Z.ai Code)
+Task: Align EN + JP resume structures (same sections, same order, same Skills table) + fix Arjun's wrong "Bengaluru" location.
+
+Work Log:
+- Investigated the EN vs JP resume differences via Agent Browser screenshots + VLM analysis:
+  - EN sections: Personal → Education → Work → Certifications → Projects → Skills(3 checkboxes) → Skills I Excel → JLPT Current → JLPT Expected → Other Languages → Why Japan
+  - JP sections (OLD): Personal table → Education → Projects → ITスキル(3 tiers: beginner/intermediate/advanced) → Certifications → Work → Self-PR → Declaration
+  - Problems: different section order, JP missing Skills I Excel + JLPT + Other Languages + Why Japan, Skills table used a 3-tier system instead of the 3-checkbox format, JP personal info was a table while EN was a label:value list.
+- Fixed Arjun's location: seed.ts "Bengaluru, India" → "Hyderabad, Telangana, India" (matches his resume address). Updated DB record via one-off script. Verified via /api/auth/me: location now "Hyderabad, Telangana, India".
+- Rewrote `JapaneseResume` in `src/components/candidate/resume-preview.tsx` to match the `EnglishResume` structure exactly:
+  - Same personal info layout (label:value list, not table).
+  - Same section ORDER: Personal → Education → 職歴(Work) → 免許・資格(Certifications) → プロジェクト(Projects) → スキル(Skills) → 得意なスキル(Skills I Excel) → 現在のJLPT → 卒業までのJLPT → その他の言語 → 日本で働きたい理由(Why Japan) → 趣味/自己PR → 宣言(Declaration).
+  - Skills table: changed from 3-tier (初心者/中級/高度な) to the SAME 3-checkbox format as EN (授業で学習 / 単独で操作・業務可能 / 他者に指導可能 = Learned in class / Can operate alone / Can teach others), using the 2-row "習熟度レベル" spanning header.
+  - Added missing sections: 得意なスキル (Skills I Excel), 現在の日本語能力 (Current JLPT), 卒業までに達成予定 (Expected JLPT), その他の言語 (Other languages), 日本で働きたい理由について (Why Japan essays with Japanese question labels).
+  - Kept the 宣言 (Declaration) at the end — a JP resume tradition.
+  - Uses SectionEn (same section wrapper as EN) for consistent visual styling.
+  - JaText helper used for all translated content fields (shows ※未翻訳 if not translated).
+- Removed unused `ResumeSkill` import and `Section` component (old JP-only wrapper).
+- Agent Browser verification:
+  - Welcome message: "Welcome back, Arjun" / "Hyderabad, Telangana, India · JLPT N3" (was "Bengaluru, India").
+  - JP resume sections (VLM-confirmed): 氏名/性別/メール/電話/住所/国籍/本籍地 → 教育 → 職歴 → 免許・資格 → プロジェクト → スキル(3 checkboxes) → 得意なスキル → 現在のJLPT → 卒業までのJLPT → その他の言語 → 日本で働きたい理由 → 趣味/自己PR → 宣言.
+  - EN resume sections (VLM-confirmed): Education → Work → Certifications → Projects → Skills(3 checkboxes) → Skills I Excel → Current JLPT → Expected JLPT → Other Languages → Why Japan.
+  - Both now have the SAME section order + SAME Skills table format (3 checkboxes under a "Proficiency Level"/"習熟度レベル" spanning header).
+  - `npx tsc --noEmit` → 0 errors. `bun run lint` → 0 errors.
+
+Stage Summary:
+- EN and JP resumes now have identical structure: same sections, same order, same Skills 3-checkbox table format.
+- JP resume additionally has the 宣言 (Declaration) section at the end (traditional for 履歴書).
+- Arjun's location fixed: "Bengaluru, India" → "Hyderabad, Telangana, India" (in both seed + DB).
+- Files modified: `prisma/seed.ts` (location), `src/components/candidate/resume-preview.tsx` (JP resume rewrite).

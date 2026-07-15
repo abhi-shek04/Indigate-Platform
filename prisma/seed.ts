@@ -387,7 +387,7 @@ async function main() {
       fullName: "Arjun Sharma",
       phone: "+91 98765 43210",
       bio: "Full-stack engineer with 5 years building scalable web apps. Passionate about Japanese culture, N3 certified, relocating to Tokyo.",
-      location: "Bengaluru, India",
+      location: "Hyderabad, Telangana, India",
       jlptLevel: "N3",
       skills: ["React", "Node.js", "TypeScript", "PostgreSQL", "AWS"],
       experienceYears: 5,

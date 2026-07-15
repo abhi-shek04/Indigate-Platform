@@ -244,11 +244,12 @@ function SidebarFooter({
   logoutLabel: string;
 }) {
   return (
-    <div className="mt-auto px-3 pb-5 pt-4 border-t border-sidebar-border/60 flex flex-col gap-2">
+    <div className="mt-auto px-3 pb-5 pt-4 border-t border-sidebar-border/60 flex flex-col gap-1.5">
       <button
         onClick={onGoSite}
-        className="nav-item group"
+        className="nav-item group relative overflow-hidden"
       >
+        <span className="absolute inset-0 bg-gradient-to-r from-saffron/0 via-saffron/8 to-saffron/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
         <ArrowLeft className="nav-icon transition-transform group-hover:-translate-x-0.5" />
         <span>Back to site</span>
       </button>
@@ -259,9 +260,21 @@ function SidebarFooter({
         <LogOut className="nav-icon transition-transform group-hover:translate-x-0.5" />
         <span>{logoutLabel}</span>
       </button>
-      <p className="mt-1 px-3 text-[10px] font-medium uppercase tracking-[0.14em] text-sidebar-foreground/40">
-        IndiGate · India × Japan Career Platform
-      </p>
+      <div className="mt-3 px-3 flex items-center gap-2.5">
+        <img
+          src="/indobox-logo.png"
+          alt="Indobox Inc"
+          className="h-5 w-5 rounded object-contain opacity-60"
+        />
+        <div className="flex flex-col">
+          <p className="text-[10px] font-semibold text-sidebar-foreground/50 leading-tight">
+            IndiGate · Indobox Inc
+          </p>
+          <p className="text-[9px] text-sidebar-foreground/30 leading-tight">
+            India × Japan Career Platform
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

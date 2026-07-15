@@ -92,6 +92,7 @@ export function DashboardShell({
           onGoSite={goSite}
           onLogout={handleLogout}
           logoutLabel={t("nav.logout")}
+          brand={brand}
         />
       </aside>
 
@@ -125,6 +126,7 @@ export function DashboardShell({
               onGoSite={goSite}
               onLogout={handleLogout}
               logoutLabel={t("nav.logout")}
+              brand={brand}
             />
           </SheetContent>
         </Sheet>
@@ -238,10 +240,12 @@ function SidebarFooter({
   onGoSite,
   onLogout,
   logoutLabel,
+  brand,
 }: {
   onGoSite: () => void;
   onLogout: () => void;
   logoutLabel: string;
+  brand: string;
 }) {
   return (
     <div className="mt-auto px-3 pb-5 pt-4 border-t border-sidebar-border/60 flex flex-col gap-1.5">
@@ -264,14 +268,14 @@ function SidebarFooter({
         <img
           src="/indobox-logo.png"
           alt="IndiGate"
-          className="h-5 w-5 rounded object-contain opacity-60"
+          className="h-6 w-6 rounded object-contain opacity-70"
         />
         <div className="flex flex-col">
-          <p className="text-[10px] font-semibold text-sidebar-foreground/50 leading-tight">
-            IndiGate · Indobox Inc
+          <p className="text-[11px] font-bold uppercase tracking-wide text-sidebar-foreground/60 leading-tight">
+            {brand}
           </p>
           <p className="text-[9px] text-sidebar-foreground/30 leading-tight">
-            India × Japan Career Platform
+            IndiGate · India × Japan
           </p>
         </div>
       </div>

@@ -17,7 +17,7 @@ async function main() {
       email: "admin@indigate.work",
       passwordHash: adminHash,
       role: "ADMIN",
-      name: "Indobox Admin",
+      name: "Admin",
       isVerified: true,
     },
   });

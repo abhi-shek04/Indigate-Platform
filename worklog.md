@@ -601,3 +601,24 @@ Work Log:
 - Used existing shadcn/ui components (Sheet, Table, Avatar, Progress, Tooltip, Switch, AlertDialog, Select, Input, Textarea, Label, Badge, Button).
 - Used existing design tokens: `bg-brand-gradient`, `card-premium`, `section-rule`, `table-premium`, `shadow-premium`, `font-display`, saffron/crimson palette.
 - Used existing `SkillsInput` from `widgets.tsx` and `easeOutExpo` from `lib/motion.tsx`.
+
+---
+Task ID: ADMIN-AVATAR-RENAME
+Agent: main (Z.ai Code)
+Task: Update admin topbar avatar from "IA" + "Indobox Admin" to "AD" + "Admin".
+
+Work Log:
+- Read worklog.md to understand prior context (previous conversation had modified the admin topbar avatar to show "IA" + "Indobox Admin", then was being reverted).
+- Used VLM to analyze the user's uploaded screenshot (pasted_image_1784093866751.png, a 209x140 crop) — confirmed it showed an orange avatar with "IA" + text "Indobox Admin" in the topbar area.
+- Logged into the admin dashboard via Agent Browser (admin@indigate.work / admin123) to inspect the current rendered state. Found the topbar avatar was already "AD" (no text label) and the sidebar footer showed the logo image + "ADMIN" + "IndiGate · India × Japan".
+- Edited `src/components/admin/admin-dashboard.tsx` topbar `avatar` slot: kept the "AD" brand-gradient rounded square, added a `<span className="text-sm font-semibold leading-tight">Admin</span>` text label next to it so the avatar+label reads "AD Admin".
+- Updated `prisma/seed.ts`: admin user `name` changed from "Indobox Admin" to "Admin" (so future seeds match).
+- Ran a one-off `bun -e` script to `db.user.update` the existing admin record (admin@indigate.work) `name` to "Admin" in the live SQLite DB.
+- Verified via Agent Browser: reloaded admin dashboard, cropped the topbar right region, VLM confirmed "Orange rounded rectangle with 'AD' in white, followed by text 'Admin'".
+- `bun run lint` → 0 errors / 0 warnings.
+- Cleaned up temporary screenshot/crop files.
+
+Stage Summary:
+- Admin topbar now displays avatar "AD" + text label "Admin" (was "IA" + "Indobox Admin" in the user's view).
+- Admin user's `name` in DB + seed is now "Admin" (was "Indobox Admin").
+- Files modified: `src/components/admin/admin-dashboard.tsx`, `prisma/seed.ts`. DB record updated in place.

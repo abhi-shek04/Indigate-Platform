@@ -40,6 +40,7 @@ export function AdminDashboard() {
           <div className="grid place-items-center h-8 w-8 rounded-lg bg-brand-gradient text-white text-xs font-bold">
             AD
           </div>
+          <span className="text-sm font-semibold leading-tight">Admin</span>
         </div>
       }
     >

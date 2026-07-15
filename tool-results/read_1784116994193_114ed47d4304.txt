@@ -1,0 +1,902 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useRef, useState } from "react";
+     4→import { useApp } from "@/lib/store";
+     5→import { useT } from "@/lib/use-t";
+     6→import { api } from "@/lib/api-client";
+     7→import { Button } from "@/components/ui/button";
+     8→import { CompanyAvatar } from "@/components/brand/logo";
+     9→import { JobCard } from "@/components/jobs/job-card";
+    10→import { useCountUp } from "@/components/brand/use-count-up";
+    11→import {
+    12→  Reveal,
+    13→  RevealGroup,
+    14→  staggerItem,
+    15→  fadeUp,
+    16→  motion,
+    17→  easeOutExpo,
+    18→} from "@/lib/motion";
+    19→import { MagneticButton, SpotlightCard } from "@/components/brand/motion-primitives";
+    20→import {
+    21→  ArrowRight,
+    22→  Search,
+    23→  FileText,
+    24→  Plane,
+    25→  Sparkles,
+    26→  CheckCircle2,
+    27→  Quote,
+    28→  Mail,
+    29→  Briefcase,
+    30→  Globe2,
+    31→  ShieldCheck,
+    32→  Heart,
+    33→  Star,
+    34→  Building2,
+    35→  Wrench,
+    36→  ArrowLeftRight,
+    37→  HelpCircle,
+    38→  Users,
+    39→  Award,
+    40→} from "lucide-react";
+    41→import { toast } from "sonner";
+    42→import type { JobDTO, TestimonialDTO } from "@/lib/types";
+    43→import {
+    44→  Accordion,
+    45→  AccordionContent,
+    46→  AccordionItem,
+    47→  AccordionTrigger,
+    48→} from "@/components/ui/accordion";
+    49→
+    50→interface Stats {
+    51→  jobCount: number;
+    52→  candidateCount: number;
+    53→  companyCount: number;
+    54→  placementCount: number;
+    55→}
+    56→
+    57→/**
+    58→ * Premium section header — saffron pill label + bold headline + muted subtitle,
+    59→ * centered, with a subtle saffron→border gradient divider line below.
+    60→ * Used by every post-hero section so the page feels like one continuous story.
+    61→ */
+    62→function SectionHeader({
+    63→  icon: Icon,
+    64→  label,
+    65→  title,
+    66→  subtitle,
+    67→  className,
+    68→}: {
+    69→  icon: React.ComponentType<{ className?: string }>;
+    70→  label: string;
+    71→  title: string;
+    72→  subtitle?: string;
+    73→  className?: string;
+    74→}) {
+    75→  return (
+    76→    <div className={"text-center mb-12 " + (className ?? "")}>
+    77→      <span className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-crimson">
+    78→        <Icon className="h-3 w-3" />
+    79→        {label}
+    80→      </span>
+    81→      <h2 className="mt-4 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+    82→        {title}
+    83→      </h2>
+    84→      {subtitle ? (
+    85→        <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
+    86→          {subtitle}
+    87→        </p>
+    88→      ) : null}
+    89→      <div className="section-rule mt-5 max-w-xs mx-auto" />
+    90→    </div>
+    91→  );
+    92→}
+    93→
+    94→function StatCard({
+    95→  value,
+    96→  suffix,
+    97→  label,
+    98→  delay,
+    99→  icon: Icon,
+   100→}: {
+   101→  value: number;
+   102→  suffix?: string;
+   103→  label: string;
+   104→  delay: number;
+   105→  icon: React.ComponentType<{ className?: string }>;
+   106→}) {
+   107→  const count = useCountUp(value, 1800);
+   108→  const ref = useRef<HTMLDivElement>(null);
+   109→  const [visible, setVisible] = useState(false);
+   110→
+   111→  useEffect(() => {
+   112→    const el = ref.current;
+   113→    if (!el) return;
+   114→    const obs = new IntersectionObserver(
+   115→      ([e]) => {
+   116→        if (e.isIntersecting) {
+   117→          setVisible(true);
+   118→          obs.disconnect();
+   119→        }
+   120→      },
+   121→      { threshold: 0.3 },
+   122→    );
+   123→    obs.observe(el);
+   124→    return () => obs.disconnect();
+   125→  }, []);
+   126→
+   127→  return (
+   128→    <motion.div
+   129→      ref={ref}
+   130→      initial={{ opacity: 0, y: 24 }}
+   131→      animate={visible ? { opacity: 1, y: 0 } : {}}
+   132→      transition={{ duration: 0.6, ease: easeOutExpo, delay }}
+   133→      whileHover={{ y: -4 }}
+   134→      className="hero-stat group px-5 py-6 text-center transition-transform hover:-translate-y-1"
+   135→    >
+   136→      {/* Saffron accent line on top is provided by .hero-stat::after */}
+   137→      <div className="relative flex flex-col items-center">
+   138→        <motion.div
+   139→          whileHover={{ rotate: [0, -8, 8, 0], scale: 1.08 }}
+   140→          transition={{ duration: 0.5 }}
+   141→          className="mb-3 grid place-items-center h-11 w-11 rounded-xl bg-saffron/10 text-saffron ring-1 ring-inset ring-saffron/20"
+   142→        >
+   143→          <Icon className="h-5 w-5" />
+   144→        </motion.div>
+   145→        <div className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight leading-none">
+   146→          <span className="text-gradient-brand">
+   147→            {count.toLocaleString()}
+   148→            {suffix}
+   149→          </span>
+   150→        </div>
+   151→        <p className="mt-2 text-xs sm:text-sm font-medium text-muted-foreground uppercase tracking-wide">
+   152→          {label}
+   153→        </p>
+   154→      </div>
+   155→    </motion.div>
+   156→  );
+   157→}
+   158→
+   159→// Animated pipeline bar that fills when scrolled into view
+   160→function PipelineBar({
+   161→  stage,
+   162→  count,
+   163→  pct,
+   164→  delay,
+   165→}: {
+   166→  stage: string;
+   167→  count: string;
+   168→  pct: number;
+   169→  delay: number;
+   170→}) {
+   171→  const ref = useRef<HTMLDivElement>(null);
+   172→  const [visible, setVisible] = useState(false);
+   173→  useEffect(() => {
+   174→    const el = ref.current;
+   175→    if (!el) return;
+   176→    const obs = new IntersectionObserver(
+   177→      ([e]) => {
+   178→        if (e.isIntersecting) {
+   179→          setVisible(true);
+   180→          obs.disconnect();
+   181→        }
+   182→      },
+   183→      { threshold: 0.4 },
+   184→    );
+   185→    obs.observe(el);
+   186→    return () => obs.disconnect();
+   187→  }, []);
+   188→
+   189→  return (
+   190→    <div ref={ref}>
+   191→      <div className="flex justify-between text-xs mb-1.5">
+   192→        <span className="font-medium">{stage}</span>
+   193→        <span className="text-muted-foreground">{count}</span>
+   194→      </div>
+   195→      <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+   196→        <motion.div
+   197→          className="h-full bg-brand-gradient rounded-full"
+   198→          initial={{ width: 0 }}
+   199→          animate={visible ? { width: `${pct}%` } : {}}
+   200→          transition={{ duration: 1.1, ease: easeOutExpo, delay }}
+   201→        />
+   202→      </div>
+   203→    </div>
+   204→  );
+   205→}
+   206→
+   207→export function LandingPage() {
+   208→  const { t, pick } = useT();
+   209→  const navigate = useApp((s) => s.navigate);
+   210→  const user = useApp((s) => s.user);
+   211→  const [stats, setStats] = useState<Stats | null>(null);
+   212→  const [featured, setFeatured] = useState<JobDTO[]>([]);
+   213→  const [testimonials, setTestimonials] = useState<TestimonialDTO[]>([]);
+   214→
+   215→  useEffect(() => {
+   216→    Promise.all([
+   217→      api<{ jobCount: number; candidateCount: number; companyCount: number; placementCount: number }>(
+   218→        "/api/jobs/stats",
+   219→      ),
+   220→      api<{ jobs: JobDTO[] }>("/api/jobs?limit=3"),
+   221→      api<{ testimonials: TestimonialDTO[] }>("/api/testimonials?active=true"),
+   222→    ])
+   223→      .then(([s, f, te]) => {
+   224→        setStats(s);
+   225→        setFeatured(f.jobs);
+   226→        setTestimonials(te.testimonials);
+   227→      })
+   228→      .catch(() => {});
+   229→  }, []);
+   230→
+   231→  const companyColors = [
+   232→    "#f59e0b", // saffron
+   233→    "#dc2626", // crimson
+   234→    "#d97706", // amber-dark (saffron family)
+   235→    "#b91c1c", // crimson-dark
+   236→    "#fbbf24", // amber (saffron family)
+   237→    "#7f1d1d", // crimson-deep
+   238→  ];
+   239→
+   240→  return (
+   241→    <main>
+   242→      {/* HERO */}
+   243→      <section className="relative overflow-hidden bg-mesh">
+   244→        {/* Fine grid pattern overlay */}
+   245→        <div
+   246→          aria-hidden
+   247→          className="pointer-events-none absolute inset-0 -z-10 opacity-[0.18] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]"
+   248→          style={{
+   249→            backgroundImage:
+   250→              "linear-gradient(to right, color-mix(in oklch, var(--foreground) 12%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in oklch, var(--foreground) 12%, transparent) 1px, transparent 1px)",
+   251→            backgroundSize: "56px 56px",
+   252→          }}
+   253→        />
+   254→        {/* Animated aurora blobs */}
+   255→        <div className="absolute inset-0 -z-10">
+   256→          <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-saffron/25 blur-3xl animate-aurora" />
+   257→          <div
+   258→            className="absolute top-40 -right-24 h-[28rem] w-[28rem] rounded-full bg-crimson/18 blur-3xl animate-aurora"
+   259→            style={{ animationDelay: "2.5s" }}
+   260→          />
+   261→          <div
+   262→            className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-saffron/12 blur-3xl animate-aurora"
+   263→            style={{ animationDelay: "5s" }}
+   264→          />
+   265→        </div>
+   266→        {/* Bottom fade into the page */}
+   267→        <div
+   268→          aria-hidden
+   269→          className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-background"
+   270→        />
+   271→
+   272→        {/* Parallax mouse-follow handled via CSS only for perf */}
+   273→        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-16 pb-16 sm:pt-24 sm:pb-20">
+   274→          <RevealGroup className="mx-auto max-w-3xl text-center" stagger={0.12} delayChildren={0.1}>
+   275→            <motion.div variants={staggerItem} className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/10 px-4 py-1.5 text-sm font-medium text-crimson shadow-premium">
+   276→              <span className="relative flex h-2 w-2">
+   277→                <span className="absolute inline-flex h-full w-full rounded-full bg-saffron opacity-70 animate-ping-soft" />
+   278→                <span className="relative inline-flex h-2 w-2 rounded-full bg-saffron" />
+   279→              </span>
+   280→              {t("hero.badge")}
+   281→            </motion.div>
+   282→            <motion.h1
+   283→              variants={staggerItem}
+   284→              className="mt-7 font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05] text-gradient-brand"
+   285→            >
+   286→              {t("hero.title")}
+   287→            </motion.h1>
+   288→            <motion.p
+   289→              variants={staggerItem}
+   290→              className="mt-6 text-lg sm:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto"
+   291→            >
+   292→              {t("hero.subtitle")}
+   293→            </motion.p>
+   294→            <motion.div
+   295→              variants={staggerItem}
+   296→              className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3"
+   297→            >
+   298→              <MagneticButton
+   299→                onClick={() => navigate("jobs")}
+   300→                className="bg-brand-gradient text-white hover:opacity-90 font-semibold text-base h-12 px-7 rounded-xl shadow-glow-brand inline-flex items-center gap-2 cursor-pointer"
+   301→              >
+   302→                <Search className="h-4 w-4" />
+   303→                {t("hero.cta.find")}
+   304→                <ArrowRight className="h-4 w-4" />
+   305→              </MagneticButton>
+   306→              {user ? (
+   307→                <MagneticButton
+   308→                  onClick={() => navigate(user.role === "CANDIDATE" ? "candidate" : user.role === "COMPANY" ? "company" : "admin")}
+   309→                  className="bg-background border-2 border-border hover:border-saffron/50 font-semibold text-base h-12 px-7 rounded-xl inline-flex items-center gap-2 cursor-pointer"
+   310→                >
+   311→                  {pick("Go to Dashboard", "ダッシュボードへ")}
+   312→                </MagneticButton>
+   313→              ) : (
+   314→                <MagneticButton
+   315→                  onClick={() => navigate("register")}
+   316→                  className="bg-background border-2 border-border hover:border-saffron/50 font-semibold text-base h-12 px-7 rounded-xl inline-flex items-center gap-2 cursor-pointer"
+   317→                >
+   318→                  {t("hero.cta.hire")}
+   319→                </MagneticButton>
+   320→              )}
+   321→            </motion.div>
+   322→            <motion.p variants={staggerItem} className="mt-7 text-xs text-muted-foreground">
+   323→              {t("hero.trusted")}
+   324→            </motion.p>
+   325→          </RevealGroup>
+   326→
+   327→          {/* Hero company strip */}
+   328→          <Reveal variants={fadeUp} delay={0.5} className="mt-12">
+   329→            <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 opacity-70">
+   330→              {["TechNova", "SakuraSoft", "Mitsui Eng.", "Hikari", "Kintaro"].map(
+   331→                (name, i) => (
+   332→                  <motion.div
+   333→                    key={name}
+   334→                    whileHover={{ scale: 1.08, y: -2 }}
+   335→                    transition={{ type: "spring", stiffness: 400, damping: 20 }}
+   336→                    className="flex items-center gap-2 cursor-default"
+   337→                  >
+   338→                    <CompanyAvatar
+   339→                      name={name}
+   340→                      color={companyColors[i % companyColors.length]}
+   341→                      size={28}
+   342→                    />
+   343→                    <span className="font-display font-bold text-sm">{name}</span>
+   344→                  </motion.div>
+   345→                ),
+   346→              )}
+   347→            </div>
+   348→          </Reveal>
+   349→        </div>
+   350→
+   351→        {/* Stats bar — premium floating glass card sitting at the bottom of the hero */}
+   352→        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-14 sm:pb-16">
+   353→          <div className="rounded-2xl glass border border-border/70 shadow-premium p-3 sm:p-4">
+   354→            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+   355→              <StatCard value={stats?.jobCount ?? 12} suffix="+" label={t("stats.jobs")} delay={0} icon={Briefcase} />
+   356→              <StatCard value={stats?.candidateCount ?? 1900} suffix="+" label={t("stats.candidates")} delay={120} icon={Users} />
+   357→              <StatCard value={stats?.companyCount ?? 5} suffix="+" label={t("stats.companies")} delay={240} icon={Building2} />
+   358→              <StatCard value={stats?.placementCount ?? 312} suffix="+" label={t("stats.placements")} delay={360} icon={Award} />
+   359→            </div>
+   360→          </div>
+   361→        </div>
+   362→      </section>
+   363→
+   364→      {/* FEATURED JOBS */}
+   365→      {featured.length > 0 && (
+   366→        <section className="py-14 sm:py-16 bg-background">
+   367→          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   368→            <Reveal variants={fadeUp}>
+   369→              <SectionHeader
+   370→                icon={Briefcase}
+   371→                label="Featured"
+   372→                title={t("jobs.title")}
+   373→                subtitle={t("jobs.subtitle")}
+   374→              />
+   375→            </Reveal>
+   376→            <RevealGroup className="grid gap-5 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3" stagger={0.1}>
+   377→              {featured.map((job) => (
+   378→                <motion.div
+   379→                  key={job.id}
+   380→                  variants={staggerItem}
+   381→                  whileHover={{ y: -6 }}
+   382→                  transition={{ type: "spring", stiffness: 300, damping: 22 }}
+   383→                  className="h-full"
+   384→                >
+   385→                  <JobCard job={job} />
+   386→                </motion.div>
+   387→              ))}
+   388→            </RevealGroup>
+   389→            <Reveal variants={fadeUp} delay={0.1} className="mt-10 text-center">
+   390→              <Button
+   391→                variant="outline"
+   392→                onClick={() => navigate("jobs")}
+   393→                className="font-semibold group h-11 px-6 rounded-xl border-saffron/30 hover:border-saffron/60 hover:bg-saffron/5"
+   394→              >
+   395→                {t("jobs.viewall")}
+   396→                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+   397→              </Button>
+   398→            </Reveal>
+   399→          </div>
+   400→        </section>
+   401→      )}
+   402→
+   403→      {/* HOW IT WORKS */}
+   404→      <section className="py-14 sm:py-16 bg-card/30 border-y border-border">
+   405→        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   406→          <Reveal variants={fadeUp}>
+   407→            <SectionHeader
+   408→              icon={Sparkles}
+   409→              label="Process"
+   410→              title={t("how.title")}
+   411→              subtitle={t("how.subtitle")}
+   412→            />
+   413→          </Reveal>
+   414→
+   415→          <RevealGroup className="grid gap-6 md:grid-cols-3 relative" stagger={0.14}>
+   416→            {/* Timeline connector line on md+ */}
+   417→            <div
+   418→              aria-hidden
+   419→              className="hidden md:block absolute top-[3.25rem] left-[16.667%] right-[16.667%] h-px bg-gradient-to-r from-saffron/10 via-saffron/40 to-crimson/10"
+   420→            />
+   421→            {[
+   422→              { icon: FileText, title: t("how.1.title"), desc: t("how.1.desc"), step: "01" },
+   423→              { icon: Search, title: t("how.2.title"), desc: t("how.2.desc"), step: "02" },
+   424→              { icon: Plane, title: t("how.3.title"), desc: t("how.3.desc"), step: "03" },
+   425→            ].map((s, i) => (
+   426→              <motion.div key={i} variants={staggerItem} whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 300, damping: 20 }} className="relative">
+   427→                <SpotlightCard className="card-premium relative h-full p-7 overflow-hidden">
+   428→                  <span className="absolute top-5 right-6 font-display text-5xl font-extrabold text-saffron/10 select-none">
+   429→                    {s.step}
+   430→                  </span>
+   431→                  {/* Numbered badge — sits on the timeline */}
+   432→                  <div className="relative z-10 mb-5 flex items-center gap-3">
+   433→                    <motion.div
+   434→                      whileHover={{ rotate: [0, -8, 8, 0], scale: 1.06 }}
+   435→                      transition={{ duration: 0.5 }}
+   436→                      className="grid place-items-center h-12 w-12 rounded-full bg-brand-gradient text-white shadow-glow-brand ring-4 ring-background"
+   437→                    >
+   438→                      <s.icon className="h-5 w-5" />
+   439→                    </motion.div>
+   440→                    <span className="text-xs font-bold uppercase tracking-[0.18em] text-saffron">
+   441→                      Step {s.step}
+   442→                    </span>
+   443→                  </div>
+   444→                  <h3 className="font-display text-xl font-bold">{s.title}</h3>
+   445→                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
+   446→                </SpotlightCard>
+   447→              </motion.div>
+   448→            ))}
+   449→          </RevealGroup>
+   450→        </div>
+   451→      </section>
+   452→
+   453→      {/* VISA GUIDE */}
+   454→      <section className="py-14 sm:py-16 bg-background">
+   455→        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   456→          <Reveal variants={fadeUp}>
+   457→            <SectionHeader
+   458→              icon={Plane}
+   459→              label="Visa Guide"
+   460→              title={t("visa.title")}
+   461→              subtitle={t("visa.subtitle")}
+   462→            />
+   463→          </Reveal>
+   464→
+   465→          <div className="max-w-4xl mx-auto">
+   466→            <Reveal variants={fadeUp} delay={0.15}>
+   467→              <Accordion type="single" collapsible className="space-y-3">
+   468→                <VisaAccordionItem
+   469→                  value="ssw"
+   470→                  icon={Wrench}
+   471→                  title={t("visa.ssw.title")}
+   472→                  desc={t("visa.ssw.desc")}
+   473→                  requirements={["JLPT N4 or higher", "Industry skills test", "Valid passport", "Health certificate"]}
+   474→                />
+   475→                <VisaAccordionItem
+   476→                  value="engineer"
+   477→                  icon={Building2}
+   478→                  title={t("visa.engineer.title")}
+   479→                  desc={t("visa.engineer.desc")}
+   480→                  requirements={["Bachelor's degree OR 10 years experience", "Job offer from Japanese company", "Relevant field experience", "Valid passport"]}
+   481→                />
+   482→                <VisaAccordionItem
+   483→                  value="transfer"
+   484→                  icon={ArrowLeftRight}
+   485→                  title={t("visa.transfer.title")}
+   486→                  desc={t("visa.transfer.desc")}
+   487→                  requirements={["1+ year at same company", "Transfer to Japan office", "Valid passport", "Employment contract"]}
+   488→                />
+   489→              </Accordion>
+   490→            </Reveal>
+   491→
+   492→            {/* Support callout */}
+   493→            <Reveal variants={fadeUp} delay={0.3}>
+   494→              <div className="mt-8 rounded-2xl bg-brand-gradient p-6 sm:p-8 text-center shadow-glow-brand">
+   495→                <ShieldCheck className="h-8 w-8 text-white mx-auto mb-3" />
+   496→                <p className="text-white font-semibold text-lg leading-relaxed max-w-2xl mx-auto">
+   497→                  {t("visa.support")}
+   498→                </p>
+   499→                <MagneticButton
+   500→                  onClick={() => navigate("home")}
+   501→                  className="mt-5 bg-white text-crimson hover:bg-white/90 font-bold h-11 px-6 rounded-xl inline-flex items-center gap-2 cursor-pointer"
+   502→                >
+   503→                  {t("visa.cta")}
+   504→                  <ArrowRight className="h-4 w-4" />
+   505→                </MagneticButton>
+   506→              </div>
+   507→            </Reveal>
+   508→          </div>
+   509→        </div>
+   510→      </section>
+   511→
+   512→      {/* WHY INDIGATE / VALUE PROPS */}
+   513→      <section className="py-14 sm:py-16 bg-card/30 border-y border-border">
+   514→        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   515→          <Reveal variants={fadeUp}>
+   516→            <SectionHeader
+   517→              icon={ShieldCheck}
+   518→              label="Why IndiGate"
+   519→              title="Built for the cross-border journey"
+   520→              subtitle="From Bengaluru to Tokyo, Hyderabad to Osaka — we handle the friction so you can focus on what you do best: great work."
+   521→            />
+   522→          </Reveal>
+   523→          <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+   524→            <Reveal variants={fadeUp}>
+   525→              <ul className="space-y-3">
+   526→                {[
+   527→                  { icon: ShieldCheck, title: "Visa & relocation support", desc: "Every listed job comes with visa sponsorship. Our partners handle paperwork, housing, and onboarding." },
+   528→                  { icon: Globe2, title: "Bilingual by design", desc: "Browse jobs in English or Japanese. Companies can post in both languages." },
+   529→                  { icon: Heart, title: "Human-reviewed employers", desc: "Every company is vetted by the Indobox team before they can post a single role." },
+   530→                  { icon: Star, title: "End-to-end support", desc: "From job matching to visa application and relocation — we support you at every step." },
+   531→                ].map((item, i) => (
+   532→                  <motion.li
+   533→                    key={i}
+   534→                    initial={{ opacity: 0, x: -16 }}
+   535→                    whileInView={{ opacity: 1, x: 0 }}
+   536→                    viewport={{ once: true }}
+   537→                    transition={{ duration: 0.5, ease: easeOutExpo, delay: i * 0.08 }}
+   538→                    whileHover={{ x: 4 }}
+   539→                    className="group flex gap-4 rounded-xl border border-transparent hover:border-saffron/30 hover:bg-card hover:shadow-premium p-3 -m-3 transition-all"
+   540→                  >
+   541→                    <div className="shrink-0 grid place-items-center h-10 w-10 rounded-lg bg-saffron/10 text-saffron ring-1 ring-inset ring-saffron/15 group-hover:bg-brand-gradient group-hover:text-white group-hover:ring-transparent transition-all">
+   542→                      <item.icon className="h-5 w-5" />
+   543→                    </div>
+   544→                    <div>
+   545→                      <p className="font-semibold">{item.title}</p>
+   546→                      <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{item.desc}</p>
+   547→                    </div>
+   548→                  </motion.li>
+   549→                ))}
+   550→              </ul>
+   551→            </Reveal>
+   552→
+   553→            <Reveal variants={fadeUp}>
+   554→              <div className="relative">
+   555→                <div className="absolute inset-0 -z-10 bg-mesh rounded-3xl" />
+   556→                <div className="rounded-3xl border border-border bg-card p-6 shadow-premium">
+   557→                  <div className="flex items-center gap-3 pb-4 border-b">
+   558→                    <motion.div
+   559→                      animate={{ scale: [1, 1.06, 1] }}
+   560→                      transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+   561→                      className="grid place-items-center h-10 w-10 rounded-lg bg-brand-gradient text-white"
+   562→                    >
+   563→                      <Globe2 className="h-5 w-5" />
+   564→                    </motion.div>
+   565→                    <div>
+   566→                      <p className="font-semibold text-sm">India → Japan pipeline</p>
+   567→                      <p className="text-xs text-muted-foreground">Live placement flow</p>
+   568→                    </div>
+   569→                  </div>
+   570→                  <div className="mt-5 space-y-3">
+   571→                    {[
+   572→                      { stage: "Profile created", count: "1,947", pct: 100 },
+   573→                      { stage: "Shortlisted by companies", count: "612", pct: 62 },
+   574→                      { stage: "Interviews scheduled", count: "428", pct: 44 },
+   575→                      { stage: "Offers extended", count: "312", pct: 31 },
+   576→                      { stage: "Relocated to Japan", count: "287", pct: 28 },
+   577→                    ].map((row, i) => (
+   578→                      <PipelineBar key={row.stage} {...row} delay={i * 0.12} />
+   579→                    ))}
+   580→                  </div>
+   581→                </div>
+   582→              </div>
+   583→            </Reveal>
+   584→          </div>
+   585→        </div>
+   586→      </section>
+   587→
+   588→      {/* TESTIMONIALS */}
+   589→      {testimonials.length > 0 && (
+   590→        <section className="py-14 sm:py-16 bg-background overflow-hidden">
+   591→          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   592→            <Reveal variants={fadeUp}>
+   593→              <SectionHeader
+   594→                icon={Quote}
+   595→                label="Testimonials"
+   596→                title={t("testimonials.title")}
+   597→                subtitle={t("testimonials.subtitle")}
+   598→              />
+   599→            </Reveal>
+   600→          </div>
+   601→
+   602→          <div className="relative">
+   603→            {/* Edge fade masks */}
+   604→            <div
+   605→              aria-hidden
+   606→              className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 sm:w-32 bg-gradient-to-r from-background to-transparent"
+   607→            />
+   608→            <div
+   609→              aria-hidden
+   610→              className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 sm:w-32 bg-gradient-to-l from-background to-transparent"
+   611→            />
+   612→            <div className="flex gap-5 w-max animate-marquee">
+   613→              {[...testimonials, ...testimonials].map((te, i) => (
+   614→                <figure
+   615→                  key={i}
+   616→                  className="w-[340px] sm:w-[400px] shrink-0 rounded-2xl border border-border bg-card p-6 shadow-premium transition-all hover:shadow-glow-brand hover:border-saffron/40 hover:-translate-y-1.5"
+   617→                >
+   618→                  <div className="flex items-start justify-between">
+   619→                    <Quote className="h-8 w-8 text-saffron/50" />
+   620→                    <div className="flex gap-0.5">
+   621→                      {Array.from({ length: 5 }).map((_, s) => (
+   622→                        <Star key={s} className="h-3.5 w-3.5 fill-saffron text-saffron" />
+   623→                      ))}
+   624→                    </div>
+   625→                  </div>
+   626→                  <blockquote className="mt-3 text-sm leading-relaxed text-foreground/90">
+   627→                    {pick(te.content, te.contentJa)}
+   628→                  </blockquote>
+   629→                  <figcaption className="mt-5 flex items-center gap-3 border-t border-border/60 pt-4">
+   630→                    <CompanyAvatar name={te.name} size={40} />
+   631→                    <div>
+   632→                      <p className="font-semibold text-sm">{te.name}</p>
+   633→                      <p className="text-xs text-muted-foreground">
+   634→                        {te.role}
+   635→                        {te.company ? ` · ${te.company}` : ""}
+   636→                      </p>
+   637→                    </div>
+   638→                  </figcaption>
+   639→                </figure>
+   640→              ))}
+   641→            </div>
+   642→          </div>
+   643→        </section>
+   644→      )}
+   645→
+   646→      {/* FAQ */}
+   647→      <section className="py-14 sm:py-16 bg-card/30 border-y border-border">
+   648→        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   649→          <Reveal variants={fadeUp}>
+   650→            <SectionHeader
+   651→              icon={HelpCircle}
+   652→              label={t("faq.badge")}
+   653→              title={t("faq.title")}
+   654→              subtitle={t("faq.subtitle")}
+   655→            />
+   656→          </Reveal>
+   657→          <div className="max-w-3xl mx-auto">
+   658→            <Reveal variants={fadeUp} delay={0.1}>
+   659→              <Accordion type="single" collapsible className="space-y-2">
+   660→                {[
+   661→                  { q: t("faq.q1"), a: t("faq.a1") },
+   662→                  { q: t("faq.q2"), a: t("faq.a2") },
+   663→                  { q: t("faq.q3"), a: t("faq.a3") },
+   664→                  { q: t("faq.q4"), a: t("faq.a4") },
+   665→                  { q: t("faq.q5"), a: t("faq.a5") },
+   666→                  { q: t("faq.q6"), a: t("faq.a6") },
+   667→                  { q: t("faq.q7"), a: t("faq.a7") },
+   668→                  { q: t("faq.q8"), a: t("faq.a8") },
+   669→                ].map((item, i) => (
+   670→                  <AccordionItem
+   671→                    key={i}
+   672→                    value={`faq-${i}`}
+   673→                    className="border border-border rounded-xl px-6 bg-background hover:border-saffron/30 hover:shadow-premium transition-all"
+   674→                  >
+   675→                    <AccordionTrigger className="font-display font-semibold text-left hover:no-underline py-5 text-base">
+   676→                      {item.q}
+   677→                    </AccordionTrigger>
+   678→                    <AccordionContent className="text-muted-foreground leading-relaxed pb-5">
+   679→                      {item.a}
+   680→                    </AccordionContent>
+   681→                  </AccordionItem>
+   682→                ))}
+   683→              </Accordion>
+   684→            </Reveal>
+   685→          </div>
+   686→        </div>
+   687→      </section>
+   688→
+   689→      {/* CTA */}
+   690→      <section className="py-14 sm:py-16 bg-background">
+   691→        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   692→          <Reveal variants={fadeUp}>
+   693→            <div className="card-premium relative overflow-hidden rounded-3xl bg-sidebar text-sidebar-foreground px-8 py-14 sm:px-16 sm:py-18 text-center">
+   694→              {/* Mesh overlay with saffron/crimson aurora */}
+   695→              <div
+   696→                aria-hidden
+   697→                className="pointer-events-none absolute inset-0 bg-mesh opacity-60 mix-blend-screen"
+   698→              />
+   699→              {/* Glow blobs */}
+   700→              <div className="pointer-events-none absolute inset-0 opacity-50">
+   701→                <div className="absolute top-0 left-1/4 h-40 w-40 rounded-full bg-saffron/30 blur-3xl animate-aurora" />
+   702→                <div className="absolute bottom-0 right-1/4 h-56 w-56 rounded-full bg-crimson/30 blur-3xl animate-aurora" style={{ animationDelay: "3s" }} />
+   703→              </div>
+   704→              <div className="relative">
+   705→                <h2 className="font-display text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
+   706→                  {user ? pick("Welcome back!", "おかえりなさい！") : t("cta.title")}
+   707→                </h2>
+   708→                <p className="mt-4 text-white/90 text-lg max-w-2xl mx-auto">
+   709→                  {user ? pick("Continue your Japan journey from where you left off.", "日本へのキャリアを続けましょう。") : t("cta.subtitle")}
+   710→                </p>
+   711→                <MagneticButton
+   712→                  onClick={() => navigate(user ? (user.role === "CANDIDATE" ? "candidate" : user.role === "COMPANY" ? "company" : "admin") : "register")}
+   713→                  className="mt-8 bg-white text-crimson hover:bg-white/90 font-bold text-base h-12 px-8 rounded-xl inline-flex items-center gap-2 cursor-pointer shadow-lg"
+   714→                >
+   715→                  {user ? pick("Go to Dashboard", "ダッシュボードへ") : t("cta.button")}
+   716→                  <ArrowRight className="h-4 w-4" />
+   717→                </MagneticButton>
+   718→              </div>
+   719→            </div>
+   720→          </Reveal>
+   721→        </div>
+   722→      </section>
+   723→
+   724→      {/* CONTACT */}
+   725→      <ContactSection />
+   726→    </main>
+   727→  );
+   728→}
+   729→
+   730→function ContactSection() {
+   731→  const { t } = useT();
+   732→  const [loading, setLoading] = useState(false);
+   733→  const [sent, setSent] = useState(false);
+   734→  const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
+   735→
+   736→  async function submit(e: React.FormEvent) {
+   737→    e.preventDefault();
+   738→    setLoading(true);
+   739→    try {
+   740→      await api("/api/contact", {
+   741→        method: "POST",
+   742→        body: JSON.stringify(form),
+   743→      });
+   744→      setSent(true);
+   745→      setForm({ name: "", email: "", subject: "", message: "" });
+   746→      toast.success(t("contact.success"));
+   747→    } catch (e) {
+   748→      toast.error(e instanceof Error ? e.message : "Failed to send.");
+   749→    } finally {
+   750→      setLoading(false);
+   751→    }
+   752→  }
+   753→
+   754→  return (
+   755→    <section id="contact" className="py-14 sm:py-16 bg-card/30 border-y border-border">
+   756→      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   757→        <Reveal variants={fadeUp}>
+   758→          <SectionHeader
+   759→            icon={Mail}
+   760→            label="Contact"
+   761→            title={t("contact.title")}
+   762→            subtitle={t("contact.subtitle")}
+   763→          />
+   764→        </Reveal>
+   765→
+   766→        <div className="max-w-3xl mx-auto">
+   767→        <Reveal variants={fadeUp} delay={0.15}>
+   768→          {sent ? (
+   769→            <motion.div
+   770→              initial={{ opacity: 0, scale: 0.9 }}
+   771→              animate={{ opacity: 1, scale: 1 }}
+   772→              transition={{ type: "spring", stiffness: 300, damping: 22 }}
+   773→              className="rounded-2xl border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40 p-8 text-center"
+   774→            >
+   775→              <motion.div
+   776→                initial={{ scale: 0 }}
+   777→                animate={{ scale: 1 }}
+   778→                transition={{ type: "spring", stiffness: 260, damping: 14, delay: 0.1 }}
+   779→                className="mx-auto mb-3"
+   780→              >
+   781→                <CheckCircle2 className="h-12 w-12 text-emerald-600 mx-auto" />
+   782→              </motion.div>
+   783→              <p className="font-semibold text-emerald-800 dark:text-emerald-300">
+   784→                {t("contact.success")}
+   785→              </p>
+   786→            </motion.div>
+   787→          ) : (
+   788→            <form onSubmit={submit} className="space-y-4">
+   789→              <div className="grid sm:grid-cols-2 gap-4">
+   790→                <Field label={t("contact.name")}>
+   791→                  <input
+   792→                    required
+   793→                    value={form.name}
+   794→                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+   795→                    className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40 transition-shadow"
+   796→                    placeholder="Arjun Sharma"
+   797→                  />
+   798→                </Field>
+   799→                <Field label={t("contact.email")}>
+   800→                  <input
+   801→                    required
+   802→                    type="email"
+   803→                    value={form.email}
+   804→                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+   805→                    className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40 transition-shadow"
+   806→                    placeholder="you@example.com"
+   807→                  />
+   808→                </Field>
+   809→              </div>
+   810→              <Field label={t("contact.subject")}>
+   811→                <input
+   812→                  value={form.subject}
+   813→                  onChange={(e) => setForm({ ...form, subject: e.target.value })}
+   814→                  className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40 transition-shadow"
+   815→                  placeholder="How can we help?"
+   816→                />
+   817→              </Field>
+   818→              <Field label={t("contact.message")}>
+   819→                <textarea
+   820→                  required
+   821→                  minLength={20}
+   822→                  value={form.message}
+   823→                  onChange={(e) => setForm({ ...form, message: e.target.value })}
+   824→                  rows={5}
+   825→                  className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40 resize-none transition-shadow"
+   826→                  placeholder="Tell us a bit about what you need..."
+   827→                />
+   828→              </Field>
+   829→              <motion.div whileHover={{ scale: 1.005 }} whileTap={{ scale: 0.99 }}>
+   830→                <Button
+   831→                  type="submit"
+   832→                  disabled={loading}
+   833→                  className="w-full bg-brand-gradient text-white hover:opacity-90 font-semibold h-12"
+   834→                >
+   835→                  {loading ? t("common.loading") : t("contact.submit")}
+   836→                </Button>
+   837→              </motion.div>
+   838→            </form>
+   839→          )}
+   840→        </Reveal>
+   841→        </div>
+   842→      </div>
+   843→    </section>
+   844→  );
+   845→}
+   846→
+   847→function Field({ label, children }: { label: string; children: React.ReactNode }) {
+   848→  return (
+   849→    <label className="block">
+   850→      <span className="text-sm font-medium mb-1.5 block">{label}</span>
+   851→      {children}
+   852→    </label>
+   853→  );
+   854→}
+   855→
+   856→function VisaAccordionItem({
+   857→  value,
+   858→  icon: Icon,
+   859→  title,
+   860→  desc,
+   861→  requirements,
+   862→}: {
+   863→  value: string;
+   864→  icon: React.ComponentType<{ className?: string }>;
+   865→  title: string;
+   866→  desc: string;
+   867→  requirements: string[];
+   868→}) {
+   869→  const { t } = useT();
+   870→  return (
+   871→    <AccordionItem
+   872→      value={value}
+   873→      className="group rounded-xl border border-border bg-background px-5 overflow-hidden data-[state=open]:shadow-premium data-[state=open]:border-saffron/40 transition-all"
+   874→    >
+   875→      <AccordionTrigger className="hover:no-underline py-5">
+   876→        <div className="flex items-center gap-4 text-left">
+   877→          <div className="grid place-items-center h-11 w-11 rounded-xl bg-saffron/10 text-saffron shrink-0 ring-1 ring-inset ring-saffron/15 group-data-[state=open]:bg-brand-gradient group-data-[state=open]:text-white group-data-[state=open]:ring-transparent transition-all">
+   878→            <Icon className="h-5 w-5" />
+   879→          </div>
+   880→          <span className="font-display font-bold text-base">{title}</span>
+   881→        </div>
+   882→      </AccordionTrigger>
+   883→      <AccordionContent className="pb-5 pt-1">
+   884→        <div className="sm:pl-[3.75rem]">
+   885→          <p className="text-sm text-muted-foreground leading-relaxed mb-4">{desc}</p>
+   886→          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2.5">
+   887→            {t("visa.requirements")}
+   888→          </p>
+   889→          <ul className="grid sm:grid-cols-2 gap-y-1.5 gap-x-4">
+   890→            {requirements.map((r) => (
+   891→              <li key={r} className="flex items-start gap-2 text-sm">
+   892→                <CheckCircle2 className="h-4 w-4 text-saffron shrink-0 mt-0.5" />
+   893→                <span>{r}</span>
+   894→              </li>
+   895→            ))}
+   896→          </ul>
+   897→        </div>
+   898→      </AccordionContent>
+   899→    </AccordionItem>
+   900→  );
+   901→}
+   902→

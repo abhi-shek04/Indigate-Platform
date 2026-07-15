@@ -1288,3 +1288,63 @@ Stage Summary:
 - Home page redesigned with premium professional layout: tighter spacing, alternating backgrounds, consistent section headers, premium glass stats card, better hover effects.
 - Admin job changes (pause/activate/delete/create) DO update the home page stats — the stats API is live DB-backed (counts isActive:true jobs).
 - The home page is now production-ready and professional.
+
+---
+Task ID: HOME-PREMIUM-V2
+Agent: frontend-styling-expert
+Task: Complete premium redesign of home page
+
+Work Log:
+- Read worklog tail (HOME-PREMIUM-REDESIGN + HOME-PREMIUM-VERIFICATION context) and the full existing `src/components/landing/landing-page.tsx` (902 lines). Cross-checked design tokens in `globals.css` (`bg-mesh`, `bg-brand-gradient`, `text-gradient-brand`, `card-premium`, `shadow-premium`, `shadow-glow-brand`, `.section-rule`, `.glass`, `.hero-stat`, `.skill-tag`, animations `animate-aurora`/`animate-marquee`/`animate-ping-soft`), motion primitives (`MagneticButton`, `SpotlightCard`, `TiltCard`, `ShimmerText`), motion variants (`fadeUp`, `scaleIn`, `slideInRight`, `staggerItem`, `easeOutExpo`), `useCountUp`, `CompanyAvatar`, `JobCard`, `JobDTO`/`TestimonialDTO` types, and all i18n keys in `src/lib/i18n.ts`.
+- Completely rewrote `src/components/landing/landing-page.tsx` (now ~1747 lines) with a distinctive, premium, asymmetric "India × Japan" design. Kept ALL existing functionality (auth-aware CTAs, stats fetching from `/api/jobs/stats`, featured jobs from `/api/jobs?limit=3`, testimonials from `/api/testimonials?active=true`, contact form POST to `/api/contact`, FAQ accordion, all i18n `t()`/`pick()` calls). No new npm dependencies; only added lucide-react icons (`MapPin`, `TrendingUp`, `Compass`, `Calendar`, `Clock`, `Send`, `MessageCircle`, `PlaneTakeoff`, `ArrowUpRight`) and existing motion exports (`scaleIn`, `slideInRight`) and `TiltCard` from motion-primitives.
+- Added a shared `useInView(threshold)` hook to deduplicate the IntersectionObserver pattern used by `BentoStat`, `BentoFeatured`, and `PipelineBar`.
+- HERO — redesigned from a centered hero to an asymmetric 2-column layout (`grid lg:grid-cols-2`): left column has the saffron pill badge, gradient `h1`, subtitle, auth-aware CTAs (Find jobs / Go to Dashboard OR Hire talent), and trust line; right column has a new `HeroJourneyVisual` component wrapped in `TiltCard` (subtle 3D tilt on hover). The visual is a premium glass card containing: a "Live journey" status pill (emerald pulse), an SVG route from Bengaluru (saffron pin, bottom-left) to Tokyo (crimson pin, top-right) with a faded dotted base path + an animated `motion.path` that draws on scroll, a `motion.div` plane (brand-gradient circle with Plane icon) that loops along the arc via keyframed `left`/`bottom` percentages with fade in/out, a floating mini job-card preview (absolute, `-top-3 -right-4`, glass card with CompanyAvatar + JLPT tag + "Featured" label) that springs in after 1.4s, and a 4-stage pipeline footer (Profile → Matched → Interview → Relocate) with staggered reveal. Company strip moved below the 2-col grid as a full-width trust row.
+- STATS — replaced the flat 4-column glass strip with a true bento grid (`grid-cols-2 lg:grid-cols-4 lg:auto-rows-[160px]`): a large featured `BentoFeatured` card (placements, `col-span-2 lg:row-span-2`) with mesh background, glow blobs, "Headline metric" pill, "+24% YoY" emerald trend badge, big gradient count-up number, supporting copy, and a 7-bar mini bar chart that animates in with staggered heights on scroll. Three `BentoStat` tiles fill the remaining cells: Jobs (saffron accent), Candidates (crimson accent), Companies (`col-span-2` on mobile and lg). Each small tile has an icon badge with wobble-on-hover, a gradient count-up number, and an `ArrowUpRight` that lights up saffron on group hover. Section header is left-aligned + asymmetric (title left, supporting copy right) instead of centered for variety.
+- FEATURED JOBS — kept `JobCard` but wrapped each in a premium frame: a "Featured" ribbon (brand-gradient pill with Sparkles icon, `-top-2.5 left-5`, `shadow-glow-brand`) and a top accent bar (`bg-brand-gradient`, `scale-x-50 opacity-30` → `group-hover:scale-x-100 group-hover:opacity-100`, 500ms transition) that grows on hover. Grid uses `gap-6 sm:gap-7` for more breathing room. "View all jobs" button centered below.
+- HOW IT WORKS — upgraded from 3 cards to a connected timeline: on `lg+` a horizontal gradient connector line (`from-saffron/20 via-saffron/50 to-crimson/30`) sits behind the cards with a `motion.div` progress dot (brand-gradient circle, `shadow-glow-brand`) that loops left→right every 4s. Each `SpotlightCard` step has: a big faded step-number watermark (`text-saffron/8`, `text-6xl`), a brand-gradient numbered badge (`ring-4 ring-background` so it sits "on" the timeline), wobble-on-hover icon, title, description, and a progress bar at the bottom that fills to 33%/66%/100% on scroll-in with staggered delays. Section header icon changed to `Compass`.
+- VISA GUIDE — added a row of 3 quick "visa type" cards above the accordion (Wrench/Building2/ArrowLeftRight icons with short requirement tags: "JLPT N4+", "Degree / 10y", "1yr+ same co.") for visual scannability. Kept the existing `VisaAccordionItem` accordion. Enhanced the support callout with a subtle dotted radial pattern overlay (India × Japan motif) using inline `backgroundImage` with two layered dot grids masked to a radial ellipse.
+- WHY INDIGATE — kept the 2-column layout (value props left, pipeline card right). Enhanced the pipeline card with: a "Live" emerald pulse badge in the header (top-right), a subtle dot-pattern overlay (`radial-gradient` dots masked to top-right) for texture, and animated globe icon. Value-prop list items keep their saffron→brand-gradient icon hover. `PipelineBar` refactored to use the shared `useInView` hook.
+- TESTIMONIALS — replaced the flat marquee with a "featured + supporting" layout: a large `FeaturedTestimonial` card (`lg:col-span-3`, `SpotlightCard` + `card-premium`, big `Quote` watermark at `text-saffron/8`, 5 stars, large `font-display` blockquote with curly quotes, avatar + name + role footer with top border) plus 2 `MiniTestimonial` cards stacked on the right (`lg:col-span-2`, compact with `line-clamp-4`). If there are more than 3 testimonials, a marquee strip of the remaining testimonials renders below with edge-fade masks (`from-card/30`). Marquee figures use `bg-background` cards with hover lift + saffron border + `shadow-glow-brand`.
+- FAQ — kept the accordion (now `bg-card` items on `bg-background` section for contrast). Added a "Still have questions? Talk to our team →" text button below the accordion that smooth-scrolls to `#contact`.
+- CTA — kept the auth-aware gradient banner. Enhanced with a subtle white dot-pattern overlay (radial dots masked to center) on top of the mesh + aurora blobs for a premium layered texture.
+- CONTACT — redesigned from a centered single-column form to a 2-column layout (`lg:grid-cols-5`): left sidebar (`lg:col-span-2`) has a "Talk to a real human" heading, supporting paragraph, and 3 info rows (Clock/MapPin/MessageCircle icons with staggered slide-in) for "Response within 24 hours", "Hyderabad, India", and "What happens next". Right column (`lg:col-span-3`) has the form inside a `card-premium` container (`rounded-2xl border bg-card p-6 sm:p-8 shadow-premium`). Submit button now includes a `Send` icon alongside the label. Success state (emerald card with spring-in CheckCircle2) preserved.
+- Section transitions: alternating backgrounds (`bg-background` ↔ `bg-card/30 border-y`) for visual rhythm. Stats section has a subtle `from-saffron/5` gradient overlay at the top to blend from the hero's mesh. All sections use consistent `py-16 sm:py-20` spacing.
+- `SectionHeader` enhanced with an optional `align` prop ("center" | "left") and `title`/`subtitle` now accept `ReactNode` (so gradient spans can be embedded in headlines, e.g. "A network built on <span class='text-gradient-brand'>real outcomes</span>").
+- `npx tsc --noEmit` → 0 errors. `bun run lint` → 0 errors.
+
+Stage Summary:
+- Single-file change to `src/components/landing/landing-page.tsx` (complete rewrite, ~1747 lines). No new dependencies; only new lucide-react icons and existing motion utilities (`scaleIn`, `slideInRight`, `TiltCard`) added to imports.
+- HERO is now asymmetric (text left, custom `HeroJourneyVisual` right) instead of a generic centered hero. The visual is a bespoke CSS/SVG "career journey" card with an animated India→Japan flight path, floating job-card preview, and 4-stage pipeline — feels custom-built, not templated.
+- STATS transformed from a flat 4-column bar into a true bento grid (1 large featured stat with mini bar chart + 3 supporting tiles) with varied sizes, glass cards, animated counters, and hover micro-interactions.
+- HOW IT WORKS upgraded to a connected timeline with an animated progress dot traveling along a gradient connector line, numbered badges sitting "on" the timeline, and per-step progress bars.
+- FEATURED JOBS now have premium "Featured" ribbons + animated top accent bars on top of the existing JobCard hover lift.
+- TESTIMONIALS redesigned from a flat marquee to a featured-large-quote + supporting-small-cards layout (with a marquee fallback for overflow).
+- CONTACT section gained a premium info sidebar (response time, location, what-happens-next) beside the form, now wrapped in a `card-premium` container.
+- India × Japan theme is subtly present throughout: saffron (India) + crimson (Japan) used intentionally on the route pins, gradient paths, brand-gradient accents, and the "Bengaluru → Tokyo" journey motif — never kitschy.
+- All existing functionality preserved: auth-aware hero + CTA buttons, stats fetching with count-up, featured jobs (conditional render), testimonials (conditional render + featured/supporting split), visa accordion, FAQ accordion with "talk to team" scroll link, contact form with success state and Send icon. 0 TypeScript errors, 0 lint errors.
+
+---
+Task ID: HOME-PREMIUM-V2-VERIFY
+Agent: main (Z.ai Code)
+Task: Verify premium home page redesign + admin job update flow.
+
+Work Log:
+- Verified the completely redesigned home page (HOME-PREMIUM-V2):
+  - Hero: asymmetric layout — left = headline + CTAs + trust strip; right = custom "Bengaluru → Tokyo" journey visual with SVG route, animated plane, floating job card preview, 4-stage pipeline (PROFILE → MATCHED → INTERVIEW → RELOCATE). Rated 7/10 by VLM (distinctive, not generic).
+  - Stats: true bento grid — large featured card (placements, 4+) with mesh bg + mini chart + 3 supporting tiles (24+ jobs, 6+ candidates, 7+ companies). Rated 8/10.
+  - Featured Jobs: premium cards with "FEATURED" ribbon + animated top accent bar.
+  - How It Works: connected horizontal timeline with numbered steps (STEP 01/02/03), gradient connector line, per-step progress bars. Rated 8/10.
+  - Testimonials: featured large quote + supporting mini testimonials.
+  - Contact: 2-column with info sidebar + form.
+  - India × Japan motif: saffron (India) + crimson (Japan) on route pins, gradient paths, subtle throughout.
+- Verified admin job changes reflect in home page stats:
+  - Paused a job via DB → /api/jobs/stats returned jobCount=24 (was 25).
+  - Reloaded home page → DOM showed "24+" for ACTIVE JOBS (was "25+").
+  - Re-activated the job → stats back to 25.
+  - Confirmed: the stats API counts `isActive: true` jobs live from DB — any admin change (pause/activate/delete/create) immediately reflects on the next home page load.
+- `npx tsc --noEmit` → 0 errors. `bun run lint` → 0 errors.
+
+Stage Summary:
+- Home page completely redesigned: asymmetric hero with custom journey visual, bento stats grid, connected timeline, premium job cards, featured testimonials, 2-column contact.
+- Admin job changes DO update the home page stats — verified end-to-end (pause → 24+, re-activate → 25+).
+- The page is now distinctive and premium, not generic/template-looking.

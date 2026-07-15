@@ -13,6 +13,13 @@ import {
 const CHECKED = "☒";
 const UNCHECKED = "☐";
 
+/** Shows the Japanese text; if only English exists, shows it greyed + ※未翻訳 */
+function JaText({ ja, en }: { ja?: string; en?: string }) {
+  if (ja?.trim()) return <>{ja}</>;
+  if (en?.trim()) return <span style={{ color: "#888", fontStyle: "italic" }}>{en} ※未翻訳</span>;
+  return <>—</>;
+}
+
 export function ResumePreview({ data, lang }: { data: ResumeData; lang: "en" | "ja" }) {
   if (lang === "ja") return <JapaneseResume data={data} />;
   return <EnglishResume data={data} />;
@@ -156,7 +163,7 @@ function JapaneseResume({ data }: { data: ResumeData }) {
                     {p.nameJa || p.name || "—"}
                     {p.techStack && <div className="text-xs text-gray-600 mt-1">技術: {p.techStack}</div>}
                   </td>
-                  <td>{p.descriptionJa || p.description || ""}</td>
+                  <td><JaText ja={p.descriptionJa} en={p.description} /></td>
                 </tr>
               ))}
             </tbody>
@@ -166,29 +173,36 @@ function JapaneseResume({ data }: { data: ResumeData }) {
 
       {data.skills.length > 0 && (
         <Section title="ITスキル">
-          <table className="resume-table">
-            <thead>
-              <tr>
-                <th>スキル名</th>
-                <th className="text-center w-20">初心者</th>
-                <th className="text-center w-20">中級</th>
-                <th className="text-center w-20">高度な</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.skills.map((s, i) => {
-                const tier = skillTier(s);
-                return (
-                  <tr key={i}>
-                    <td>{s.name}</td>
-                    <td className="text-center">{tier === "beginner" ? CHECKED : UNCHECKED}</td>
-                    <td className="text-center">{tier === "intermediate" ? CHECKED : UNCHECKED}</td>
-                    <td className="text-center">{tier === "advanced" ? CHECKED : UNCHECKED}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="resume-table" style={{ tableLayout: "fixed", width: "100%" }}>
+              <thead>
+                <tr>
+                  <th rowSpan={2} className="align-middle" style={{ width: "40%" }}>スキル名</th>
+                  <th colSpan={3} className="text-center" style={{ borderBottom: "1px solid #d4d4d4" }}>
+                    習熟度
+                  </th>
+                </tr>
+                <tr>
+                  <th className="text-center text-xs" style={{ width: "20%" }}>初心者</th>
+                  <th className="text-center text-xs" style={{ width: "20%" }}>中級</th>
+                  <th className="text-center text-xs" style={{ width: "20%" }}>高度な</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.skills.map((s, i) => {
+                  const tier = skillTier(s);
+                  return (
+                    <tr key={i}>
+                      <td>{s.name}</td>
+                      <td className="text-center">{tier === "beginner" ? CHECKED : UNCHECKED}</td>
+                      <td className="text-center">{tier === "intermediate" ? CHECKED : UNCHECKED}</td>
+                      <td className="text-center">{tier === "advanced" ? CHECKED : UNCHECKED}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </Section>
       )}
 
@@ -248,7 +262,7 @@ function JapaneseResume({ data }: { data: ResumeData }) {
                       </div>
                     )}
                   </td>
-                  <td>{a.dutiesJa || a.duties || ""}</td>
+                  <td><JaText ja={a.dutiesJa} en={a.duties} /></td>
                   <td>{a.duration || ""}</td>
                 </tr>
               ))}
@@ -261,12 +275,12 @@ function JapaneseResume({ data }: { data: ResumeData }) {
         <Section title="趣味 / 興味 / 自己PR">
           {(data.selfPrJa || data.selfPr) && (
             <p className="resume-text whitespace-pre-wrap">
-              {data.selfPrJa || data.selfPr}
+              <JaText ja={data.selfPrJa} en={data.selfPr} />
             </p>
           )}
           {(data.hobbiesJa || data.hobbies) && (
             <p className="resume-text mt-2 text-sm text-gray-700">
-              趣味: {data.hobbiesJa || data.hobbies}
+              趣味: <JaText ja={data.hobbiesJa} en={data.hobbies} />
             </p>
           )}
         </Section>
@@ -451,26 +465,33 @@ function EnglishResume({ data }: { data: ResumeData }) {
 
       {data.skills.length > 0 && (
         <SectionEn title="Skills">
-          <table className="resume-table">
-            <thead>
-              <tr>
-                <th>Skill Name</th>
-                <th className="text-center w-28">Learned in class</th>
-                <th className="text-center w-28">Can operate alone</th>
-                <th className="text-center w-28">Can teach others</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.skills.map((s, i) => (
-                <tr key={i}>
-                  <td>{s.name}</td>
-                  <td className="text-center">{s.learnedInClass ? CHECKED : UNCHECKED}</td>
-                  <td className="text-center">{s.canOperate ? CHECKED : UNCHECKED}</td>
-                  <td className="text-center">{s.canTeach ? CHECKED : UNCHECKED}</td>
+          <div className="overflow-x-auto">
+            <table className="resume-table" style={{ tableLayout: "fixed", width: "100%" }}>
+              <thead>
+                <tr>
+                  <th rowSpan={2} className="align-middle" style={{ width: "40%" }}>Skill Name</th>
+                  <th colSpan={3} className="text-center" style={{ borderBottom: "1px solid #d4d4d4" }}>
+                    Proficiency Level
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+                <tr>
+                  <th className="text-center text-xs" style={{ width: "20%" }}>Learned in class</th>
+                  <th className="text-center text-xs" style={{ width: "20%" }}>Can operate it / work using it alone</th>
+                  <th className="text-center text-xs" style={{ width: "20%" }}>Can teach how to operate this to others</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.skills.map((s, i) => (
+                  <tr key={i}>
+                    <td>{s.name}</td>
+                    <td className="text-center">{s.learnedInClass ? CHECKED : UNCHECKED}</td>
+                    <td className="text-center">{s.canOperate ? CHECKED : UNCHECKED}</td>
+                    <td className="text-center">{s.canTeach ? CHECKED : UNCHECKED}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </SectionEn>
       )}
 

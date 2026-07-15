@@ -386,18 +386,28 @@ export function EnglishResumePDF({ data }: { data: ResumeData }) {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Skills</Text>
             <View style={styles.table}>
-              <View style={styles.rowHeader}>
-                <Text style={[styles.cellHeader, { width: "40%" }]}>
+              {/* Header row 1: Skill Name + Proficiency Level label */}
+              <View style={[styles.rowHeader, { borderBottomWidth: 0 }]}>
+                <Text style={[styles.cellHeader, { width: "40%", borderRightWidth: 1, borderRightColor: "#bfbfbf" }]}>
                   Skill Name
                 </Text>
-                <Text style={[styles.cellHeader, { width: "20%" }]}>
+                <Text style={[styles.cellHeaderLast, { width: "60%", textAlign: "center" }]}>
+                  Proficiency Level
+                </Text>
+              </View>
+              {/* Header row 2: sub-columns */}
+              <View style={styles.rowHeader}>
+                <Text style={[styles.cellHeader, { width: "40%", borderRightWidth: 1, borderRightColor: "#bfbfbf" }]}>
+                  {""}
+                </Text>
+                <Text style={[styles.cellHeader, { width: "20%", fontSize: 8, textAlign: "center" }]}>
                   Learned in class
                 </Text>
-                <Text style={[styles.cellHeader, { width: "20%" }]}>
-                  Can operate alone
+                <Text style={[styles.cellHeader, { width: "20%", fontSize: 8, textAlign: "center" }]}>
+                  Can operate it / work using it alone
                 </Text>
-                <Text style={[styles.cellHeaderLast, { width: "20%" }]}>
-                  Can teach others
+                <Text style={[styles.cellHeaderLast, { width: "20%", fontSize: 8, textAlign: "center" }]}>
+                  Can teach how to operate this to others
                 </Text>
               </View>
               {data.skills.map((s, i) => (

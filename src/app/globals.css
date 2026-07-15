@@ -547,7 +547,27 @@ html {
   max-width: 800px; padding: 40px;
   font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", var(--font-sans), sans-serif;
   font-size: 13px; line-height: 1.6; border-radius: 8px;
+  color-scheme: light;
+  isolation: isolate;
+  border: 1px solid #e2e2e2;
+  box-shadow: 0 4px 24px -4px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
 }
+/* Force all resume content to black-on-white regardless of page theme */
+.resume-page,
+.resume-page table,
+.resume-page th,
+.resume-page td,
+.resume-page p,
+.resume-page h1,
+.resume-page h2,
+.resume-page span,
+.resume-page div,
+.resume-page li {
+  color: #1a1a1a !important;
+  background-color: transparent;
+}
+.resume-page { background-color: #ffffff !important; }
+.resume-table th { background-color: #f5f5f5 !important; }
 .resume-title { font-size: 28px; font-weight: 800; text-align: center; margin-bottom: 24px; letter-spacing: 0.3em; }
 .resume-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
 .resume-table th, .resume-table td { border: 1px solid #d4d4d4; padding: 8px 10px; text-align: left; vertical-align: top; }

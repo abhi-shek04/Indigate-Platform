@@ -8,104 +8,97 @@ import type { ResumeData } from "@/lib/resume-types";
 /**
  * POST /api/candidates/me/resume/translate
  *
- * Takes the candidate's English resume data and uses the LLM to translate
- * every free-text field into Japanese, returning the `*Ja` fields that the
- * Japanese 履歴書 PDF template consumes. The English data is NOT modified —
- * only the Japanese-side fields are returned so the client can merge them.
+ * Loads the candidate's saved English resume from the DB, calls the LLM to
+ * translate every free-text field into Japanese, merges the `*Ja` fields
+ * back into the full ResumeData, saves it to the DB, and returns the
+ * complete updated resume data so the client can replace its state.
+ *
+ * Personal info (name, email, phone, DOB) is kept as-is — only descriptions,
+ * project summaries, self-PR, hobbies, and motivation essays are translated.
  */
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
   try {
     const session = await getSession();
     if (!session || session.role !== "CANDIDATE")
       return err("Candidate access required.", 403);
 
-    // Accept an inline body OR fall back to the stored resumeData.
-    let data: ResumeData | null = null;
-    try {
-      const body = await req.json();
-      data = body as ResumeData;
-    } catch {
-      // no body — load from DB
-    }
-    if (!data) {
-      const c = await db.candidateProfile.findUnique({
-        where: { userId: session.id },
-        select: { resumeData: true },
-      });
-      if (!c?.resumeData) return err("No resume data to translate.", 400);
-      data = JSON.parse(c.resumeData) as ResumeData;
-    }
+    // 1. Load the saved resume data from the DB.
+    const profile = await db.candidateProfile.findUnique({
+      where: { userId: session.id },
+      select: { resumeData: true },
+    });
+    if (!profile?.resumeData)
+      return err("No resume data found. Please save your resume first.", 400);
 
-    // Build a slim "English-only" payload so we don't waste tokens on Ja fields
-    // or on fields the JP template doesn't use.
-    const englishPayload = {
-      name: data.name,
-      currentDegree: data.currentDegree,
-      expectedGraduation: data.expectedGraduation,
-      address: data.address,
-      education: data.education.map((e) => ({
-        degree: e.degree,
-        field: e.field,
-        institution: e.institution,
-      })),
+    const data: ResumeData = JSON.parse(profile.resumeData) as ResumeData;
+
+    // 2. Build a slim "English-only" payload of translatable fields.
+    const translatable = {
+      selfPr: data.selfPr ?? "",
+      hobbies: data.hobbies ?? "",
+      japanMotivation: {
+        whyJapan: data.japanMotivation?.whyJapan ?? "",
+        careerInJapan: data.japanMotivation?.careerInJapan ?? "",
+        challenges: data.japanMotivation?.challenges ?? "",
+      },
       projects: data.projects.map((p) => ({
         name: p.name,
         description: p.description,
-        techStack: p.techStack,
       })),
       activities: data.activities.map((a) => ({
         organization: a.organization,
         role: a.role,
         duties: a.duties,
-        duration: a.duration,
       })),
-      awards: data.awards.map((a) => ({
-        title: a.title,
-        description: a.description,
-        organization: a.organization,
+      awards: data.awards.map((aw) => ({
+        title: aw.title,
+        description: aw.description,
+        organization: aw.organization,
       })),
-      skills: data.skills.map((s) => ({ name: s.name })),
-      skillsExcelSummary: data.skillsExcelSummary,
-      selfPr: data.selfPr,
-      hobbies: data.hobbies,
+      education: data.education.map((e) => ({
+        degree: e.degree,
+        field: e.field,
+        institution: e.institution,
+      })),
     };
 
+    // 3. Call the LLM with a strict system prompt.
     const zai = await ZAI.create();
+    const systemPrompt = `You are a professional Japanese resume (履歴書) translator specializing in career documents for Indian candidates applying to Japanese companies.
 
-    const systemPrompt = `You are a professional Japanese resume (履歴書) translator. You translate English resume content into natural, professional Japanese suitable for a Japanese job application.
+Translate the provided JSON fields from English to natural, professional Japanese.
 
 Rules:
-1. Translate names into Katakana (e.g. "Abhishek" → "アビシェーク", "Arjun Sharma" → "アルジュン・シャルマ").
-2. Translate institutions, degrees, fields, organizations, roles, project names, tech stacks, and descriptions into natural Japanese. Keep well-known proper nouns (AWS, React, MongoDB, etc.) in English.
-3. Translate self-PR and hobbies into natural Japanese.
-4. For tech stacks and skill names, keep technology names in English/Katakana but translate surrounding context.
-5. Return ONLY a valid JSON object — no markdown, no explanation, no code fences.
-6. The JSON object must have EXACTLY this shape (same array lengths as the input):
+- Translate naturally — use formal polite style (丁寧語) for self-PR and motivation essays.
+- Names: translate into Katakana (e.g. "Arjun Sharma" → "アルジュン・シャルマ").
+- Keep proper nouns (technology names like "React", "Python", "AWS", university names like "SRM University") in their original English form.
+- For education degrees, translate the degree level naturally (e.g. "Bachelor of Technology" → "工学学士").
+- Keep numeric values (years, months, version numbers) as-is.
+- If a field is empty or just whitespace, return it as an empty string "".
+- Return ONLY valid JSON — no explanation, no markdown, no code fences.
+
+Return a JSON object with EXACTLY this shape (same array lengths as the input):
 {
-  "nameJa": "string (Katakana)",
-  "currentDegreeJa": "string",
-  "expectedGraduationJa": "string",
-  "addressJa": "string",
-  "education": [{ "degreeJa": "string", "fieldJa": "string", "institutionJa": "string" }],
-  "projects": [{ "nameJa": "string", "descriptionJa": "string", "techStackJa": "string" }],
-  "activities": [{ "organizationJa": "string", "roleJa": "string", "dutiesJa": "string", "durationJa": "string" }],
-  "awards": [{ "titleJa": "string", "descriptionJa": "string", "organizationJa": "string" }],
-  "skillsJa": ["string"],
-  "skillsExcelSummaryJa": ["string"],
+  "nameJa": "string (Katakana reading of the name)",
   "selfPrJa": "string",
-  "hobbiesJa": "string"
+  "hobbiesJa": "string",
+  "japanMotivation": { "whyJapan": "string", "careerInJapan": "string", "challenges": "string" },
+  "projects": [{ "nameJa": "string", "descriptionJa": "string" }],
+  "activities": [{ "organizationJa": "string", "roleJa": "string", "dutiesJa": "string" }],
+  "awards": [{ "titleJa": "string", "descriptionJa": "string", "organizationJa": "string" }],
+  "education": [{ "degreeJa": "string", "fieldJa": "string", "institutionJa": "string" }]
 }`;
 
     const completion = await zai.chat.completions.create({
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: JSON.stringify(englishPayload) },
+        { role: "user", content: JSON.stringify(translatable, null, 2) },
       ],
       thinking: { type: "disabled" },
     });
 
     const raw = completion.choices[0]?.message?.content?.trim() ?? "";
-    if (!raw) return err("Translation returned empty.", 502);
+    if (!raw) return err("AI returned an empty response. Please try again.", 502);
 
     // Strip any accidental markdown fences.
     const cleaned = raw
@@ -113,14 +106,65 @@ Rules:
       .replace(/\s*```\s*$/i, "")
       .trim();
 
-    let translated: Record<string, unknown>;
+    let t: {
+      nameJa?: string;
+      selfPrJa?: string;
+      hobbiesJa?: string;
+      japanMotivation?: { whyJapan?: string; careerInJapan?: string; challenges?: string };
+      projects?: { nameJa?: string; descriptionJa?: string }[];
+      activities?: { organizationJa?: string; roleJa?: string; dutiesJa?: string }[];
+      awards?: { titleJa?: string; descriptionJa?: string; organizationJa?: string }[];
+      education?: { degreeJa?: string; fieldJa?: string; institutionJa?: string }[];
+    };
     try {
-      translated = JSON.parse(cleaned);
+      t = JSON.parse(cleaned);
     } catch {
-      return err("Translation returned invalid JSON.", 502);
+      return err("AI returned invalid JSON. Please try again.", 502);
     }
 
-    return ok(translated);
+    // 4. Merge translated fields into the full resume data.
+    const updatedData: ResumeData = {
+      ...data,
+      nameJa: t.nameJa || data.nameJa,
+      selfPrJa: t.selfPrJa || data.selfPrJa,
+      hobbiesJa: t.hobbiesJa || data.hobbiesJa,
+      japanMotivation: {
+        whyJapan: t.japanMotivation?.whyJapan || data.japanMotivation?.whyJapan || "",
+        careerInJapan: t.japanMotivation?.careerInJapan || data.japanMotivation?.careerInJapan || "",
+        challenges: t.japanMotivation?.challenges || data.japanMotivation?.challenges || "",
+      },
+      projects: data.projects.map((p, i) => ({
+        ...p,
+        nameJa: t.projects?.[i]?.nameJa || p.nameJa || "",
+        descriptionJa: t.projects?.[i]?.descriptionJa || p.descriptionJa || "",
+      })),
+      activities: data.activities.map((a, i) => ({
+        ...a,
+        organizationJa: t.activities?.[i]?.organizationJa || a.organizationJa || "",
+        roleJa: t.activities?.[i]?.roleJa || a.roleJa || "",
+        dutiesJa: t.activities?.[i]?.dutiesJa || a.dutiesJa || "",
+      })),
+      awards: data.awards.map((aw, i) => ({
+        ...aw,
+        titleJa: t.awards?.[i]?.titleJa || aw.titleJa || "",
+        descriptionJa: t.awards?.[i]?.descriptionJa || aw.descriptionJa || "",
+        organizationJa: t.awards?.[i]?.organizationJa || aw.organizationJa || "",
+      })),
+      education: data.education.map((e, i) => ({
+        ...e,
+        degreeJa: t.education?.[i]?.degreeJa || e.degreeJa || "",
+        fieldJa: t.education?.[i]?.fieldJa || e.fieldJa || "",
+        institutionJa: t.education?.[i]?.institutionJa || e.institutionJa || "",
+      })),
+    };
+
+    // 5. Save the translated data back to the DB.
+    await db.candidateProfile.update({
+      where: { userId: session.id },
+      data: { resumeData: JSON.stringify(updatedData) },
+    });
+
+    return ok({ resumeData: updatedData });
   } catch (e) {
     return handleError(e);
   }

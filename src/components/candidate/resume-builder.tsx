@@ -19,11 +19,13 @@ import {
 } from "@/components/ui/select";
 import {
   ArrowLeft,
+  ArrowRight,
   Plus,
   Trash2,
   Save,
   Printer,
   FileText,
+  Eye,
   User,
   GraduationCap,
   Briefcase,
@@ -37,7 +39,6 @@ import {
   Languages,
   MapPin,
   ListChecks,
-  Wand2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -62,7 +63,7 @@ import {
 } from "@/lib/resume-types";
 import { ResumePreview } from "./resume-preview";
 
-type Tab = "edit" | "preview-ja" | "preview-en";
+type Tab = "edit" | "preview-en" | "translate" | "preview-ja";
 
 /** Sidebar navigation entries — id MUST match the `id` on each <Section>. */
 const SECTIONS: {
@@ -120,6 +121,7 @@ export function ResumeBuilder() {
     "section-personal",
   );
   const [translating, setTranslating] = useState(false);
+  const [translated, setTranslated] = useState(false);
 
   // Keep the sidebar active-section indicator in sync with the scroll position.
   // Only runs in the Edit tab (sidebar is hidden in previews / print).
@@ -189,6 +191,19 @@ export function ResumeBuilder() {
     load();
   }, [load]);
 
+  // Detect if the resume has already been translated (has *Ja content).
+  useEffect(() => {
+    if (
+      data.selfPrJa?.trim() ||
+      data.projects.some((p) => p.descriptionJa?.trim()) ||
+      data.activities.some((a) => a.dutiesJa?.trim())
+    ) {
+      setTranslated(true);
+    } else {
+      setTranslated(false);
+    }
+  }, [data]);
+
   async function save() {
     setSaving(true);
     try {
@@ -204,102 +219,27 @@ export function ResumeBuilder() {
     }
   }
 
-  /** Calls the LLM to translate English resume fields → Japanese *Ja fields. */
-  async function translateToJapanese() {
+  /** Calls the translation API — saves first, then AI translates + saves server-side. */
+  async function handleTranslate() {
     setTranslating(true);
     try {
-      const res = await api<Record<string, unknown>>(
-        "/api/candidates/me/resume/translate",
-        { method: "POST", body: JSON.stringify(data) },
-      );
-      // Merge the translated Ja fields into the current data (pure function —
-      // computed outside setData so we can also save the result immediately).
-      const merged: ResumeData = { ...data };
-      if (typeof res.nameJa === "string") merged.nameJa = res.nameJa;
-      if (typeof res.selfPrJa === "string") merged.selfPrJa = res.selfPrJa;
-      if (typeof res.hobbiesJa === "string") merged.hobbiesJa = res.hobbiesJa;
-      // Education
-      if (Array.isArray(res.education)) {
-        merged.education = data.education.map((e, i) => {
-          const t = (res.education as Record<string, unknown>[])[i] ?? {};
-          return {
-            ...e,
-            degreeJa: typeof t.degreeJa === "string" ? t.degreeJa : e.degreeJa,
-            fieldJa: typeof t.fieldJa === "string" ? t.fieldJa : e.fieldJa,
-            institutionJa:
-              typeof t.institutionJa === "string"
-                ? t.institutionJa
-                : e.institutionJa,
-          };
-        });
-      }
-      // Projects
-      if (Array.isArray(res.projects)) {
-        merged.projects = data.projects.map((p, i) => {
-          const t = (res.projects as Record<string, unknown>[])[i] ?? {};
-          return {
-            ...p,
-            nameJa: typeof t.nameJa === "string" ? t.nameJa : p.nameJa,
-            descriptionJa:
-              typeof t.descriptionJa === "string"
-                ? t.descriptionJa
-                : p.descriptionJa,
-          };
-        });
-      }
-      // Activities (work experience)
-      if (Array.isArray(res.activities)) {
-        merged.activities = data.activities.map((a, i) => {
-          const t = (res.activities as Record<string, unknown>[])[i] ?? {};
-          return {
-            ...a,
-            organizationJa:
-              typeof t.organizationJa === "string"
-                ? t.organizationJa
-                : a.organizationJa,
-            roleJa: typeof t.roleJa === "string" ? t.roleJa : a.roleJa,
-            dutiesJa:
-              typeof t.dutiesJa === "string" ? t.dutiesJa : a.dutiesJa,
-            durationJa:
-              typeof t.durationJa === "string" ? t.durationJa : a.duration,
-          };
-        });
-      }
-      // Awards (certifications)
-      if (Array.isArray(res.awards)) {
-        merged.awards = data.awards.map((aw, i) => {
-          const t = (res.awards as Record<string, unknown>[])[i] ?? {};
-          return {
-            ...aw,
-            titleJa: typeof t.titleJa === "string" ? t.titleJa : aw.titleJa,
-            descriptionJa:
-              typeof t.descriptionJa === "string"
-                ? t.descriptionJa
-                : aw.descriptionJa,
-            organizationJa:
-              typeof t.organizationJa === "string"
-                ? t.organizationJa
-                : aw.organizationJa,
-          };
-        });
-      }
-      // Skills names → keep in English (proper nouns), but translate the
-      // "skillsExcelSummary" bullet list.
-      if (Array.isArray(res.skillsExcelSummaryJa)) {
-        merged.skillsExcelSummary = (
-          res.skillsExcelSummaryJa as string[]
-        ).map((s, i) => s || ((data.skillsExcelSummary ?? [])[i] ?? ""));
-      }
-      // Update state + save the merged data directly (avoid stale closure).
-      setData(merged);
+      // Save first so the API has the latest data.
       await api("/api/candidates/me/resume", {
         method: "PUT",
-        body: JSON.stringify(merged),
+        body: JSON.stringify(data),
       });
-      toast.success("Translated to Japanese! Review the 履歴書 preview.");
+      // Call the translation API (loads from DB, translates, saves, returns full data).
+      const result = await api<{ resumeData: ResumeData }>(
+        "/api/candidates/me/resume/translate",
+        { method: "POST" },
+      );
+      // Replace state with the merged translated data.
+      setData(result.resumeData);
+      setTranslated(true);
+      toast.success("Translation complete! Your Japanese resume is ready.");
       setTab("preview-ja");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Translation failed.");
+      toast.error(e instanceof Error ? e.message : "Translation failed. Please try again.");
     } finally {
       setTranslating(false);
     }
@@ -463,7 +403,7 @@ export function ResumeBuilder() {
             Resume Builder
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create your resume in English first, then click “Translate to Japanese” to auto-generate the 履歴書.
+            Create your resume in English first, then translate to Japanese with AI.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -471,42 +411,6 @@ export function ResumeBuilder() {
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             Save
           </Button>
-          <Button
-            onClick={translateToJapanese}
-            disabled={translating || saving || !data.name}
-            variant="outline"
-            className="font-semibold border-saffron/40 text-saffron hover:bg-saffron/10 hover:text-saffron"
-            title="Auto-translate your English resume into Japanese"
-          >
-            {translating ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Wand2 className="mr-2 h-4 w-4" />
-            )}
-            {translating ? "Translating…" : "Translate to Japanese"}
-          </Button>
-          <PDFDownloadLink
-            document={<EnglishResumePDF data={data} />}
-            fileName={`${data.name || "resume"}_EN.pdf`}
-          >
-            {({ loading }) => (
-              <Button variant="outline" size="sm" disabled={loading} className="font-semibold h-9">
-                <Download className="h-4 w-4 mr-1.5" />
-                {loading ? "Generating…" : "EN PDF"}
-              </Button>
-            )}
-          </PDFDownloadLink>
-          <PDFDownloadLink
-            document={<JapaneseResumePDF data={data} />}
-            fileName={`${data.name || "resume"}_JP.pdf`}
-          >
-            {({ loading }) => (
-              <Button variant="outline" size="sm" disabled={loading} className="font-semibold h-9">
-                <Download className="h-4 w-4 mr-1.5" />
-                {loading ? "生成中…" : "履歴書 PDF"}
-              </Button>
-            )}
-          </PDFDownloadLink>
           <Button onClick={print} variant="ghost" size="sm" className="font-semibold h-9">
             <Printer className="h-4 w-4 mr-1.5" />
             Print
@@ -514,27 +418,51 @@ export function ResumeBuilder() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="print:hidden flex items-center gap-1 mb-6 p-1 rounded-xl bg-muted w-fit">
+      {/* 4-step stepper */}
+      <div className="print:hidden flex items-center gap-0 mb-8 overflow-x-auto pb-1">
         {[
-          { key: "edit" as const, label: "Edit", icon: User },
-          { key: "preview-ja" as const, label: "日本語 履歴書", icon: Globe },
-          { key: "preview-en" as const, label: "English Resume", icon: FileText },
-        ].map((tb) => (
-          <button
-            key={tb.key}
-            onClick={() => setTab(tb.key)}
-            className={cn(
-              "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-              tab === tb.key
-                ? "bg-card text-foreground shadow-premium"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <tb.icon className="h-4 w-4" />
-            {tb.label}
-          </button>
-        ))}
+          { key: "edit" as const, step: 1, label: "Fill English Form", icon: FileText },
+          { key: "preview-en" as const, step: 2, label: "Preview & Download EN", icon: Eye },
+          { key: "translate" as const, step: 3, label: "AI Translate to 日本語", icon: Languages },
+          { key: "preview-ja" as const, step: 4, label: "Japanese 履歴書", icon: Globe },
+        ].map((s, i, arr) => {
+          const isActive = tab === s.key;
+          const isDone =
+            (s.key === "edit" && tab !== "edit") ||
+            (s.key === "preview-en" && (tab === "translate" || tab === "preview-ja")) ||
+            (s.key === "translate" && tab === "preview-ja" && translated);
+          const isDisabled =
+            (s.key === "translate" && !data.name) ||
+            (s.key === "preview-ja" && !translated);
+          return (
+            <div key={s.key} className="flex items-center">
+              <button
+                onClick={() => !isDisabled && setTab(s.key)}
+                disabled={isDisabled}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all",
+                  isActive && "bg-card shadow-premium text-foreground border border-border",
+                  isDone && !isActive && "text-saffron hover:text-saffron/80",
+                  !isActive && !isDone && !isDisabled && "text-muted-foreground hover:text-foreground",
+                  isDisabled && "text-muted-foreground/40 cursor-not-allowed",
+                )}
+              >
+                <span className={cn(
+                  "grid place-items-center h-6 w-6 rounded-full text-xs font-bold shrink-0 transition-colors",
+                  isActive && "bg-saffron text-white",
+                  isDone && !isActive && "bg-saffron/20 text-saffron",
+                  !isActive && !isDone && "bg-muted text-muted-foreground",
+                )}>
+                  {isDone ? "✓" : s.step}
+                </span>
+                {s.label}
+              </button>
+              {i < arr.length - 1 && (
+                <div className="w-6 h-px bg-border mx-1 shrink-0" />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Edit form */}
@@ -981,19 +909,208 @@ export function ResumeBuilder() {
             </div>
           </div>
 
-          {/* Save bar (full width across sidebar + content) */}
-          <div className="sticky bottom-4 flex justify-end gap-2 print:hidden">
-            <Button onClick={save} disabled={saving} className="bg-brand-gradient text-white hover:opacity-90 font-semibold shadow-glow-brand">
+          {/* CTA: Save & Preview English Resume */}
+          <div className="mt-8 pt-6 border-t border-border flex items-center justify-between flex-wrap gap-4">
+            <p className="text-sm text-muted-foreground">
+              Fill in English — we'll handle the Japanese translation next.
+            </p>
+            <Button
+              onClick={async () => { await save(); setTab("preview-en"); }}
+              disabled={saving}
+              className="bg-brand-gradient text-white font-semibold"
+            >
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Save Resume
+              Save & Preview English Resume
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
         </motion.div>
       )}
 
-      {/* Previews */}
-      {tab === "preview-ja" && <ResumePreview data={data} lang="ja" />}
-      {tab === "preview-en" && <ResumePreview data={data} lang="en" />}
+      {/* Preview EN tab */}
+      {tab === "preview-en" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="print:hidden flex items-center justify-between gap-4 mb-6 p-4 rounded-2xl border border-border bg-card flex-wrap">
+            <div>
+              <p className="font-display font-bold text-[15px]">English Resume Preview</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                This is exactly what employers will see. Download or continue to Japanese translation.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <PDFDownloadLink
+                document={<EnglishResumePDF data={data} />}
+                fileName={`${data.name || "resume"}_EN.pdf`}
+              >
+                {({ loading: pdfLoading }) => (
+                  <Button variant="outline" disabled={pdfLoading} className="font-semibold">
+                    <Download className="h-4 w-4 mr-1.5" />
+                    {pdfLoading ? "Generating…" : "Download EN PDF"}
+                  </Button>
+                )}
+              </PDFDownloadLink>
+              <Button
+                onClick={() => setTab("translate")}
+                disabled={!data.name}
+                className="bg-brand-gradient text-white font-semibold"
+              >
+                <Languages className="h-4 w-4 mr-1.5" />
+                Translate to Japanese
+              </Button>
+            </div>
+          </div>
+          <div className="bg-muted/60 rounded-2xl p-4 sm:p-8">
+            <div className="max-w-[860px] mx-auto">
+              <ResumePreview data={data} lang="en" />
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Translate tab */}
+      {tab === "translate" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="max-w-2xl mx-auto py-8">
+            <div className="text-center mb-8">
+              <div className="grid place-items-center h-16 w-16 rounded-2xl bg-saffron/10 border border-saffron/20 mx-auto mb-4">
+                <Languages className="h-8 w-8 text-saffron" />
+              </div>
+              <h2 className="font-display font-bold text-2xl tracking-tight mb-2">
+                AI Japanese Translation
+              </h2>
+              <p className="text-muted-foreground text-sm max-w-md mx-auto">
+                Our AI will translate your English resume content into professional Japanese.
+                Personal details (name, email, phone) stay in English — only descriptions,
+                project summaries, and self-PR are translated.
+              </p>
+            </div>
+
+            <div className="card-premium p-5 mb-6">
+              <p className="font-semibold text-sm mb-3">What the AI will translate:</p>
+              <div className="grid sm:grid-cols-2 gap-2">
+                {[
+                  "Self-PR / Introduction",
+                  "Hobbies & Interests",
+                  "Project descriptions",
+                  "Work experience duties",
+                  "Certification descriptions",
+                  "Why Japan motivation answers",
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span className="h-1.5 w-1.5 rounded-full bg-saffron flex-shrink-0" />
+                    {item}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 pt-3 border-t border-border/60 text-xs text-muted-foreground">
+                Personal info (name, email, phone, DOB) is kept as-is.
+                Education institution names and skill names are kept in English.
+              </div>
+            </div>
+
+            {translated && (
+              <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 p-4 mb-6 flex items-start gap-3">
+                <span className="text-emerald-600 text-lg mt-0.5">✓</span>
+                <div>
+                  <p className="font-semibold text-emerald-800 dark:text-emerald-300 text-sm">
+                    Translation complete!
+                  </p>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">
+                    Your resume has been translated. You can re-translate if you updated your English content.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                onClick={handleTranslate}
+                disabled={translating}
+                className="flex-1 bg-brand-gradient text-white font-semibold h-11 text-[15px]"
+              >
+                {translating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Translating… (15–30 seconds)
+                  </>
+                ) : translated ? (
+                  <>
+                    <Languages className="h-4 w-4 mr-2" />
+                    Re-translate (content updated)
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Translate to Japanese with AI
+                  </>
+                )}
+              </Button>
+              {translated && (
+                <Button
+                  variant="outline"
+                  onClick={() => setTab("preview-ja")}
+                  className="flex-1 font-semibold h-11"
+                >
+                  <Globe className="h-4 w-4 mr-2" />
+                  View Japanese 履歴書
+                </Button>
+              )}
+            </div>
+
+            {translating && (
+              <div className="mt-4">
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-brand-gradient rounded-full"
+                    initial={{ width: "0%" }}
+                    animate={{ width: "100%" }}
+                    transition={{ duration: 25, ease: "linear" }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  AI is translating your content…
+                </p>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Preview JP tab */}
+      {tab === "preview-ja" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="print:hidden flex items-center justify-between gap-4 mb-6 p-4 rounded-2xl border border-border bg-card flex-wrap">
+            <div>
+              <p className="font-display font-bold text-[15px]">Japanese 履歴書 Preview</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                AI-translated Japanese resume. Download the PDF to share with Japanese employers.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setTab("translate")}>
+                <Languages className="h-4 w-4 mr-1.5" />
+                Re-translate
+              </Button>
+              <PDFDownloadLink
+                document={<JapaneseResumePDF data={data} />}
+                fileName={`${data.name || "resume"}_JP_履歴書.pdf`}
+              >
+                {({ loading: pdfLoading }) => (
+                  <Button disabled={pdfLoading} className="bg-brand-gradient text-white font-semibold">
+                    <Download className="h-4 w-4 mr-1.5" />
+                    {pdfLoading ? "生成中…" : "Download 履歴書 PDF"}
+                  </Button>
+                )}
+              </PDFDownloadLink>
+            </div>
+          </div>
+          <div className="bg-muted/60 rounded-2xl p-4 sm:p-8">
+            <div className="max-w-[860px] mx-auto">
+              <ResumePreview data={data} lang="ja" />
+            </div>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }

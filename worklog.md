@@ -950,3 +950,39 @@ Stage Summary:
 - Skills section layout fixed: clean 2-row layout (name on top, checkboxes below) that works on all screen sizes.
 - Files created (1): `src/app/api/candidates/me/resume/translate/route.ts`.
 - Files modified (3): `src/components/candidate/resume-builder.tsx` (translate button + function + Skills layout + CheckboxField fix), `src/lib/resume-types.ts` (added durationJa), header subtitle text.
+
+---
+Task ID: RESUME-4STEP-REDESIGN
+Agent: main (Z.ai Code)
+Task: Redesign resume builder with 4-step flow (Edit→Preview EN→Translate→Preview JP), fix layout bugs, fix Skills table 2-row header, dark-mode isolation.
+
+Work Log:
+- Rewrote `/api/candidates/me/resume/translate/route.ts`: now loads from DB, calls z-ai-web-dev-sdk LLM, merges translated *Ja fields into full ResumeData, saves to DB, returns `{ resumeData }`. Client just calls POST (no body) and replaces state.
+- Fixed `src/app/globals.css`: added `color-scheme: light`, `isolation: isolate`, explicit border + shadow, and `!important` black-on-white rules for `.resume-page` + all child elements so dark mode doesn't bleed into the resume preview.
+- Fixed `src/components/candidate/resume-preview.tsx`: added `JaText` helper (shows ※未翻訳 in grey italic for untranslated fields), 2-row Skills header with "Proficiency Level" / "習熟度" spanning 3 columns (both EN + JP), `tableLayout: fixed` + `overflow-x-auto` wrappers, used JaText for project descriptions, work duties, self-PR, hobbies.
+- Fixed `src/lib/pdf-templates/english-resume-pdf.tsx`: 2-row Skills header (Skill Name | Proficiency Level spanning → sub-columns: Learned in class / Can operate / Can teach).
+- Rewrote `src/components/candidate/resume-builder.tsx`:
+  - Changed Tab type to `"edit" | "preview-en" | "translate" | "preview-ja"`.
+  - Added `translated` state + effect to detect existing *Ja content.
+  - Replaced old `translateToJapanese` with `handleTranslate` (saves first, calls API which does everything, replaces state with returned data).
+  - Replaced 3-tab switcher with 4-step stepper (numbered circles, checkmarks for done steps, connector lines, disabled states for translate/preview-ja when prerequisites not met).
+  - Header: removed Translate + PDF buttons, kept Save + Print.
+  - Edit tab: replaced bottom save bar with "Save & Preview English Resume" CTA.
+  - Preview EN tab: action bar (title + Download EN PDF + Translate to Japanese) + paper frame wrapper (bg-muted/60 rounded container).
+  - Translate tab: dedicated screen with Languages icon, "AI Japanese Translation" heading, checklist of what gets translated, green "Translation complete!" notice if already translated, Translate/Re-translate button + View Japanese 履歴書 button, animated progress bar during translation.
+  - Preview JP tab: action bar (title + Re-translate + Download 履歴書 PDF) + paper frame wrapper.
+- Agent Browser verification (logged in as Arjun):
+  - 4-step stepper visible: 1 Fill English Form → 2 Preview & Download EN → 3 AI Translate to 日本語 → 4 Japanese 履歴書.
+  - Step 1: Edit form with all sections, "Save & Preview English Resume" CTA at bottom.
+  - Step 2: EN preview with action bar + paper frame, Skills table 2-row header (Proficiency Level spanning 3 cols), white background with visible borders.
+  - Step 3: Translate screen with checklist, green "Translation complete!" notice (already translated), "Re-translate" + "View Japanese 履歴書" buttons.
+  - Step 4: JP preview with action bar + paper frame, all data values in Japanese (name アルジュン・シャルマ, education SRM大学 AP, project descriptions リアルタイム学習プラットフォームを..., self-PR クラウド設定エンジニア..., hobbies クリケット、バドミントン).
+  - Dark mode: resume preview stays white with black text + visible borders (isolation working).
+  - `npx tsc --noEmit` → 0 errors. `bun run lint` → 0 errors.
+
+Stage Summary:
+- 4-step flow implemented: Edit → Preview EN → Translate → Preview JP.
+- Layout bugs fixed: dark-mode border isolation, paper frame wrappers, Skills 2-row header (both HTML preview + PDF template).
+- Translation API refactored: loads from DB, translates, merges, saves, returns full data — client just calls POST.
+- JaText helper shows ※未翻訳 for untranslated fields in the JP preview.
+- Files modified: `src/app/api/candidates/me/resume/translate/route.ts`, `src/app/globals.css`, `src/components/candidate/resume-preview.tsx`, `src/lib/pdf-templates/english-resume-pdf.tsx`, `src/components/candidate/resume-builder.tsx`.

@@ -403,10 +403,10 @@ export function EnglishResumePDF({ data }: { data: ResumeData }) {
                   Learned in class
                 </Text>
                 <Text style={[styles.cellHeader, { width: "20%", fontSize: 8, textAlign: "center" }]}>
-                  Can operate it / work using it alone
+                  Can operate alone
                 </Text>
                 <Text style={[styles.cellHeaderLast, { width: "20%", fontSize: 8, textAlign: "center" }]}>
-                  Can teach how to operate this to others
+                  Can teach others
                 </Text>
               </View>
               {data.skills.map((s, i) => (

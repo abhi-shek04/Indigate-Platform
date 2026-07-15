@@ -169,23 +169,17 @@ export function JapaneseResumePDF({ data }: { data: ResumeData }) {
 
   // Render one IT skill row (4 columns: name | 初心者 | 中級 | 高度な).
   const skillRow = (s: ResumeSkill, i: number) => {
-    // Map the three EN proficiency booleans onto the JP proficiency tiers.
-    // Heuristic: if `canTeach` → 高度な; else if `canOperate` → 中級; else 初心者.
-    // The "Learned in class" flag is preserved by checking at least 初心者.
-    const isBeginner = !s.canOperate && !s.canTeach;
-    const isIntermediate = s.canOperate && !s.canTeach;
-    const isAdvanced = s.canTeach;
     return (
       <View key={i} style={styles.row}>
         <Text style={[styles.skillsCell, { width: "40%" }]}>{s.name}</Text>
         <Text style={[styles.skillsCell, { width: "20%", textAlign: "center" }]}>
-          {isBeginner ? CHECKED : UNCHECKED}
+          {s.learnedInClass ? CHECKED : UNCHECKED}
         </Text>
         <Text style={[styles.skillsCell, { width: "20%", textAlign: "center" }]}>
-          {isIntermediate ? CHECKED : UNCHECKED}
+          {s.canOperate ? CHECKED : UNCHECKED}
         </Text>
         <Text style={[styles.skillsCellLast, { width: "20%", textAlign: "center" }]}>
-          {isAdvanced ? CHECKED : UNCHECKED}
+          {s.canTeach ? CHECKED : UNCHECKED}
         </Text>
       </View>
     );
@@ -316,18 +310,28 @@ export function JapaneseResumePDF({ data }: { data: ResumeData }) {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>ITスキル</Text>
             <View style={styles.table}>
-              <View style={styles.skillsHeaderRow}>
-                <Text style={[styles.skillsCell, { width: "40%", fontWeight: "bold" }]}>
+              {/* Header row 1: Skill Name + Proficiency Level label */}
+              <View style={[styles.skillsHeaderRow, { borderBottomWidth: 0 }]}>
+                <Text style={[styles.skillsCell, { width: "40%", fontWeight: "bold", borderRightWidth: 1, borderRightColor: "#bfbfbf" }]}>
                   スキル名
                 </Text>
-                <Text style={[styles.skillsCell, { width: "20%", fontWeight: "bold", textAlign: "center" }]}>
-                  初心者
+                <Text style={[styles.skillsCellLast, { width: "60%", fontWeight: "bold", textAlign: "center" }]}>
+                  習熟度レベル
                 </Text>
-                <Text style={[styles.skillsCell, { width: "20%", fontWeight: "bold", textAlign: "center" }]}>
-                  中級
+              </View>
+              {/* Header row 2: sub-columns */}
+              <View style={styles.skillsHeaderRow}>
+                <Text style={[styles.skillsCell, { width: "40%", fontWeight: "bold", borderRightWidth: 1, borderRightColor: "#bfbfbf" }]}>
+                  {""}
                 </Text>
-                <Text style={[styles.skillsCellLast, { width: "20%", fontWeight: "bold", textAlign: "center" }]}>
-                  高度な
+                <Text style={[styles.skillsCell, { width: "20%", fontWeight: "bold", textAlign: "center", fontSize: 8 }]}>
+                  授業で学習
+                </Text>
+                <Text style={[styles.skillsCell, { width: "20%", fontWeight: "bold", textAlign: "center", fontSize: 8 }]}>
+                  単独で操作可能
+                </Text>
+                <Text style={[styles.skillsCellLast, { width: "20%", fontWeight: "bold", textAlign: "center", fontSize: 8 }]}>
+                  他者に指導可能
                 </Text>
               </View>
               {data.skills.map((s, i) => skillRow(s, i))}

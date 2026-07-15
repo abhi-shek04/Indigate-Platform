@@ -1142,3 +1142,27 @@ Stage Summary:
 - Translation re-translate flow verified working.
 - Resume layout improved with premium spacing, shadows, typography.
 - Files modified: `src/app/api/candidates/me/resume/pdf/route.ts` (NEW), `src/components/candidate/resume-builder.tsx`, `src/lib/pdf-templates/english-resume-pdf.tsx`, `src/lib/pdf-templates/japanese-resume-pdf.tsx`, `src/components/candidate/tabs/settings.tsx`, `src/app/globals.css`.
+
+---
+Task ID: PDF-SKILLS-OVERFLOW-FIX
+Agent: main (Z.ai Code)
+Task: Fix garbled/overlapping text in PDF Skills table headers (long column names overflow narrow 20% columns).
+
+Work Log:
+- User reported garbled text in PDF. VLM analysis of screenshot showed the EN PDF Skills table had "Can operate it / work using it alone" and "Can teach how to operate this to others" overlapping with adjacent columns — the text was too long for the 20% width columns at fontSize 8, causing overflow and garbled rendering.
+- Fixed EN PDF template (`english-resume-pdf.tsx`): shortened the sub-column headers:
+  - "Learned in class" → kept (short enough)
+  - "Can operate it / work using it alone" → "Can operate alone"
+  - "Can teach how to operate this to others" → "Can teach others"
+- Fixed JP PDF template (`japanese-resume-pdf.tsx`): the Skills table was still using the OLD 3-tier format (初心者/中級/高度な) instead of the new 3-checkbox format. Updated to match the EN PDF:
+  - 2-row header: "スキル名" | "習熟度レベル" spanning → "授業で学習" | "単独で操作可能" | "他者に指導可能"
+  - Updated `skillRow` function to use the actual proficiency booleans (learnedInClass/canOperate/canTeach) instead of the old tier heuristic.
+- Verified both PDFs via VLM:
+  - EN PDF: headers "Learned in class", "Can operate alone", "Can teach others" — clean, no garbling.
+  - JP PDF: headers "授業で学習", "単独で操作可能", "他者に指導可能" — clean, no garbling.
+- `npx tsc --noEmit` → 0 errors. `bun run lint` → 0 errors.
+
+Stage Summary:
+- PDF Skills table headers no longer overflow/garble — shortened to fit 20% columns.
+- JP PDF Skills table now uses the same 3-checkbox format as the EN PDF (was still using old 3-tier format).
+- Both PDFs verified clean by VLM.

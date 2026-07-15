@@ -116,6 +116,22 @@ export const useApp = create<AppState>((set, get) => ({
     try {
       const res = await fetch("/api/auth/me", { cache: "no-store" });
       const data = await res.json();
+      const currentState = get();
+      // Only auto-redirect to dashboard if we're on the home page (initial load)
+      // Don't redirect if user is already on a specific view (e.g. jobs, contact, about)
+      if (data.user && currentState.view === "home") {
+        const role = data.user.role;
+        if (role === "CANDIDATE") {
+          set({ user: data.user, candidate: data.candidate ?? null, company: null, authLoading: false, view: "candidate" });
+          return;
+        } else if (role === "COMPANY") {
+          set({ user: data.user, candidate: null, company: data.company ?? null, authLoading: false, view: "company" });
+          return;
+        } else if (role === "ADMIN") {
+          set({ user: data.user, candidate: null, company: null, authLoading: false, view: "admin" });
+          return;
+        }
+      }
       set({
         user: data.user,
         candidate: data.candidate ?? null,

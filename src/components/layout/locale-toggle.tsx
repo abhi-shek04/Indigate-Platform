@@ -23,7 +23,7 @@ export function LocaleToggle({ className }: { className?: string }) {
         )}
       >
         <Globe className="h-4 w-4" />
-        <span className="font-semibold uppercase">{locale}</span>
+        <span className="font-semibold uppercase">{locale === "ja" ? "JP" : "EN"}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-32">
         <DropdownMenuItem onClick={() => setLocale("en")}>

@@ -1233,3 +1233,58 @@ Stage Summary:
 - Landing page CTAs are now context-aware: logged-out users see "Create your free account" / "Hire talent"; logged-in users see "Welcome back!" / "Go to Dashboard".
 - Stats count-up animation now works correctly — animates from 0 to the real value when stats load.
 - Files modified: `src/components/candidate/resume-preview.tsx`, `src/components/landing/landing-page.tsx`, `src/components/brand/use-count-up.ts`.
+
+---
+Task ID: HOME-PREMIUM-REDESIGN
+Agent: frontend-styling-expert
+Task: Redesign landing page for premium professional layout
+
+Work Log:
+- Read worklog tail + full `src/components/landing/landing-page.tsx` (876 lines, 9 sections). Cross-checked design tokens in `globals.css` (`bg-mesh`, `bg-brand-gradient`, `text-gradient-brand`, `card-premium`, `shadow-premium`, `shadow-glow-brand`, `.section-rule`, `.glass`, `.hero-stat`) and i18n keys in `src/lib/i18n.ts` to confirm all referenced labels exist.
+- Added a new internal `SectionHeader` component at the top of the file (after imports, before `StatCard`). Pattern: centered saffron pill (`border-saffron/30 bg-saffron/10 text-crimson`, with lucide icon) → bold `text-3xl sm:text-4xl` headline → muted `max-w-2xl` subtitle → `section-rule` divider. Reused across all 7 post-hero content sections for visual consistency.
+- Hero section: trimmed outer padding `pt-20 pb-24 sm:pt-28 sm:pb-32` → `pt-16 pb-16 sm:pt-24 sm:pb-20`; company strip margin `mt-16` → `mt-12`. Replaced the full-width `border-y` stats strip with a contained premium glass card: `rounded-2xl glass border border-border/70 shadow-premium p-3 sm:p-4` inside `mx-auto max-w-7xl ... pb-14 sm:pb-16`. StatCard tiles still use the existing `.hero-stat` glass+accent-line styling, now layered inside the outer glass container for a bento-style premium feel.
+- Featured Jobs: section padding `py-20 sm:py-24` → `py-14 sm:py-16`, switched to `bg-background` (odd). Header moved from left-aligned-with-button to a centered `SectionHeader` (icon=Briefcase, label="Featured", title=`t("jobs.title")`, subtitle=`t("jobs.subtitle")`). The "View all" button moved to a centered footer (`mt-10 text-center`) below the grid. Added `whileHover={{ y: -6 }}` spring lift on the wrapper motion.div (in addition to JobCard's internal hover) so cards rise with a premium feel.
+- How It Works: padding tightened, switched to `bg-card/30 border-y border-border` (even). Header replaced with centered `SectionHeader` (Sparkles / "Process"). Removed the now-redundant `mt-14` on the grid (SectionHeader's `mb-12` provides spacing).
+- Visa Guide: padding tightened, switched to `bg-background` (odd). Outer wrapper changed from `max-w-4xl` to `max-w-7xl` for consistency; inner content wrapped in `max-w-4xl mx-auto` to preserve readability. Header replaced with `SectionHeader` (Plane / "Visa Guide"). Removed `mt-10` top margin on accordion (SectionHeader handles spacing).
+- Why IndiGate: padding tightened, switched to `bg-card/30 border-y border-border` (even). Restructured from "header-in-left-column" 2-col layout to "centered SectionHeader above 2-col grid" for consistency. SectionHeader uses ShieldCheck / "Why IndiGate" / "Built for the cross-border journey". Value-prop `<motion.li>` hover upgraded: `hover:border-border hover:bg-card/60` → `hover:border-saffron/30 hover:bg-card hover:shadow-premium` for a premium lift + saffron-tinted border + soft shadow.
+- Testimonials: padding tightened, switched to `bg-background` (odd). Header replaced with `SectionHeader` (Quote / "Testimonials"). Marquee figures changed from `bg-background` → `bg-card` so they pop against the section background; hover lift strengthened `hover:-translate-y-1` → `hover:-translate-y-1.5`. Edge fade masks already use `from-background` which now matches the section bg perfectly. (Section remains conditionally rendered when `testimonials.length === 0`.)
+- FAQ: padding tightened, switched to `bg-card/30 border-y border-border` (even). Outer wrapper `max-w-3xl` → `max-w-7xl`, inner content wrapped in `max-w-3xl mx-auto`. Header replaced with `SectionHeader` (HelpCircle / `t("faq.badge")`). Accordion items upgraded with `hover:border-saffron/30 hover:shadow-premium transition-all`.
+- CTA: padding tightened `py-20 sm:py-24` → `py-14 sm:py-16`, switched to `bg-background` (odd). Inner banner padding `px-8 py-16 sm:px-16 sm:py-20` → `px-8 py-14 sm:px-16 sm:py-18` so the gradient banner itself feels less cavernous. Auth-aware CTAs (welcome-back vs. create-account) preserved.
+- Contact (ContactSection function): padding tightened, switched to `bg-card/30 border-y border-border` (even). Outer wrapper `max-w-3xl` → `max-w-7xl`, form wrapped in `max-w-3xl mx-auto`. Header replaced with `SectionHeader` (Mail / "Contact"). Removed `mt-10` from form/success-card (SectionHeader provides spacing). All form behavior, validation, success state, and toast preserved.
+- Alternating background flow (post-hero): Featured Jobs (bg-background) → How It Works (bg-card/30 border-y) → Visa Guide (bg-background) → Why IndiGate (bg-card/30 border-y) → Testimonials (bg-background) → FAQ (bg-card/30 border-y) → CTA (bg-background) → Contact (bg-card/30 border-y). Border separators on the even sections give clean visual rhythm without empty gaps.
+- All existing imports retained; no new dependencies. No i18n keys added/removed/renamed (existing keys reused in new positions; hard-coded English labels "Featured"/"Process"/"Visa Guide"/"Why IndiGate"/"Testimonials"/"Contact" match the existing hard-coded pattern in the original file).
+- `npx tsc --noEmit` → 0 errors. `bun run lint` → 0 errors.
+
+Stage Summary:
+- Single-file change to `src/components/landing/landing-page.tsx`. Section padding uniformly tightened from `py-20 sm:py-24` to `py-14 sm:py-16` across all 8 post-hero sections (hero itself trimmed too).
+- New internal `SectionHeader` component enforces one consistent premium header pattern (saffron pill + bold headline + muted subtitle + saffron→border gradient divider) on every content section — eliminating the prior mix of left-aligned, dual-column, and inconsistent pill styles.
+- Section backgrounds now alternate `bg-background` ↔ `bg-card/30 border-y border-border` for visual continuity instead of large empty gaps. All outer wrappers standardized on `max-w-7xl` (FAQ and Contact form content stays narrow via inner `max-w-3xl`/`max-w-4xl` for readability).
+- Hero stats bar transformed from a flat full-width `border-y` strip into a contained premium glass card (`rounded-2xl glass shadow-premium`) sitting at the bottom of the hero — more prominent, more premium.
+- Card hover effects upgraded: Featured Jobs wrapper motion.div gets `whileHover={{ y: -6 }}` spring lift on top of JobCard's internal hover; Why IndiGate value-prop items get `hover:border-saffron/30 hover:bg-card hover:shadow-premium`; FAQ items get `hover:border-saffron/30 hover:shadow-premium`; Testimonials figures now use `bg-card` (instead of blending `bg-background`) with a stronger `hover:-translate-y-1.5` lift.
+- All existing functionality preserved: auth-aware hero + CTA buttons, stats fetching with count-up, conditional rendering of Featured Jobs + Testimonials sections, job cards, visa accordion, FAQ accordion, contact form with success state. 0 TypeScript errors, 0 lint errors.
+
+---
+Task ID: HOME-PREMIUM-VERIFICATION
+Agent: main (Z.ai Code)
+Task: Verify premium home page redesign + confirm admin job changes reflect in stats.
+
+Work Log:
+- Verified the redesigned home page (from HOME-PREMIUM-REDESIGN subagent):
+  - Hero section: 8/10 — clean, premium, professional with gradient headline, auth-aware CTAs, company strip.
+  - Stats bar: "25+ ACTIVE JOBS" visible in a premium glass card.
+  - Featured Jobs: 3 job cards with clean layout, "View all jobs" button.
+  - How IndiGate works: section heading visible.
+  - Tighter spacing (py-14 sm:py-16) — page height reduced from 7176px to 6797px.
+  - Alternating section backgrounds for visual continuity.
+  - Premium section headers with saffron pill + headline + subtitle pattern.
+- Verified admin job changes reflect in stats:
+  - Before pausing a job: jobCount=25
+  - After pausing: jobCount=24 (immediately reflected in /api/jobs/stats)
+  - After re-activating: jobCount=25
+  - The stats API counts `isActive: true` jobs from the DB — so any admin change (pause/activate/delete/create) immediately reflects on the next home page load.
+- `npx tsc --noEmit` → 0 errors. `bun run lint` → 0 errors.
+
+Stage Summary:
+- Home page redesigned with premium professional layout: tighter spacing, alternating backgrounds, consistent section headers, premium glass stats card, better hover effects.
+- Admin job changes (pause/activate/delete/create) DO update the home page stats — the stats API is live DB-backed (counts isActive:true jobs).
+- The home page is now production-ready and professional.

@@ -54,6 +54,43 @@ interface Stats {
   placementCount: number;
 }
 
+/**
+ * Premium section header — saffron pill label + bold headline + muted subtitle,
+ * centered, with a subtle saffron→border gradient divider line below.
+ * Used by every post-hero section so the page feels like one continuous story.
+ */
+function SectionHeader({
+  icon: Icon,
+  label,
+  title,
+  subtitle,
+  className,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  title: string;
+  subtitle?: string;
+  className?: string;
+}) {
+  return (
+    <div className={"text-center mb-12 " + (className ?? "")}>
+      <span className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-crimson">
+        <Icon className="h-3 w-3" />
+        {label}
+      </span>
+      <h2 className="mt-4 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+        {title}
+      </h2>
+      {subtitle ? (
+        <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
+          {subtitle}
+        </p>
+      ) : null}
+      <div className="section-rule mt-5 max-w-xs mx-auto" />
+    </div>
+  );
+}
+
 function StatCard({
   value,
   suffix,
@@ -233,7 +270,7 @@ export function LandingPage() {
         />
 
         {/* Parallax mouse-follow handled via CSS only for perf */}
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-20 pb-24 sm:pt-28 sm:pb-32">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-16 pb-16 sm:pt-24 sm:pb-20">
           <RevealGroup className="mx-auto max-w-3xl text-center" stagger={0.12} delayChildren={0.1}>
             <motion.div variants={staggerItem} className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/10 px-4 py-1.5 text-sm font-medium text-crimson shadow-premium">
               <span className="relative flex h-2 w-2">
@@ -288,7 +325,7 @@ export function LandingPage() {
           </RevealGroup>
 
           {/* Hero company strip */}
-          <Reveal variants={fadeUp} delay={0.5} className="mt-16">
+          <Reveal variants={fadeUp} delay={0.5} className="mt-12">
             <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 opacity-70">
               {["TechNova", "SakuraSoft", "Mitsui Eng.", "Hikari", "Kintaro"].map(
                 (name, i) => (
@@ -311,10 +348,10 @@ export function LandingPage() {
           </Reveal>
         </div>
 
-        {/* Stats bar */}
-        <div className="border-y border-border bg-card/60 glass">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+        {/* Stats bar — premium floating glass card sitting at the bottom of the hero */}
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-14 sm:pb-16">
+          <div className="rounded-2xl glass border border-border/70 shadow-premium p-3 sm:p-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               <StatCard value={stats?.jobCount ?? 12} suffix="+" label={t("stats.jobs")} delay={0} icon={Briefcase} />
               <StatCard value={stats?.candidateCount ?? 1900} suffix="+" label={t("stats.candidates")} delay={120} icon={Users} />
               <StatCard value={stats?.companyCount ?? 5} suffix="+" label={t("stats.companies")} delay={240} icon={Building2} />
@@ -326,58 +363,56 @@ export function LandingPage() {
 
       {/* FEATURED JOBS */}
       {featured.length > 0 && (
-        <section className="py-20 sm:py-24">
+        <section className="py-14 sm:py-16 bg-background">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <Reveal variants={fadeUp}>
-              <div className="flex items-end justify-between flex-wrap gap-4 mb-10">
-                <div className="max-w-2xl">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-crimson">
-                    <Briefcase className="h-3 w-3" />
-                    {t("jobs.title")}
-                  </div>
-                  <h2 className="mt-3 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
-                    Latest opportunities
-                  </h2>
-                  <p className="mt-2 text-muted-foreground">{t("jobs.subtitle")}</p>
-                  <div className="section-rule mt-5 max-w-md" />
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate("jobs")}
-                  className="font-semibold group h-11 px-5 rounded-xl border-saffron/30 hover:border-saffron/60 hover:bg-saffron/5"
-                >
-                  {t("jobs.viewall")}
-                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </div>
+              <SectionHeader
+                icon={Briefcase}
+                label="Featured"
+                title={t("jobs.title")}
+                subtitle={t("jobs.subtitle")}
+              />
             </Reveal>
             <RevealGroup className="grid gap-5 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3" stagger={0.1}>
               {featured.map((job) => (
-                <motion.div key={job.id} variants={staggerItem}>
+                <motion.div
+                  key={job.id}
+                  variants={staggerItem}
+                  whileHover={{ y: -6 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                  className="h-full"
+                >
                   <JobCard job={job} />
                 </motion.div>
               ))}
             </RevealGroup>
+            <Reveal variants={fadeUp} delay={0.1} className="mt-10 text-center">
+              <Button
+                variant="outline"
+                onClick={() => navigate("jobs")}
+                className="font-semibold group h-11 px-6 rounded-xl border-saffron/30 hover:border-saffron/60 hover:bg-saffron/5"
+              >
+                {t("jobs.viewall")}
+                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Reveal>
           </div>
         </section>
       )}
 
       {/* HOW IT WORKS */}
-      <section className="py-20 sm:py-24 bg-card/40 border-y border-border">
+      <section className="py-14 sm:py-16 bg-card/30 border-y border-border">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <Reveal variants={fadeUp} className="text-center max-w-2xl mx-auto">
-            <div className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-crimson">
-              <Sparkles className="h-3 w-3" />
-              Process
-            </div>
-            <h2 className="mt-3 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
-              {t("how.title")}
-            </h2>
-            <p className="mt-2 text-muted-foreground">{t("how.subtitle")}</p>
-            <div className="section-rule mt-5 max-w-xs mx-auto" />
+          <Reveal variants={fadeUp}>
+            <SectionHeader
+              icon={Sparkles}
+              label="Process"
+              title={t("how.title")}
+              subtitle={t("how.subtitle")}
+            />
           </Reveal>
 
-          <RevealGroup className="mt-14 grid gap-6 md:grid-cols-3 relative" stagger={0.14}>
+          <RevealGroup className="grid gap-6 md:grid-cols-3 relative" stagger={0.14}>
             {/* Timeline connector line on md+ */}
             <div
               aria-hidden
@@ -416,82 +451,78 @@ export function LandingPage() {
       </section>
 
       {/* VISA GUIDE */}
-      <section className="py-20 sm:py-24 bg-card/40 border-y border-border">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-          <Reveal variants={fadeUp} className="text-center max-w-2xl mx-auto">
-            <div className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-crimson">
-              <Plane className="h-3 w-3" />
-              Visa Guide
-            </div>
-            <h2 className="mt-3 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
-              {t("visa.title")}
-            </h2>
-            <p className="mt-2 text-muted-foreground">{t("visa.subtitle")}</p>
-            <div className="section-rule mt-5 max-w-xs mx-auto" />
+      <section className="py-14 sm:py-16 bg-background">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <Reveal variants={fadeUp}>
+            <SectionHeader
+              icon={Plane}
+              label="Visa Guide"
+              title={t("visa.title")}
+              subtitle={t("visa.subtitle")}
+            />
           </Reveal>
 
-          <Reveal variants={fadeUp} delay={0.15}>
-            <Accordion type="single" collapsible className="mt-10 space-y-3">
-              <VisaAccordionItem
-                value="ssw"
-                icon={Wrench}
-                title={t("visa.ssw.title")}
-                desc={t("visa.ssw.desc")}
-                requirements={["JLPT N4 or higher", "Industry skills test", "Valid passport", "Health certificate"]}
-              />
-              <VisaAccordionItem
-                value="engineer"
-                icon={Building2}
-                title={t("visa.engineer.title")}
-                desc={t("visa.engineer.desc")}
-                requirements={["Bachelor's degree OR 10 years experience", "Job offer from Japanese company", "Relevant field experience", "Valid passport"]}
-              />
-              <VisaAccordionItem
-                value="transfer"
-                icon={ArrowLeftRight}
-                title={t("visa.transfer.title")}
-                desc={t("visa.transfer.desc")}
-                requirements={["1+ year at same company", "Transfer to Japan office", "Valid passport", "Employment contract"]}
-              />
-            </Accordion>
-          </Reveal>
+          <div className="max-w-4xl mx-auto">
+            <Reveal variants={fadeUp} delay={0.15}>
+              <Accordion type="single" collapsible className="space-y-3">
+                <VisaAccordionItem
+                  value="ssw"
+                  icon={Wrench}
+                  title={t("visa.ssw.title")}
+                  desc={t("visa.ssw.desc")}
+                  requirements={["JLPT N4 or higher", "Industry skills test", "Valid passport", "Health certificate"]}
+                />
+                <VisaAccordionItem
+                  value="engineer"
+                  icon={Building2}
+                  title={t("visa.engineer.title")}
+                  desc={t("visa.engineer.desc")}
+                  requirements={["Bachelor's degree OR 10 years experience", "Job offer from Japanese company", "Relevant field experience", "Valid passport"]}
+                />
+                <VisaAccordionItem
+                  value="transfer"
+                  icon={ArrowLeftRight}
+                  title={t("visa.transfer.title")}
+                  desc={t("visa.transfer.desc")}
+                  requirements={["1+ year at same company", "Transfer to Japan office", "Valid passport", "Employment contract"]}
+                />
+              </Accordion>
+            </Reveal>
 
-          {/* Support callout */}
-          <Reveal variants={fadeUp} delay={0.3}>
-            <div className="mt-8 rounded-2xl bg-brand-gradient p-6 sm:p-8 text-center shadow-glow-brand">
-              <ShieldCheck className="h-8 w-8 text-white mx-auto mb-3" />
-              <p className="text-white font-semibold text-lg leading-relaxed max-w-2xl mx-auto">
-                {t("visa.support")}
-              </p>
-              <MagneticButton
-                onClick={() => navigate("home")}
-                className="mt-5 bg-white text-crimson hover:bg-white/90 font-bold h-11 px-6 rounded-xl inline-flex items-center gap-2 cursor-pointer"
-              >
-                {t("visa.cta")}
-                <ArrowRight className="h-4 w-4" />
-              </MagneticButton>
-            </div>
-          </Reveal>
+            {/* Support callout */}
+            <Reveal variants={fadeUp} delay={0.3}>
+              <div className="mt-8 rounded-2xl bg-brand-gradient p-6 sm:p-8 text-center shadow-glow-brand">
+                <ShieldCheck className="h-8 w-8 text-white mx-auto mb-3" />
+                <p className="text-white font-semibold text-lg leading-relaxed max-w-2xl mx-auto">
+                  {t("visa.support")}
+                </p>
+                <MagneticButton
+                  onClick={() => navigate("home")}
+                  className="mt-5 bg-white text-crimson hover:bg-white/90 font-bold h-11 px-6 rounded-xl inline-flex items-center gap-2 cursor-pointer"
+                >
+                  {t("visa.cta")}
+                  <ArrowRight className="h-4 w-4" />
+                </MagneticButton>
+              </div>
+            </Reveal>
+          </div>
         </div>
       </section>
 
       {/* WHY INDIGATE / VALUE PROPS */}
-      <section className="py-20 sm:py-24">
+      <section className="py-14 sm:py-16 bg-card/30 border-y border-border">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <Reveal variants={fadeUp}>
+            <SectionHeader
+              icon={ShieldCheck}
+              label="Why IndiGate"
+              title="Built for the cross-border journey"
+              subtitle="From Bengaluru to Tokyo, Hyderabad to Osaka — we handle the friction so you can focus on what you do best: great work."
+            />
+          </Reveal>
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
             <Reveal variants={fadeUp}>
-              <div className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-crimson">
-                <ShieldCheck className="h-3 w-3" />
-                Why IndiGate
-              </div>
-              <h2 className="mt-3 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
-                Built for the cross-border journey
-              </h2>
-              <p className="mt-4 text-muted-foreground leading-relaxed">
-                From Bengaluru to Tokyo, Hyderabad to Osaka — we handle the
-                friction so you can focus on what you do best: great work.
-              </p>
-              <ul className="mt-6 space-y-3">
+              <ul className="space-y-3">
                 {[
                   { icon: ShieldCheck, title: "Visa & relocation support", desc: "Every listed job comes with visa sponsorship. Our partners handle paperwork, housing, and onboarding." },
                   { icon: Globe2, title: "Bilingual by design", desc: "Browse jobs in English or Japanese. Companies can post in both languages." },
@@ -505,7 +536,7 @@ export function LandingPage() {
                     viewport={{ once: true }}
                     transition={{ duration: 0.5, ease: easeOutExpo, delay: i * 0.08 }}
                     whileHover={{ x: 4 }}
-                    className="group flex gap-4 rounded-xl border border-transparent hover:border-border hover:bg-card/60 p-3 -m-3 transition-all"
+                    className="group flex gap-4 rounded-xl border border-transparent hover:border-saffron/30 hover:bg-card hover:shadow-premium p-3 -m-3 transition-all"
                   >
                     <div className="shrink-0 grid place-items-center h-10 w-10 rounded-lg bg-saffron/10 text-saffron ring-1 ring-inset ring-saffron/15 group-hover:bg-brand-gradient group-hover:text-white group-hover:ring-transparent transition-all">
                       <item.icon className="h-5 w-5" />
@@ -556,22 +587,19 @@ export function LandingPage() {
 
       {/* TESTIMONIALS */}
       {testimonials.length > 0 && (
-        <section className="py-20 sm:py-24 bg-card/40 border-y border-border overflow-hidden">
+        <section className="py-14 sm:py-16 bg-background overflow-hidden">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <Reveal variants={fadeUp} className="text-center max-w-2xl mx-auto">
-              <div className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-crimson">
-                <Quote className="h-3 w-3" />
-                Testimonials
-              </div>
-              <h2 className="mt-3 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
-                {t("testimonials.title")}
-              </h2>
-              <p className="mt-2 text-muted-foreground">{t("testimonials.subtitle")}</p>
-              <div className="section-rule mt-5 max-w-xs mx-auto" />
+            <Reveal variants={fadeUp}>
+              <SectionHeader
+                icon={Quote}
+                label="Testimonials"
+                title={t("testimonials.title")}
+                subtitle={t("testimonials.subtitle")}
+              />
             </Reveal>
           </div>
 
-          <div className="mt-14 relative">
+          <div className="relative">
             {/* Edge fade masks */}
             <div
               aria-hidden
@@ -585,7 +613,7 @@ export function LandingPage() {
               {[...testimonials, ...testimonials].map((te, i) => (
                 <figure
                   key={i}
-                  className="w-[340px] sm:w-[400px] shrink-0 rounded-2xl border border-border bg-background p-6 shadow-premium transition-all hover:shadow-glow-brand hover:border-saffron/40 hover:-translate-y-1"
+                  className="w-[340px] sm:w-[400px] shrink-0 rounded-2xl border border-border bg-card p-6 shadow-premium transition-all hover:shadow-glow-brand hover:border-saffron/40 hover:-translate-y-1.5"
                 >
                   <div className="flex items-start justify-between">
                     <Quote className="h-8 w-8 text-saffron/50" />
@@ -616,54 +644,53 @@ export function LandingPage() {
       )}
 
       {/* FAQ */}
-      <section className="py-20 sm:py-24">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <Reveal variants={fadeUp} className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-crimson">
-              <HelpCircle className="h-3 w-3" />
-              {t("faq.badge")}
-            </div>
-            <h2 className="mt-3 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
-              {t("faq.title")}
-            </h2>
-            <p className="mt-2 text-muted-foreground">{t("faq.subtitle")}</p>
-            <div className="section-rule mt-5 max-w-xs mx-auto" />
+      <section className="py-14 sm:py-16 bg-card/30 border-y border-border">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <Reveal variants={fadeUp}>
+            <SectionHeader
+              icon={HelpCircle}
+              label={t("faq.badge")}
+              title={t("faq.title")}
+              subtitle={t("faq.subtitle")}
+            />
           </Reveal>
-          <Reveal variants={fadeUp} delay={0.1}>
-            <Accordion type="single" collapsible className="space-y-2">
-              {[
-                { q: t("faq.q1"), a: t("faq.a1") },
-                { q: t("faq.q2"), a: t("faq.a2") },
-                { q: t("faq.q3"), a: t("faq.a3") },
-                { q: t("faq.q4"), a: t("faq.a4") },
-                { q: t("faq.q5"), a: t("faq.a5") },
-                { q: t("faq.q6"), a: t("faq.a6") },
-                { q: t("faq.q7"), a: t("faq.a7") },
-                { q: t("faq.q8"), a: t("faq.a8") },
-              ].map((item, i) => (
-                <AccordionItem
-                  key={i}
-                  value={`faq-${i}`}
-                  className="border border-border rounded-xl px-6 bg-background"
-                >
-                  <AccordionTrigger className="font-display font-semibold text-left hover:no-underline py-5 text-base">
-                    {item.q}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground leading-relaxed pb-5">
-                    {item.a}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </Reveal>
+          <div className="max-w-3xl mx-auto">
+            <Reveal variants={fadeUp} delay={0.1}>
+              <Accordion type="single" collapsible className="space-y-2">
+                {[
+                  { q: t("faq.q1"), a: t("faq.a1") },
+                  { q: t("faq.q2"), a: t("faq.a2") },
+                  { q: t("faq.q3"), a: t("faq.a3") },
+                  { q: t("faq.q4"), a: t("faq.a4") },
+                  { q: t("faq.q5"), a: t("faq.a5") },
+                  { q: t("faq.q6"), a: t("faq.a6") },
+                  { q: t("faq.q7"), a: t("faq.a7") },
+                  { q: t("faq.q8"), a: t("faq.a8") },
+                ].map((item, i) => (
+                  <AccordionItem
+                    key={i}
+                    value={`faq-${i}`}
+                    className="border border-border rounded-xl px-6 bg-background hover:border-saffron/30 hover:shadow-premium transition-all"
+                  >
+                    <AccordionTrigger className="font-display font-semibold text-left hover:no-underline py-5 text-base">
+                      {item.q}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-muted-foreground leading-relaxed pb-5">
+                      {item.a}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </Reveal>
+          </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="py-20 sm:py-24">
+      <section className="py-14 sm:py-16 bg-background">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <Reveal variants={fadeUp}>
-            <div className="card-premium relative overflow-hidden rounded-3xl bg-sidebar text-sidebar-foreground px-8 py-16 sm:px-16 sm:py-20 text-center">
+            <div className="card-premium relative overflow-hidden rounded-3xl bg-sidebar text-sidebar-foreground px-8 py-14 sm:px-16 sm:py-18 text-center">
               {/* Mesh overlay with saffron/crimson aurora */}
               <div
                 aria-hidden
@@ -725,27 +752,25 @@ function ContactSection() {
   }
 
   return (
-    <section id="contact" className="py-20 sm:py-24 bg-card/40 border-t border-border">
-      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-        <Reveal variants={fadeUp} className="text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-crimson">
-            <Mail className="h-3 w-3" />
-            Contact
-          </div>
-          <h2 className="mt-3 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
-            {t("contact.title")}
-          </h2>
-          <p className="mt-2 text-muted-foreground">{t("contact.subtitle")}</p>
-          <div className="section-rule mt-5 max-w-xs mx-auto" />
+    <section id="contact" className="py-14 sm:py-16 bg-card/30 border-y border-border">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <Reveal variants={fadeUp}>
+          <SectionHeader
+            icon={Mail}
+            label="Contact"
+            title={t("contact.title")}
+            subtitle={t("contact.subtitle")}
+          />
         </Reveal>
 
+        <div className="max-w-3xl mx-auto">
         <Reveal variants={fadeUp} delay={0.15}>
           {sent ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ type: "spring", stiffness: 300, damping: 22 }}
-              className="mt-10 rounded-2xl border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40 p-8 text-center"
+              className="rounded-2xl border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40 p-8 text-center"
             >
               <motion.div
                 initial={{ scale: 0 }}
@@ -760,7 +785,7 @@ function ContactSection() {
               </p>
             </motion.div>
           ) : (
-            <form onSubmit={submit} className="mt-10 space-y-4">
+            <form onSubmit={submit} className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
                 <Field label={t("contact.name")}>
                   <input
@@ -813,6 +838,7 @@ function ContactSection() {
             </form>
           )}
         </Reveal>
+        </div>
       </div>
     </section>
   );

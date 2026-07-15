@@ -1208,3 +1208,28 @@ Stage Summary:
 - Gender now has a proper "Gender :" label in all resume views (EN PDF, EN HTML preview, JP HTML preview).
 - Date of Birth also got its own "Date of Birth :" label (was previously unlabeled).
 - Files modified: `src/lib/pdf-templates/english-resume-pdf.tsx`, `src/components/candidate/resume-preview.tsx`.
+
+---
+Task ID: PROFESSIONAL-FIXES
+Agent: main (Z.ai Code)
+Task: Fix 3 professional issues — (1) Skills section garbled headers in HTML preview, (2) "Create free account" CTA showing when logged in, (3) "0+ active jobs" stats not animating.
+
+Work Log:
+- Issue 1 (Skills headers garbled in HTML preview): The HTML preview's Skills table had long header text ("Can operate it / work using it alone" / "Can teach how to operate this to others") that overflowed the 20% width columns and rendered as garbled/overlapping text. Fixed by shortening to "Can operate alone" / "Can teach others" (matching the PDF template fix from earlier). Also shortened the JP HTML preview header "単独で操作・業務可能" → "単独で操作可能".
+- Issue 2 (Create free account when logged in): The landing page showed "Create your free account" CTA + "Hire talent" hero button (which navigated to register) even when the user was already logged in — unprofessional. Fixed by:
+  - Added `const user = useApp((s) => s.user)` to LandingPage.
+  - Hero CTA: when logged in, shows "Go to Dashboard" (navigates to the role-appropriate dashboard) instead of "Hire talent" (register).
+  - Bottom CTA section: when logged in, shows "Welcome back!" + "Continue your Japan journey from where you left off." + "Go to Dashboard" button instead of "Ready to start your Japan journey?" + "Create your free account".
+- Issue 3 (0+ active jobs): The `useCountUp` hook had a `startedRef` that prevented re-animation — once it ran with target=0 (initial state before stats loaded), it never re-ran when the real stats arrived (target=25). Fixed by removing the `startedRef` guard and adding `if (target <= 0) return` — the animation now restarts whenever `target` changes (0 → 25 triggers the count-up).
+- Agent Browser verification:
+  - Stats: "25+ ACTIVE JOBS", "6+ CANDIDATES", "7+ PARTNER COMPANIES", "4+ SUCCESSFUL PLACEMENTS" (was "0+" for all).
+  - Hero CTA (logged in): "Find jobs in Japan" + "Go to Dashboard" (was "Hire talent" → register).
+  - Bottom CTA (logged in): "Welcome back!" + "Go to Dashboard" (was "Create your free account").
+  - Skills section: headers "LEARNED IN CLASS", "CAN OPERATE ALONE", "CAN TEACH OTHERS" — all readable, [X]/[ ] checkboxes visible, no garbled text.
+  - `npx tsc --noEmit` → 0 errors. `bun run lint` → 0 errors.
+
+Stage Summary:
+- Skills HTML preview headers no longer overflow/garble — shortened to match the PDF template.
+- Landing page CTAs are now context-aware: logged-out users see "Create your free account" / "Hire talent"; logged-in users see "Welcome back!" / "Go to Dashboard".
+- Stats count-up animation now works correctly — animates from 0 to the real value when stats load.
+- Files modified: `src/components/candidate/resume-preview.tsx`, `src/components/landing/landing-page.tsx`, `src/components/brand/use-count-up.ts`.

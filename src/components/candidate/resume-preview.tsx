@@ -242,7 +242,7 @@ function JapaneseResume({ data }: { data: ResumeData }) {
                 </tr>
                 <tr>
                   <th className="text-center text-xs" style={{ width: "20%" }}>授業で学習</th>
-                  <th className="text-center text-xs" style={{ width: "20%" }}>単独で操作・業務可能</th>
+                  <th className="text-center text-xs" style={{ width: "20%" }}>単独で操作可能</th>
                   <th className="text-center text-xs" style={{ width: "20%" }}>他者に指導可能</th>
                 </tr>
               </thead>
@@ -529,8 +529,8 @@ function EnglishResume({ data }: { data: ResumeData }) {
                 </tr>
                 <tr>
                   <th className="text-center text-xs" style={{ width: "20%" }}>Learned in class</th>
-                  <th className="text-center text-xs" style={{ width: "20%" }}>Can operate it / work using it alone</th>
-                  <th className="text-center text-xs" style={{ width: "20%" }}>Can teach how to operate this to others</th>
+                  <th className="text-center text-xs" style={{ width: "20%" }}>Can operate alone</th>
+                  <th className="text-center text-xs" style={{ width: "20%" }}>Can teach others</th>
                 </tr>
               </thead>
               <tbody>

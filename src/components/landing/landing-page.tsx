@@ -170,6 +170,7 @@ function PipelineBar({
 export function LandingPage() {
   const { t, pick } = useT();
   const navigate = useApp((s) => s.navigate);
+  const user = useApp((s) => s.user);
   const [stats, setStats] = useState<Stats | null>(null);
   const [featured, setFeatured] = useState<JobDTO[]>([]);
   const [testimonials, setTestimonials] = useState<TestimonialDTO[]>([]);
@@ -265,12 +266,21 @@ export function LandingPage() {
                 {t("hero.cta.find")}
                 <ArrowRight className="h-4 w-4" />
               </MagneticButton>
-              <MagneticButton
-                onClick={() => navigate("register")}
-                className="bg-background border-2 border-border hover:border-saffron/50 font-semibold text-base h-12 px-7 rounded-xl inline-flex items-center gap-2 cursor-pointer"
-              >
-                {t("hero.cta.hire")}
-              </MagneticButton>
+              {user ? (
+                <MagneticButton
+                  onClick={() => navigate(user.role === "CANDIDATE" ? "candidate" : user.role === "COMPANY" ? "company" : "admin")}
+                  className="bg-background border-2 border-border hover:border-saffron/50 font-semibold text-base h-12 px-7 rounded-xl inline-flex items-center gap-2 cursor-pointer"
+                >
+                  {pick("Go to Dashboard", "ダッシュボードへ")}
+                </MagneticButton>
+              ) : (
+                <MagneticButton
+                  onClick={() => navigate("register")}
+                  className="bg-background border-2 border-border hover:border-saffron/50 font-semibold text-base h-12 px-7 rounded-xl inline-flex items-center gap-2 cursor-pointer"
+                >
+                  {t("hero.cta.hire")}
+                </MagneticButton>
+              )}
             </motion.div>
             <motion.p variants={staggerItem} className="mt-7 text-xs text-muted-foreground">
               {t("hero.trusted")}
@@ -666,16 +676,16 @@ export function LandingPage() {
               </div>
               <div className="relative">
                 <h2 className="font-display text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
-                  {t("cta.title")}
+                  {user ? pick("Welcome back!", "おかえりなさい！") : t("cta.title")}
                 </h2>
                 <p className="mt-4 text-white/90 text-lg max-w-2xl mx-auto">
-                  {t("cta.subtitle")}
+                  {user ? pick("Continue your Japan journey from where you left off.", "日本へのキャリアを続けましょう。") : t("cta.subtitle")}
                 </p>
                 <MagneticButton
-                  onClick={() => navigate("register")}
+                  onClick={() => navigate(user ? (user.role === "CANDIDATE" ? "candidate" : user.role === "COMPANY" ? "company" : "admin") : "register")}
                   className="mt-8 bg-white text-crimson hover:bg-white/90 font-bold text-base h-12 px-8 rounded-xl inline-flex items-center gap-2 cursor-pointer shadow-lg"
                 >
-                  {t("cta.button")}
+                  {user ? pick("Go to Dashboard", "ダッシュボードへ") : t("cta.button")}
                   <ArrowRight className="h-4 w-4" />
                 </MagneticButton>
               </div>

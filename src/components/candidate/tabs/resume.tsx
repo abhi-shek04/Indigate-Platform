@@ -71,12 +71,10 @@ export function Resume() {
   async function removeResume() {
     setBusy(true);
     try {
-      // The candidate PUT schema accepts `resumeUrl: null`. (The upload route
-      // sets resumeName separately — we only null the URL here, which is what
-      // applicants see.)
+      // The candidate PUT schema accepts `resumeUrl: null` + `resumeName: null`.
       await api("/api/candidates/me", {
         method: "PUT",
-        body: JSON.stringify({ resumeUrl: null }),
+        body: JSON.stringify({ resumeUrl: null, resumeName: null }),
       });
       toast.success("Resume removed.");
       await refreshAuth();

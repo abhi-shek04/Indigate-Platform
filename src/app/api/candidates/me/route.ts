@@ -40,6 +40,8 @@ const schema = z.object({
     .nullable()
     .optional(),
   photoUrl: z.string().nullable().optional(),
+  resumeUrl: z.string().nullable().optional(),
+  resumeName: z.string().nullable().optional(),
 });
 
 export async function PUT(req: NextRequest) {
@@ -64,6 +66,8 @@ export async function PUT(req: NextRequest) {
     if (d.experienceYears !== undefined) data.experienceYears = d.experienceYears;
     if (d.education !== undefined) data.education = d.education ? JSON.stringify(d.education) : null;
     if (d.photoUrl !== undefined) data.photoUrl = d.photoUrl;
+    if (d.resumeUrl !== undefined) data.resumeUrl = d.resumeUrl;
+    if (d.resumeName !== undefined) data.resumeName = d.resumeName;
 
     const updated = await db.candidateProfile.update({
       where: { userId: session.id },

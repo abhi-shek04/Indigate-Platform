@@ -104,6 +104,7 @@ export function toCandidateDTO(c: {
   skills: string;
   resumeUrl: string | null;
   resumeName: string | null;
+  resumeData: string | null;
   experienceYears: number;
   education: string | null;
   savedJobIds: string;
@@ -124,6 +125,7 @@ export function toCandidateDTO(c: {
     skills: parseJson<string[]>(c.skills, []),
     resumeUrl: c.resumeUrl,
     resumeName: c.resumeName,
+    hasResumeData: Boolean(c.resumeData),
     experienceYears: c.experienceYears,
     education: parseJson<EducationEntry[] | null>(c.education, null),
     savedJobIds: parseJson<string[]>(c.savedJobIds, []),

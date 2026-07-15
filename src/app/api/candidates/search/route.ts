@@ -23,10 +23,14 @@ export async function GET(req: NextRequest) {
     const page = Math.max(1, Number(searchParams.get("page") ?? 1));
     const limit = Math.min(50, Math.max(1, Number(searchParams.get("limit") ?? 12)));
 
-    // Build where clause — only show verified candidates with a resume
+    // Build where clause — only show verified candidates with EITHER an
+    // uploaded PDF resume OR a resume-builder JSON resume.
     const where: Record<string, unknown> = {
       user: { isVerified: true },
-      resumeUrl: { not: null },
+      OR: [
+        { resumeUrl: { not: null } },
+        { resumeData: { not: null } },
+      ],
     };
 
     if (openToWorkOnly) where.openToWork = true;
@@ -70,6 +74,7 @@ export async function GET(req: NextRequest) {
           location: true,
           photoUrl: true,
           resumeUrl: true,
+          resumeData: true,
           education: true,
           openToWork: true,
           createdAt: true,
@@ -87,7 +92,7 @@ export async function GET(req: NextRequest) {
       bio: c.bio,
       location: c.location,
       photoUrl: c.photoUrl,
-      hasResume: !!c.resumeUrl, // boolean only
+      hasResume: Boolean(c.resumeUrl || c.resumeData), // builder OR uploaded PDF
       educationCount: c.education ? safeParseArray(c.education).length : 0,
       openToWork: c.openToWork,
       createdAt: c.createdAt.toISOString(),

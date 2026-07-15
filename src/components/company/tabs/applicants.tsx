@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useApp } from "@/lib/store";
 import { useT } from "@/lib/use-t";
 import { api, formatDate } from "@/lib/api-client";
@@ -56,7 +56,13 @@ import {
   Download,
   MessageSquare,
   Send,
+  FileText,
+  Loader2,
 } from "lucide-react";
+import { PDFDownloadLink } from "@react-pdf/renderer";
+import { EnglishResumePDF } from "@/lib/pdf-templates/english-resume-pdf";
+import { JapaneseResumePDF } from "@/lib/pdf-templates/japanese-resume-pdf";
+import type { ResumeData } from "@/lib/resume-types";
 import type {
   ApplicationDTO,
   ApplicationStatus,
@@ -367,6 +373,36 @@ function ApplicantDetail({
   const [showMessage, setShowMessage] = useState(false);
   const [msgDraft, setMsgDraft] = useState("");
   const [sendingMsg, setSendingMsg] = useState(false);
+  // Resume builder data (fetched from company-facing endpoint)
+  const [resumeData, setResumeData] = useState<ResumeData | null>(null);
+  const [loadingResume, setLoadingResume] = useState(false);
+
+  useEffect(() => {
+    if (!c?.id) {
+      setResumeData(null);
+      return;
+    }
+    let cancelled = false;
+    setLoadingResume(true);
+    api<{ resumeData: ResumeData | null; resumeUrl: string | null; resumeName: string | null }>(
+      `/api/company/candidates/${c.id}/resume`,
+    )
+      .then((res) => {
+        if (cancelled) return;
+        setResumeData(res.resumeData ?? null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setResumeData(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingResume(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [c?.id]);
+
   if (!c) {
     return (
       <div className="p-5">
@@ -532,24 +568,86 @@ function ApplicantDetail({
       )}
 
       {/* Resume */}
-      {(c.resumeUrl || app.resumeUrlSnapshot) && (
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
-            Resume
-          </p>
-          <Button asChild variant="outline" size="sm">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+          Resume
+        </p>
+        {loadingResume ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Loading resume…
+          </div>
+        ) : resumeData ? (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Built with Resume Builder · download as PDF:
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <PDFDownloadLink
+                document={<EnglishResumePDF data={resumeData} />}
+                fileName={`${resumeData.name || c.fullName || "resume"}_EN.pdf`}
+              >
+                {({ loading }) => (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={loading}
+                    className="font-semibold h-9"
+                  >
+                    <FileText className="h-3.5 w-3.5 mr-1.5" />
+                    {loading ? "Generating…" : "Download EN PDF"}
+                  </Button>
+                )}
+              </PDFDownloadLink>
+              <PDFDownloadLink
+                document={<JapaneseResumePDF data={resumeData} />}
+                fileName={`${resumeData.name || c.fullName || "resume"}_JP.pdf`}
+              >
+                {({ loading }) => (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={loading}
+                    className="font-semibold h-9"
+                  >
+                    <FileText className="h-3.5 w-3.5 mr-1.5" />
+                    {loading ? "生成中…" : "履歴書 PDF"}
+                  </Button>
+                )}
+              </PDFDownloadLink>
+            </div>
+            {(c.resumeUrl || app.resumeUrlSnapshot) && (
+              <Button asChild variant="outline" size="sm" className="font-semibold h-9">
+                <a
+                  href={c.resumeUrl || app.resumeUrlSnapshot || "#"}
+                  target="_blank"
+                  rel="noreferrer"
+                  download
+                >
+                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                  Download {c.resumeName || "resume.pdf"}
+                </a>
+              </Button>
+            )}
+          </div>
+        ) : (c.resumeUrl || app.resumeUrlSnapshot) ? (
+          <Button asChild variant="outline" size="sm" className="font-semibold h-9">
             <a
               href={c.resumeUrl || app.resumeUrlSnapshot || "#"}
               target="_blank"
               rel="noreferrer"
               download
             >
-              <Download className="h-3.5 w-3.5" />
+              <Download className="h-3.5 w-3.5 mr-1.5" />
               Download {c.resumeName || "resume.pdf"}
             </a>
           </Button>
-        </div>
-      )}
+        ) : (
+          <p className="text-sm text-muted-foreground italic">
+            No resume on file.
+          </p>
+        )}
+      </div>
 
       {/* Cover note */}
       {app.coverNote && (

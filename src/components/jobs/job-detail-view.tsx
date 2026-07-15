@@ -326,8 +326,8 @@ export function JobDetailView() {
                         navigate("login");
                         return;
                       }
-                      if (!candidate?.resumeUrl) {
-                        toast.error("Upload your resume first.");
+                      if (!(candidate?.resumeUrl || candidate?.hasResumeData)) {
+                        toast.error("Complete your resume first.");
                         navigate("candidate");
                         useApp.getState().setCandidateTab("resume");
                         return;

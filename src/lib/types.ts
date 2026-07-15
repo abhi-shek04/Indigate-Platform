@@ -39,6 +39,8 @@ export interface CandidateProfileDTO {
   skills: string[];
   resumeUrl: string | null;
   resumeName: string | null;
+  /** True if the candidate has Resume Builder data (resumeData JSON). */
+  hasResumeData: boolean;
   experienceYears: number;
   education: EducationEntry[] | null;
   savedJobIds: string[];

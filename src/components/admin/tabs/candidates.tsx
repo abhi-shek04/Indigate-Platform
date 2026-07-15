@@ -231,17 +231,30 @@ function CandidateEditorSheet({
   onClose: () => void;
 }) {
   const [resumeData, setResumeData] = useState<ResumeData | null>(null);
+  const [resumeUrl, setResumeUrl] = useState<string | null>(null);
+  const [fetching, setFetching] = useState(false);
 
   useEffect(() => {
-    if (!candidate) return;
+    if (!candidate) {
+      setResumeData(null);
+      setResumeUrl(null);
+      return;
+    }
+    setFetching(true);
     (async () => {
       try {
-        const res = await api<{ resumeData: ResumeData }>(
-          `/api/admin/list/candidates?userId=${candidate.userId}`,
-        );
+        const res = await api<{
+          resumeData: ResumeData | null;
+          resumeUrl: string | null;
+          resumeName: string | null;
+        }>(`/api/admin/candidates/${candidate.id}/resume`);
         setResumeData(res.resumeData);
+        setResumeUrl(res.resumeUrl);
       } catch {
         setResumeData(null);
+        setResumeUrl(null);
+      } finally {
+        setFetching(false);
       }
     })();
   }, [candidate]);
@@ -308,40 +321,53 @@ function CandidateEditorSheet({
           )}
 
           {/* PDF export */}
-          <div className="flex gap-2">
-            {resumeData && (
+          <div className="flex flex-wrap gap-2 items-center">
+            {fetching ? (
+              <p className="text-xs text-muted-foreground">Loading resume…</p>
+            ) : (
               <>
-                <PDFDownloadLink
-                  document={<EnglishResumePDF data={resumeData} />}
-                  fileName={`${candidate.fullName}_EN.pdf`}
-                >
-                  {({ loading }) => (
-                    <Button variant="outline" size="sm" disabled={loading} className="font-semibold">
+                {resumeData && (
+                  <>
+                    <PDFDownloadLink
+                      document={<EnglishResumePDF data={resumeData} />}
+                      fileName={`${candidate.fullName}_EN.pdf`}
+                    >
+                      {({ loading }) => (
+                        <Button variant="outline" size="sm" disabled={loading} className="font-semibold">
+                          <Download className="h-3.5 w-3.5 mr-1.5" />
+                          {loading ? "Generating..." : "EN PDF"}
+                        </Button>
+                      )}
+                    </PDFDownloadLink>
+                    <PDFDownloadLink
+                      document={<JapaneseResumePDF data={resumeData} />}
+                      fileName={`${candidate.fullName}_JP.pdf`}
+                    >
+                      {({ loading }) => (
+                        <Button variant="outline" size="sm" disabled={loading} className="font-semibold">
+                          <Download className="h-3.5 w-3.5 mr-1.5" />
+                          {loading ? "生成中..." : "履歴書 PDF"}
+                        </Button>
+                      )}
+                    </PDFDownloadLink>
+                  </>
+                )}
+                {(resumeUrl || candidate.resumeUrl) && (
+                  <Button variant="outline" size="sm" asChild className="font-semibold">
+                    <a
+                      href={(resumeUrl || candidate.resumeUrl) as string}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <Download className="h-3.5 w-3.5 mr-1.5" />
-                      {loading ? "Generating..." : "EN PDF"}
-                    </Button>
-                  )}
-                </PDFDownloadLink>
-                <PDFDownloadLink
-                  document={<JapaneseResumePDF data={resumeData} />}
-                  fileName={`${candidate.fullName}_JP.pdf`}
-                >
-                  {({ loading }) => (
-                    <Button variant="outline" size="sm" disabled={loading} className="font-semibold">
-                      <Download className="h-3.5 w-3.5 mr-1.5" />
-                      {loading ? "生成中..." : "履歴書 PDF"}
-                    </Button>
-                  )}
-                </PDFDownloadLink>
+                      Uploaded PDF
+                    </a>
+                  </Button>
+                )}
+                {!resumeData && !resumeUrl && !candidate.resumeUrl && (
+                  <p className="text-xs text-muted-foreground">No resume on file.</p>
+                )}
               </>
-            )}
-            {candidate.resumeUrl && (
-              <Button variant="outline" size="sm" asChild className="font-semibold">
-                <a href={candidate.resumeUrl} target="_blank" rel="noopener noreferrer">
-                  <Download className="h-3.5 w-3.5 mr-1.5" />
-                  Uploaded PDF
-                </a>
-              </Button>
             )}
           </div>
         </div>

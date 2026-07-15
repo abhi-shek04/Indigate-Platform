@@ -914,3 +914,39 @@ Stage Summary:
 - 7 bugs fixed: admin resume visibility, company resume visibility, apply gate, missing /api/upload route, removeResume no-op, talent search filter, CSP blocking WASM.
 - Files created (3): `src/app/api/admin/candidates/[id]/resume/route.ts`, `src/app/api/company/candidates/[id]/resume/route.ts`, `src/app/api/upload/route.ts`.
 - Files modified (8): `src/components/admin/tabs/candidates.tsx`, `src/components/jobs/job-detail-view.tsx`, `src/app/api/candidates/me/route.ts`, `src/components/company/tabs/applicants.tsx`, `src/app/api/candidates/search/route.ts`, `src/lib/types.ts`, `src/lib/api.ts`, `next.config.ts`, `src/components/candidate/tabs/resume.tsx`.
+
+---
+Task ID: RESUME-TRANSLATE
+Agent: main (Z.ai Code)
+Task: Add AI-powered English→Japanese resume translation + fix Skills section layout.
+
+Work Log:
+- Read the user's English resume PDF (Abhishek_EN_Resume (2).pdf) via VLM to understand the exact structure (personal info, education, work experience, certifications, projects, skills with proficiency flags, JLPT, Japan motivation essays, self-PR, hobbies).
+- Analyzed the resume builder code: the form is English-only; the JP PDF template uses `*Ja || English` fallback for all fields. The problem: `*Ja` fields were never populated, so the JP resume showed English data with Japanese labels (mixed language — unprofessional).
+- Created `src/app/api/candidates/me/resume/translate/route.ts` — candidate-only POST endpoint that:
+  - Takes the English resume data
+  - Builds a slim English-only payload (strips existing Ja fields)
+  - Calls the LLM (z-ai-web-dev-sdk) with a system prompt instructing it to be a professional Japanese resume translator: names → Katakana, institutions/degrees/descriptions → natural Japanese, tech terms kept in English, returns ONLY JSON
+  - Returns the translated `*Ja` fields (nameJa, degreeJa, institutionJa, descriptionJa, dutiesJa, selfPrJa, hobbiesJa, etc.)
+- Added "Translate to Japanese" button (Wand2 icon, saffron outline) to the resume builder header next to Save. When clicked:
+  - Sets translating state (spinner + "Translating…")
+  - Calls the translate API
+  - Merges the translated Ja fields into the data (pure function, computed outside setData to avoid stale closure)
+  - Saves the merged data directly to the DB via PUT /api/candidates/me/resume (NOT through the stale `save()` closure)
+  - Toasts "Translated to Japanese! Review the 履歴書 preview."
+  - Auto-switches to the 日本語 履歴書 preview tab
+- Fixed a critical stale-closure bug: the original code called `setTimeout(() => void save(), 300)` after `setData`, but `save()` used the stale `data` from the closure — the translated fields never persisted. Fixed by computing the merged data first, then calling `setData(merged)` + `api(PUT, merged)` directly.
+- Fixed Skills section layout: changed from cramped `grid sm:grid-cols-[1fr_auto_auto_auto]` (4 columns — skill name + 3 checkboxes on one row, checkboxes got cut off on smaller screens) to a cleaner 2-row layout: skill name input on top, 3 checkboxes in a `flex flex-wrap gap-x-6` below. Removed the `mt-5` margin from CheckboxField that was needed for the old grid.
+- Added `durationJa?: string` to ResumeActivity type (used by the translation merge).
+- Updated the header subtitle text: "Create your resume in English first, then click 'Translate to Japanese' to auto-generate the 履歴書."
+- Agent Browser verification (logged in as Arjun):
+  - Clicked "Translate to Japanese" → button shows "Translating…" spinner → ~15s later → toast "Translated to Japanese!" → auto-switches to 日本語 履歴書 tab → auto-saves.
+  - DB verified: nameJa=アルジュン・シャルマ, education degreeJa=B.Tech コンピューターサイエンス, institutionJa=SRM大学 AP, projects nameJa=コラボレーティブ学習プラットフォーム, descriptionJa=リアルタイム学習プラットフォームをTailwind CSSを使用して構築, selfPrJa=クラウド認定エンジニア（AWSソリューションアーキテクトアソシエイト）として..., hobbiesJa=クリケット、バドミントン.
+  - VLM-confirmed the JP preview shows fully translated Japanese data values (education, projects, self-PR, hobbies all in Japanese; tech terms like "react" correctly kept in English).
+  - `npx tsc --noEmit` → 0 errors. `bun run lint` → 0 errors.
+
+Stage Summary:
+- TRANSLATION FLOW WORKS END-TO-END: candidate creates English resume → clicks "Translate to Japanese" → LLM translates all free-text fields to professional Japanese → auto-saves → auto-switches to JP preview → JP PDF download shows proper Japanese throughout.
+- Skills section layout fixed: clean 2-row layout (name on top, checkboxes below) that works on all screen sizes.
+- Files created (1): `src/app/api/candidates/me/resume/translate/route.ts`.
+- Files modified (3): `src/components/candidate/resume-builder.tsx` (translate button + function + Skills layout + CheckboxField fix), `src/lib/resume-types.ts` (added durationJa), header subtitle text.

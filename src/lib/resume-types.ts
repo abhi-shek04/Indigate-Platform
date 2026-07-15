@@ -35,6 +35,7 @@ export interface ResumeActivity {
   year?: string; // e.g. "2025" (used by the EN Work Experience table)
   period: string; // EN: month range (e.g. "1-5"); JP: full period text
   duration?: string; // JP duration display, e.g. "9か月"
+  durationJa?: string; // translated duration for the JP resume
   organization: string;
   organizationJa?: string;
   role: string;

@@ -37,6 +37,7 @@ import {
   Languages,
   MapPin,
   ListChecks,
+  Wand2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -118,6 +119,7 @@ export function ResumeBuilder() {
   const [activeSection, setActiveSection] = useState<string>(
     "section-personal",
   );
+  const [translating, setTranslating] = useState(false);
 
   // Keep the sidebar active-section indicator in sync with the scroll position.
   // Only runs in the Edit tab (sidebar is hidden in previews / print).
@@ -199,6 +201,107 @@ export function ResumeBuilder() {
       toast.error(e instanceof Error ? e.message : "Failed to save.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  /** Calls the LLM to translate English resume fields → Japanese *Ja fields. */
+  async function translateToJapanese() {
+    setTranslating(true);
+    try {
+      const res = await api<Record<string, unknown>>(
+        "/api/candidates/me/resume/translate",
+        { method: "POST", body: JSON.stringify(data) },
+      );
+      // Merge the translated Ja fields into the current data (pure function —
+      // computed outside setData so we can also save the result immediately).
+      const merged: ResumeData = { ...data };
+      if (typeof res.nameJa === "string") merged.nameJa = res.nameJa;
+      if (typeof res.selfPrJa === "string") merged.selfPrJa = res.selfPrJa;
+      if (typeof res.hobbiesJa === "string") merged.hobbiesJa = res.hobbiesJa;
+      // Education
+      if (Array.isArray(res.education)) {
+        merged.education = data.education.map((e, i) => {
+          const t = (res.education as Record<string, unknown>[])[i] ?? {};
+          return {
+            ...e,
+            degreeJa: typeof t.degreeJa === "string" ? t.degreeJa : e.degreeJa,
+            fieldJa: typeof t.fieldJa === "string" ? t.fieldJa : e.fieldJa,
+            institutionJa:
+              typeof t.institutionJa === "string"
+                ? t.institutionJa
+                : e.institutionJa,
+          };
+        });
+      }
+      // Projects
+      if (Array.isArray(res.projects)) {
+        merged.projects = data.projects.map((p, i) => {
+          const t = (res.projects as Record<string, unknown>[])[i] ?? {};
+          return {
+            ...p,
+            nameJa: typeof t.nameJa === "string" ? t.nameJa : p.nameJa,
+            descriptionJa:
+              typeof t.descriptionJa === "string"
+                ? t.descriptionJa
+                : p.descriptionJa,
+          };
+        });
+      }
+      // Activities (work experience)
+      if (Array.isArray(res.activities)) {
+        merged.activities = data.activities.map((a, i) => {
+          const t = (res.activities as Record<string, unknown>[])[i] ?? {};
+          return {
+            ...a,
+            organizationJa:
+              typeof t.organizationJa === "string"
+                ? t.organizationJa
+                : a.organizationJa,
+            roleJa: typeof t.roleJa === "string" ? t.roleJa : a.roleJa,
+            dutiesJa:
+              typeof t.dutiesJa === "string" ? t.dutiesJa : a.dutiesJa,
+            durationJa:
+              typeof t.durationJa === "string" ? t.durationJa : a.duration,
+          };
+        });
+      }
+      // Awards (certifications)
+      if (Array.isArray(res.awards)) {
+        merged.awards = data.awards.map((aw, i) => {
+          const t = (res.awards as Record<string, unknown>[])[i] ?? {};
+          return {
+            ...aw,
+            titleJa: typeof t.titleJa === "string" ? t.titleJa : aw.titleJa,
+            descriptionJa:
+              typeof t.descriptionJa === "string"
+                ? t.descriptionJa
+                : aw.descriptionJa,
+            organizationJa:
+              typeof t.organizationJa === "string"
+                ? t.organizationJa
+                : aw.organizationJa,
+          };
+        });
+      }
+      // Skills names → keep in English (proper nouns), but translate the
+      // "skillsExcelSummary" bullet list.
+      if (Array.isArray(res.skillsExcelSummaryJa)) {
+        merged.skillsExcelSummary = (
+          res.skillsExcelSummaryJa as string[]
+        ).map((s, i) => s || ((data.skillsExcelSummary ?? [])[i] ?? ""));
+      }
+      // Update state + save the merged data directly (avoid stale closure).
+      setData(merged);
+      await api("/api/candidates/me/resume", {
+        method: "PUT",
+        body: JSON.stringify(merged),
+      });
+      toast.success("Translated to Japanese! Review the 履歴書 preview.");
+      setTab("preview-ja");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Translation failed.");
+    } finally {
+      setTranslating(false);
     }
   }
 
@@ -360,13 +463,27 @@ export function ResumeBuilder() {
             Resume Builder
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create a professional resume in both English and Japanese 履歴書 format. Fill in English — the Japanese PDF is auto-generated.
+            Create your resume in English first, then click “Translate to Japanese” to auto-generate the 履歴書.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button onClick={save} disabled={saving} className="bg-brand-gradient text-white hover:opacity-90 font-semibold">
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             Save
+          </Button>
+          <Button
+            onClick={translateToJapanese}
+            disabled={translating || saving || !data.name}
+            variant="outline"
+            className="font-semibold border-saffron/40 text-saffron hover:bg-saffron/10 hover:text-saffron"
+            title="Auto-translate your English resume into Japanese"
+          >
+            {translating ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Wand2 className="mr-2 h-4 w-4" />
+            )}
+            {translating ? "Translating…" : "Translate to Japanese"}
           </Button>
           <PDFDownloadLink
             document={<EnglishResumePDF data={data} />}
@@ -713,7 +830,7 @@ export function ResumeBuilder() {
             <div className="space-y-3">
               {data.skills.length === 0 && <EmptyHint text="No skills yet. Click Add to start." />}
               {data.skills.map((s, i) => (
-                <div key={i} className="relative rounded-xl border border-border bg-background p-4">
+                <div key={i} className="relative rounded-xl border border-border bg-background p-4 pr-12">
                   <button
                     onClick={() => removeSkill(i)}
                     className="absolute top-3 right-3 grid place-items-center h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
@@ -721,10 +838,10 @@ export function ResumeBuilder() {
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
-                  <div className="grid sm:grid-cols-[1fr_auto_auto_auto] items-center gap-4">
-                    <Field label="Skill name">
-                      <Input value={s.name} onChange={(e) => updateSkill(i, { name: e.target.value })} placeholder="HTML, CSS, JavaScript, React..." />
-                    </Field>
+                  <Field label="Skill name">
+                    <Input value={s.name} onChange={(e) => updateSkill(i, { name: e.target.value })} placeholder="HTML, CSS, JavaScript, React..." />
+                  </Field>
+                  <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 pl-0.5">
                     <CheckboxField
                       label="Learned in class"
                       checked={s.learnedInClass}
@@ -960,7 +1077,7 @@ function CheckboxField({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex items-center gap-2 cursor-pointer select-none mt-5">
+    <label className="flex items-center gap-2 cursor-pointer select-none">
       <Checkbox checked={checked} onCheckedChange={(v) => onChange(!!v)} />
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
     </label>

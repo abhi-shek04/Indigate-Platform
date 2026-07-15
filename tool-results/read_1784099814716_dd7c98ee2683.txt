@@ -1,0 +1,986 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useEffect, useState, useCallback } from "react";
+     4→     4→import { useApp } from "@/lib/store";
+     5→     5→import { useT } from "@/lib/use-t";
+     6→     6→import { api } from "@/lib/api-client";
+     7→     7→import { Button } from "@/components/ui/button";
+     8→     8→import { Input } from "@/components/ui/input";
+     9→     9→import { Textarea } from "@/components/ui/textarea";
+    10→    10→import { Badge } from "@/components/ui/badge";
+    11→    11→import { Progress } from "@/components/ui/progress";
+    12→    12→import { Checkbox } from "@/components/ui/checkbox";
+    13→    13→import {
+    14→    14→  Select,
+    15→    15→  SelectContent,
+    16→    16→  SelectItem,
+    17→    17→  SelectTrigger,
+    18→    18→  SelectValue,
+    19→    19→} from "@/components/ui/select";
+    20→    20→import {
+    21→    21→  ArrowLeft,
+    22→    22→  Plus,
+    23→    23→  Trash2,
+    24→    24→  Save,
+    25→    25→  Printer,
+    26→    26→  FileText,
+    27→    27→  User,
+    28→    28→  GraduationCap,
+    29→    29→  Briefcase,
+    30→    30→  Award,
+    31→    31→  Globe,
+    32→    32→  Sparkles,
+    33→    33→  Loader2,
+    34→    34→  X,
+    35→    35→  Download,
+    36→    36→  Code2,
+    37→    37→  Languages,
+    38→    38→  MapPin,
+    39→    39→  ListChecks,
+    40→    40→} from "lucide-react";
+    41→    41→import { motion } from "framer-motion";
+    42→    42→import { toast } from "sonner";
+    43→    43→import { cn } from "@/lib/utils";
+    44→    44→import { PDFDownloadLink } from "@react-pdf/renderer";
+    45→    45→import { EnglishResumePDF } from "@/lib/pdf-templates/english-resume-pdf";
+    46→    46→import { JapaneseResumePDF } from "@/lib/pdf-templates/japanese-resume-pdf";
+    47→    47→import {
+    48→    48→  EMPTY_RESUME,
+    49→    49→  GENDER_OPTIONS,
+    50→    50→  NATIONALITY_OPTIONS,
+    51→    51→  INDIAN_STATES,
+    52→    52→  LANGUAGE_OPTIONS,
+    53→    53→  JLPT_OPTIONS,
+    54→    54→  type ResumeData,
+    55→    55→  type ResumeEducation,
+    56→    56→  type ResumeProject,
+    57→    57→  type ResumeActivity,
+    58→    58→  type ResumeAward,
+    59→    59→  type ResumeSkill,
+    60→    60→  type JlptLevel,
+    61→    61→} from "@/lib/resume-types";
+    62→    62→import { ResumePreview } from "./resume-preview";
+    63→    63→
+    64→    64→type Tab = "edit" | "preview-ja" | "preview-en";
+    65→    65→
+    66→    66→/** Sidebar navigation entries — id MUST match the `id` on each <Section>. */
+    67→    67→const SECTIONS: {
+    68→    68→  id: string;
+    69→    69→  icon: React.ComponentType<{ className?: string }>;
+    70→    70→  label: string;
+    71→    71→}[] = [
+    72→    72→  { id: "section-personal", icon: User, label: "Personal Info" },
+    73→    73→  { id: "section-education", icon: GraduationCap, label: "Education" },
+    74→    74→  { id: "section-experience", icon: Briefcase, label: "Work Experience" },
+    75→    75→  { id: "section-certifications", icon: Award, label: "Certifications" },
+    76→    76→  { id: "section-projects", icon: Code2, label: "Projects" },
+    77→    77→  { id: "section-skills", icon: Code2, label: "Skills" },
+    78→    78→  { id: "section-excel", icon: ListChecks, label: "Skills I Excel In" },
+    79→    79→  { id: "section-jlpt", icon: Languages, label: "Japanese & Languages" },
+    80→    80→  { id: "section-japan", icon: MapPin, label: "Why Japan?" },
+    81→    81→  { id: "section-selfpr", icon: Sparkles, label: "Self-PR & Hobbies" },
+    82→    82→];
+    83→    83→
+    84→    84→/**
+    85→    85→ * Returns a 0–100 percentage of how many resume sections have at least some
+    86→    86→ * data filled. Pure function — used to render the sidebar progress bar.
+    87→    87→ */
+    88→    88→function computeProgress(data: ResumeData): number {
+    89→    89→  const filled: boolean[] = [
+    90→    90→    !!(data.name?.trim() || data.email?.trim() || data.phone?.trim()),
+    91→    91→    data.education.length > 0,
+    92→    92→    data.activities.length > 0,
+    93→    93→    data.awards.length > 0,
+    94→    94→    data.projects.length > 0,
+    95→    95→    data.skills.length > 0,
+    96→    96→    (data.skillsExcelSummary?.length ?? 0) > 0,
+    97→    97→    !!(data.currentJlpt || data.expectedJlpt || data.otherLanguages?.trim()),
+    98→    98→    !!(data.japanMotivation?.whyJapan?.trim() ||
+    99→    99→      data.japanMotivation?.careerInJapan?.trim() ||
+   100→   100→      data.japanMotivation?.challenges?.trim()),
+   101→   101→    !!(data.selfPr?.trim() || data.hobbies?.trim()),
+   102→   102→  ];
+   103→   103→  return Math.round(
+   104→   104→    (filled.filter(Boolean).length / filled.length) * 100,
+   105→   105→  );
+   106→   106→}
+   107→   107→
+   108→   108→export function ResumeBuilder() {
+   109→   109→  const { t } = useT();
+   110→   110→  const navigate = useApp((s) => s.navigate);
+   111→   111→  const candidate = useApp((s) => s.candidate);
+   112→   112→  const user = useApp((s) => s.user);
+   113→   113→  const [data, setData] = useState<ResumeData>(EMPTY_RESUME);
+   114→   114→  const [loading, setLoading] = useState(true);
+   115→   115→  const [saving, setSaving] = useState(false);
+   116→   116→  const [tab, setTab] = useState<Tab>("edit");
+   117→   117→  const [langInput, setLangInput] = useState("");
+   118→   118→  const [activeSection, setActiveSection] = useState<string>(
+   119→   119→    "section-personal",
+   120→   120→  );
+   121→   121→
+   122→   122→  // Keep the sidebar active-section indicator in sync with the scroll position.
+   123→   123→  // Only runs in the Edit tab (sidebar is hidden in previews / print).
+   124→   124→  useEffect(() => {
+   125→   125→    if (tab !== "edit") return;
+   126→   126→    if (typeof IntersectionObserver === "undefined") return;
+   127→   127→    const observer = new IntersectionObserver(
+   128→   128→      (entries) => {
+   129→   129→        const visible = entries
+   130→   130→          .filter((e) => e.isIntersecting)
+   131→   131→          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+   132→   132→        if (visible[0]) setActiveSection(visible[0].target.id);
+   133→   133→      },
+   134→   134→      { rootMargin: "-15% 0px -70% 0px", threshold: [0, 0.25, 0.5, 1] },
+   135→   135→    );
+   136→   136→    SECTIONS.forEach((s) => {
+   137→   137→      const el = document.getElementById(s.id);
+   138→   138→      if (el) observer.observe(el);
+   139→   139→    });
+   140→   140→    return () => observer.disconnect();
+   141→   141→  }, [tab]);
+   142→   142→
+   143→   143→  function scrollToSection(id: string) {
+   144→   144→    const el = document.getElementById(id);
+   145→   145→    if (el) {
+   146→   146→      el.scrollIntoView({ behavior: "smooth", block: "start" });
+   147→   147→      setActiveSection(id);
+   148→   148→    }
+   149→   149→  }
+   150→   150→
+   151→   151→  const load = useCallback(async () => {
+   152→   152→    setLoading(true);
+   153→   153→    try {
+   154→   154→      const res = await api<{ resumeData: ResumeData | null }>(
+   155→   155→        "/api/candidates/me/resume",
+   156→   156→      );
+   157→   157→      if (res.resumeData) {
+   158→   158→        // Merge with EMPTY_RESUME so new sub-objects (`japanMotivation`,
+   159→   159→        // `skills`, …) always exist even on previously-saved resumes.
+   160→   160→        setData({
+   161→   161→          ...EMPTY_RESUME,
+   162→   162→          ...res.resumeData,
+   163→   163→          japanMotivation: {
+   164→   164→            ...EMPTY_RESUME.japanMotivation,
+   165→   165→            ...(res.resumeData.japanMotivation ?? {}),
+   166→   166→          },
+   167→   167→        });
+   168→   168→      } else if (candidate) {
+   169→   169→        setData({
+   170→   170→          ...EMPTY_RESUME,
+   171→   171→          name: candidate.fullName,
+   172→   172→          email: user?.email ?? "",
+   173→   173→          phone: candidate.phone ?? "",
+   174→   174→          nationality: "India",
+   175→   175→          languages: ["English"],
+   176→   176→          languagesJa: ["英語"],
+   177→   177→        });
+   178→   178→      }
+   179→   179→    } catch {
+   180→   180→      toast.error("Failed to load resume data.");
+   181→   181→    } finally {
+   182→   182→      setLoading(false);
+   183→   183→    }
+   184→   184→  }, [candidate?.id, user?.email]);
+   185→   185→
+   186→   186→  useEffect(() => {
+   187→   187→    load();
+   188→   188→  }, [load]);
+   189→   189→
+   190→   190→  async function save() {
+   191→   191→    setSaving(true);
+   192→   192→    try {
+   193→   193→      await api("/api/candidates/me/resume", {
+   194→   194→        method: "PUT",
+   195→   195→        body: JSON.stringify(data),
+   196→   196→      });
+   197→   197→      toast.success("Resume saved!");
+   198→   198→    } catch (e) {
+   199→   199→      toast.error(e instanceof Error ? e.message : "Failed to save.");
+   200→   200→    } finally {
+   201→   201→      setSaving(false);
+   202→   202→    }
+   203→   203→  }
+   204→   204→
+   205→   205→  function print() {
+   206→   206→    window.print();
+   207→   207→  }
+   208→   208→
+   209→   209→  function update<K extends keyof ResumeData>(key: K, value: ResumeData[K]) {
+   210→   210→    setData((prev) => ({ ...prev, [key]: value }));
+   211→   211→  }
+   212→   212→
+   213→   213→  // Language tag management — the JP labels are auto-synced from the EN list
+   214→   214→  // via LANGUAGE_OPTIONS so the candidate never types Japanese.
+   215→   215→  function addLanguage(lang: string) {
+   216→   216→    if (!lang.trim()) return;
+   217→   217→    const opt = LANGUAGE_OPTIONS.find((l) => l.value === lang);
+   218→   218→    if (data.languages.includes(lang)) return;
+   219→   219→    update("languages", [...data.languages, lang]);
+   220→   220→    update("languagesJa", [...data.languagesJa, opt?.labelJa ?? lang]);
+   221→   221→    setLangInput("");
+   222→   222→  }
+   223→   223→  function removeLanguage(idx: number) {
+   224→   224→    update(
+   225→   225→      "languages",
+   226→   226→      data.languages.filter((_, i) => i !== idx),
+   227→   227→    );
+   228→   228→    update(
+   229→   229→      "languagesJa",
+   230→   230→      data.languagesJa.filter((_, i) => i !== idx),
+   231→   231→    );
+   232→   232→  }
+   233→   233→
+   234→   234→  // Education
+   235→   235→  function addEducation() {
+   236→   236→    update("education", [
+   237→   237→      ...data.education,
+   238→   238→      { year: "", month: "", degree: "", field: "", institution: "" },
+   239→   239→    ]);
+   240→   240→  }
+   241→   241→  function updateEducation(i: number, patch: Partial<ResumeEducation>) {
+   242→   242→    update("education", data.education.map((e, j) => (j === i ? { ...e, ...patch } : e)));
+   243→   243→  }
+   244→   244→  function removeEducation(i: number) {
+   245→   245→    update("education", data.education.filter((_, j) => j !== i));
+   246→   246→  }
+   247→   247→
+   248→   248→  // Projects
+   249→   249→  function addProject() {
+   250→   250→    update("projects", [
+   251→   251→      ...data.projects,
+   252→   252→      { year: "", period: "", name: "", description: "", techStack: "" },
+   253→   253→    ]);
+   254→   254→  }
+   255→   255→  function updateProject(i: number, patch: Partial<ResumeProject>) {
+   256→   256→    update("projects", data.projects.map((e, j) => (j === i ? { ...e, ...patch } : e)));
+   257→   257→  }
+   258→   258→  function removeProject(i: number) {
+   259→   259→    update("projects", data.projects.filter((_, j) => j !== i));
+   260→   260→  }
+   261→   261→
+   262→   262→  // Activities (Work Experience)
+   263→   263→  function addActivity() {
+   264→   264→    update("activities", [
+   265→   265→      ...data.activities,
+   266→   266→      { year: "", period: "", duration: "", organization: "", role: "", duties: "" },
+   267→   267→    ]);
+   268→   268→  }
+   269→   269→  function updateActivity(i: number, patch: Partial<ResumeActivity>) {
+   270→   270→    update("activities", data.activities.map((e, j) => (j === i ? { ...e, ...patch } : e)));
+   271→   271→  }
+   272→   272→  function removeActivity(i: number) {
+   273→   273→    update("activities", data.activities.filter((_, j) => j !== i));
+   274→   274→  }
+   275→   275→
+   276→   276→  // Awards (Certifications)
+   277→   277→  function addAward() {
+   278→   278→    update("awards", [
+   279→   279→      ...data.awards,
+   280→   280→      { year: "", month: "", title: "", description: "", organization: "" },
+   281→   281→    ]);
+   282→   282→  }
+   283→   283→  function updateAward(i: number, patch: Partial<ResumeAward>) {
+   284→   284→    update("awards", data.awards.map((e, j) => (j === i ? { ...e, ...patch } : e)));
+   285→   285→  }
+   286→   286→  function removeAward(i: number) {
+   287→   287→    update("awards", data.awards.filter((_, j) => j !== i));
+   288→   288→  }
+   289→   289→
+   290→   290→  // Skills
+   291→   291→  function addSkill() {
+   292→   292→    update("skills", [
+   293→   293→      ...data.skills,
+   294→   294→      { name: "", learnedInClass: false, canOperate: false, canTeach: false },
+   295→   295→    ]);
+   296→   296→  }
+   297→   297→  function updateSkill(i: number, patch: Partial<ResumeSkill>) {
+   298→   298→    update("skills", data.skills.map((s, j) => (j === i ? { ...s, ...patch } : s)));
+   299→   299→  }
+   300→   300→  function removeSkill(i: number) {
+   301→   301→    update("skills", data.skills.filter((_, j) => j !== i));
+   302→   302→  }
+   303→   303→
+   304→   304→  // Skills in Which I Excel — dynamic bullet list
+   305→   305→  function addExcelItem() {
+   306→   306→    update("skillsExcelSummary", [...(data.skillsExcelSummary ?? []), ""]);
+   307→   307→  }
+   308→   308→  function updateExcelItem(i: number, value: string) {
+   309→   309→    update(
+   310→   310→      "skillsExcelSummary",
+   311→   311→      (data.skillsExcelSummary ?? []).map((s, j) => (j === i ? value : s)),
+   312→   312→    );
+   313→   313→  }
+   314→   314→  function removeExcelItem(i: number) {
+   315→   315→    update(
+   316→   316→      "skillsExcelSummary",
+   317→   317→      (data.skillsExcelSummary ?? []).filter((_, j) => j !== i),
+   318→   318→    );
+   319→   319→  }
+   320→   320→
+   321→   321→  // Japan motivation
+   322→   322→  function updateJapan<K extends keyof NonNullable<ResumeData["japanMotivation"]>>(
+   323→   323→    key: K,
+   324→   324→    value: string,
+   325→   325→  ) {
+   326→   326→    setData((prev) => ({
+   327→   327→      ...prev,
+   328→   328→      japanMotivation: {
+   329→   329→        ...EMPTY_RESUME.japanMotivation,
+   330→   330→        ...(prev.japanMotivation ?? {}),
+   331→   331→        [key]: value,
+   332→   332→      },
+   333→   333→    }));
+   334→   334→  }
+   335→   335→
+   336→   336→  if (loading) {
+   337→   337→    return (
+   338→   338→      <div className="flex-1 grid place-items-center py-20">
+   339→   339→        <Loader2 className="h-8 w-8 animate-spin text-saffron" />
+   340→   340→      </div>
+   341→   341→    );
+   342→   342→  }
+   343→   343→
+   344→   344→  const progress = computeProgress(data);
+   345→   345→
+   346→   346→  return (
+   347→   347→    <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8 print:max-w-none print:p-0">
+   348→   348→      {/* Header */}
+   349→   349→      <div className="print:hidden flex items-center justify-between flex-wrap gap-4 mb-6">
+   350→   350→        <div>
+   351→   351→          <button
+   352→   352→            onClick={() => navigate("candidate")}
+   353→   353→            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground mb-2"
+   354→   354→          >
+   355→   355→            <ArrowLeft className="h-4 w-4" />
+   356→   356→            {t("common.back")}
+   357→   357→          </button>
+   358→   358→          <h1 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight flex items-center gap-2">
+   359→   359→            <FileText className="h-7 w-7 text-saffron" />
+   360→   360→            Resume Builder
+   361→   361→          </h1>
+   362→   362→          <p className="mt-1 text-sm text-muted-foreground">
+   363→   363→            Create a professional resume in both English and Japanese 履歴書 format. Fill in English — the Japanese PDF is auto-generated.
+   364→   364→          </p>
+   365→   365→        </div>
+   366→   366→        <div className="flex items-center gap-2 flex-wrap">
+   367→   367→          <Button onClick={save} disabled={saving} className="bg-brand-gradient text-white hover:opacity-90 font-semibold">
+   368→   368→            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+   369→   369→            Save
+   370→   370→          </Button>
+   371→   371→          <PDFDownloadLink
+   372→   372→            document={<EnglishResumePDF data={data} />}
+   373→   373→            fileName={`${data.name || "resume"}_EN.pdf`}
+   374→   374→          >
+   375→   375→            {({ loading }) => (
+   376→   376→              <Button variant="outline" size="sm" disabled={loading} className="font-semibold h-9">
+   377→   377→                <Download className="h-4 w-4 mr-1.5" />
+   378→   378→                {loading ? "Generating…" : "EN PDF"}
+   379→   379→              </Button>
+   380→   380→            )}
+   381→   381→          </PDFDownloadLink>
+   382→   382→          <PDFDownloadLink
+   383→   383→            document={<JapaneseResumePDF data={data} />}
+   384→   384→            fileName={`${data.name || "resume"}_JP.pdf`}
+   385→   385→          >
+   386→   386→            {({ loading }) => (
+   387→   387→              <Button variant="outline" size="sm" disabled={loading} className="font-semibold h-9">
+   388→   388→                <Download className="h-4 w-4 mr-1.5" />
+   389→   389→                {loading ? "生成中…" : "履歴書 PDF"}
+   390→   390→              </Button>
+   391→   391→            )}
+   392→   392→          </PDFDownloadLink>
+   393→   393→          <Button onClick={print} variant="ghost" size="sm" className="font-semibold h-9">
+   394→   394→            <Printer className="h-4 w-4 mr-1.5" />
+   395→   395→            Print
+   396→   396→          </Button>
+   397→   397→        </div>
+   398→   398→      </div>
+   399→   399→
+   400→   400→      {/* Tabs */}
+   401→   401→      <div className="print:hidden flex items-center gap-1 mb-6 p-1 rounded-xl bg-muted w-fit">
+   402→   402→        {[
+   403→   403→          { key: "edit" as const, label: "Edit", icon: User },
+   404→   404→          { key: "preview-ja" as const, label: "日本語 履歴書", icon: Globe },
+   405→   405→          { key: "preview-en" as const, label: "English Resume", icon: FileText },
+   406→   406→        ].map((tb) => (
+   407→   407→          <button
+   408→   408→            key={tb.key}
+   409→   409→            onClick={() => setTab(tb.key)}
+   410→   410→            className={cn(
+   411→   411→              "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+   412→   412→              tab === tb.key
+   413→   413→                ? "bg-card text-foreground shadow-premium"
+   414→   414→                : "text-muted-foreground hover:text-foreground",
+   415→   415→            )}
+   416→   416→          >
+   417→   417→            <tb.icon className="h-4 w-4" />
+   418→   418→            {tb.label}
+   419→   419→          </button>
+   420→   420→        ))}
+   421→   421→      </div>
+   422→   422→
+   423→   423→      {/* Edit form */}
+   424→   424→      {tab === "edit" && (
+   425→   425→        <motion.div
+   426→   426→          initial={{ opacity: 0, y: 8 }}
+   427→   427→          animate={{ opacity: 1, y: 0 }}
+   428→   428→          className="print:hidden space-y-6"
+   429→   429→        >
+   430→   430→          <div className="lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-6 xl:gap-8 items-start">
+   431→   431→            {/* Sidebar — sticky nav (lg+ only; mobile keeps single column) */}
+   432→   432→            <aside className="hidden lg:block print:hidden">
+   433→   433→              <div className="sticky top-6 space-y-3">
+   434→   434→                {/* Progress card */}
+   435→   435→                <div className="rounded-2xl border border-border bg-card p-4 shadow-premium">
+   436→   436→                  <div className="flex items-center justify-between mb-2">
+   437→   437→                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+   438→   438→                      Progress
+   439→   439→                    </span>
+   440→   440→                    <span className="font-display text-sm font-bold text-gradient-brand">
+   441→   441→                      {progress}%
+   442→   442→                    </span>
+   443→   443→                  </div>
+   444→   444→                  <Progress value={progress} className="h-2 bg-muted" />
+   445→   445→                  <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+   446→   446→                    {progress === 100
+   447→   447→                      ? "Looking great — resume is complete!"
+   448→   448→                      : "Fill in each section to complete your resume."}
+   449→   449→                  </p>
+   450→   450→                </div>
+   451→   451→                {/* Section nav */}
+   452→   452→                <nav
+   453→   453→                  aria-label="Resume sections"
+   454→   454→                  className="rounded-2xl border border-border bg-card p-2 shadow-premium"
+   455→   455→                >
+   456→   456→                  <ul className="space-y-0.5">
+   457→   457→                    {SECTIONS.map((s) => {
+   458→   458→                      const active = activeSection === s.id;
+   459→   459→                      const Icon = s.icon;
+   460→   460→                      return (
+   461→   461→                        <li key={s.id}>
+   462→   462→                          <button
+   463→   463→                            type="button"
+   464→   464→                            onClick={() => scrollToSection(s.id)}
+   465→   465→                            aria-current={active ? "true" : undefined}
+   466→   466→                            className={cn(
+   467→   467→                              "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left",
+   468→   468→                              active
+   469→   469→                                ? "bg-saffron/10 text-saffron shadow-sm"
+   470→   470→                                : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
+   471→   471→                            )}
+   472→   472→                          >
+   473→   473→                            <Icon className="h-4 w-4 shrink-0" />
+   474→   474→                            <span className="truncate">{s.label}</span>
+   475→   475→                            {active && (
+   476→   476→                              <span className="ml-auto h-1.5 w-1.5 rounded-full bg-saffron shadow-glow-brand" />
+   477→   477→                            )}
+   478→   478→                          </button>
+   479→   479→                        </li>
+   480→   480→                      );
+   481→   481→                    })}
+   482→   482→                  </ul>
+   483→   483→                </nav>
+   484→   484→              </div>
+   485→   485→            </aside>
+   486→   486→
+   487→   487→            {/* Content — form sections (English only) */}
+   488→   488→            <div className="space-y-6 lg:min-w-0">
+   489→   489→          {/* Personal Info */}
+   490→   490→          <Section id="section-personal" icon={User} title="Personal Information" desc="Your basic details — selectable fields make it faster">
+   491→   491→            <div className="grid sm:grid-cols-2 gap-4">
+   492→   492→              <Field label="Full name">
+   493→   493→                <Input value={data.name} onChange={(e) => update("name", e.target.value)} placeholder="Abhishek" />
+   494→   494→              </Field>
+   495→   495→              <Field label="Date of birth">
+   496→   496→                <Input type="date" value={data.dob ?? ""} onChange={(e) => update("dob", e.target.value)} />
+   497→   497→              </Field>
+   498→   498→              <Field label="Gender">
+   499→   499→                <Select value={data.gender ?? ""} onValueChange={(v) => update("gender", v)}>
+   500→   500→                  <SelectTrigger className="h-10">
+   501→   501→                    <SelectValue placeholder="Select gender" />
+   502→   502→                  </SelectTrigger>
+   503→   503→                  <SelectContent>
+   504→   504→                    {GENDER_OPTIONS.map((g) => (
+   505→   505→                      <SelectItem key={g.value} value={g.value}>
+   506→   506→                        {g.labelEn}
+   507→   507→                      </SelectItem>
+   508→   508→                    ))}
+   509→   509→                  </SelectContent>
+   510→   510→                </Select>
+   511→   511→              </Field>
+   512→   512→              <Field label="Email">
+   513→   513→                <Input type="email" value={data.email} onChange={(e) => update("email", e.target.value)} placeholder="you@example.com" />
+   514→   514→              </Field>
+   515→   515→              <Field label="Phone">
+   516→   516→                <Input value={data.phone ?? ""} onChange={(e) => update("phone", e.target.value)} placeholder="+91 98765 43210" />
+   517→   517→              </Field>
+   518→   518→              <Field label="Nationality">
+   519→   519→                <Select value={data.nationality ?? ""} onValueChange={(v) => update("nationality", v)}>
+   520→   520→                  <SelectTrigger className="h-10">
+   521→   521→                    <SelectValue placeholder="Select nationality" />
+   522→   522→                  </SelectTrigger>
+   523→   523→                  <SelectContent>
+   524→   524→                    {NATIONALITY_OPTIONS.map((n) => (
+   525→   525→                      <SelectItem key={n.value} value={n.value}>
+   526→   526→                        {n.value}
+   527→   527→                      </SelectItem>
+   528→   528→                    ))}
+   529→   529→                  </SelectContent>
+   530→   530→                </Select>
+   531→   531→              </Field>
+   532→   532→              <Field label="State / Place of origin (India)">
+   533→   533→                <Select
+   534→   534→                  value={data.placeOfOrigin ?? ""}
+   535→   535→                  onValueChange={(v) => update("placeOfOrigin", v)}
+   536→   536→                  disabled={data.nationality !== "India"}
+   537→   537→                >
+   538→   538→                  <SelectTrigger className="h-10">
+   539→   539→                    <SelectValue placeholder={data.nationality === "India" ? "Select state" : "Select nationality first"} />
+   540→   540→                  </SelectTrigger>
+   541→   541→                  <SelectContent>
+   542→   542→                    {INDIAN_STATES.map((s) => (
+   543→   543→                      <SelectItem key={s} value={s}>
+   544→   544→                        {s}
+   545→   545→                      </SelectItem>
+   546→   546→                    ))}
+   547→   547→                  </SelectContent>
+   548→   548→                </Select>
+   549→   549→              </Field>
+   550→   550→              <Field label="Address" className="sm:col-span-2">
+   551→   551→                <Input value={data.address ?? ""} onChange={(e) => update("address", e.target.value)} placeholder="Nellore, Andhra Pradesh, 524344, India" />
+   552→   552→              </Field>
+   553→   553→              <Field label="Current degree being pursued" className="sm:col-span-2">
+   554→   554→                <Input value={data.currentDegree ?? ""} onChange={(e) => update("currentDegree", e.target.value)} placeholder="Bachelors in Technology, Computer Science Engineering" />
+   555→   555→              </Field>
+   556→   556→              <Field label="Expected time of graduation" className="sm:col-span-2">
+   557→   557→                <Input value={data.expectedGraduation ?? ""} onChange={(e) => update("expectedGraduation", e.target.value)} placeholder="06/2026" />
+   558→   558→              </Field>
+   559→   559→              <Field label="Languages known" className="sm:col-span-2">
+   560→   560→                <div className="space-y-2">
+   561→   561→                  <div className="flex gap-2">
+   562→   562→                    <Select value={langInput} onValueChange={(v) => { addLanguage(v); }}>
+   563→   563→                      <SelectTrigger className="h-10">
+   564→   564→                        <SelectValue placeholder="Add a language…" />
+   565→   565→                      </SelectTrigger>
+   566→   566→                      <SelectContent>
+   567→   567→                        {LANGUAGE_OPTIONS.filter((l) => !data.languages.includes(l.value)).map((l) => (
+   568→   568→                          <SelectItem key={l.value} value={l.value}>
+   569→   569→                            {l.value}
+   570→   570→                          </SelectItem>
+   571→   571→                        ))}
+   572→   572→                      </SelectContent>
+   573→   573→                    </Select>
+   574→   574→                  </div>
+   575→   575→                  {data.languages.length > 0 && (
+   576→   576→                    <div className="flex flex-wrap gap-2">
+   577→   577→                      {data.languages.map((lang, i) => (
+   578→   578→                        <Badge key={i} variant="secondary" className="px-3 py-1.5 gap-1.5">
+   579→   579→                          {lang}
+   580→   580→                          <button
+   581→   581→                            onClick={() => removeLanguage(i)}
+   582→   582→                            className="ml-1 hover:text-destructive"
+   583→   583→                            aria-label="Remove"
+   584→   584→                          >
+   585→   585→                            <X className="h-3 w-3" />
+   586→   586→                          </button>
+   587→   587→                        </Badge>
+   588→   588→                      ))}
+   589→   589→                    </div>
+   590→   590→                  )}
+   591→   591→                </div>
+   592→   592→              </Field>
+   593→   593→            </div>
+   594→   594→          </Section>
+   595→   595→
+   596→   596→          {/* Education */}
+   597→   597→          <Section id="section-education" icon={GraduationCap} title="Education" desc="Academic history" action={<AddButton onClick={addEducation} />}>
+   598→   598→            <div className="space-y-4">
+   599→   599→              {data.education.length === 0 && <EmptyHint text="No education entries yet. Click Add to start." />}
+   600→   600→              {data.education.map((edu, i) => (
+   601→   601→                <Card key={i} onRemove={() => removeEducation(i)}>
+   602→   602→                  <div className="grid sm:grid-cols-2 gap-3">
+   603→   603→                    <Field label="Year (graduation)">
+   604→   604→                      <Input value={edu.year} onChange={(e) => updateEducation(i, { year: e.target.value })} placeholder="2026" />
+   605→   605→                    </Field>
+   606→   606→                    <Field label="Month">
+   607→   607→                      <Input value={edu.month ?? ""} onChange={(e) => updateEducation(i, { month: e.target.value })} placeholder="6" />
+   608→   608→                    </Field>
+   609→   609→                    <Field label="Institution (School / University)" className="sm:col-span-2">
+   610→   610→                      <Input value={edu.institution} onChange={(e) => updateEducation(i, { institution: e.target.value })} placeholder="SRM UNIVERSITY AP, India" />
+   611→   611→                    </Field>
+   612→   612→                    <Field label="Degree (combined text shown in PDF)" className="sm:col-span-2">
+   613→   613→                      <Input value={edu.degree} onChange={(e) => updateEducation(i, { degree: e.target.value })} placeholder="Bachelors in Technology with Major in Computer Science." />
+   614→   614→                    </Field>
+   615→   615→                    <Field label="Field / Specialization" className="sm:col-span-2">
+   616→   616→                      <Input value={edu.field} onChange={(e) => updateEducation(i, { field: e.target.value })} placeholder="Computer Science" />
+   617→   617→                    </Field>
+   618→   618→                  </div>
+   619→   619→                </Card>
+   620→   620→              ))}
+   621→   621→            </div>
+   622→   622→          </Section>
+   623→   623→
+   624→   624→          {/* Work Experience */}
+   625→   625→          <Section id="section-experience" icon={Briefcase} title="Work Experience (Apprenticeship/Internship)" desc="Internships, apprenticeships, and other work experience" action={<AddButton onClick={addActivity} />}>
+   626→   626→            <div className="space-y-4">
+   627→   627→              {data.activities.length === 0 && <EmptyHint text="No work experience yet. Click Add to start." />}
+   628→   628→              {data.activities.map((act, i) => (
+   629→   629→                <Card key={i} onRemove={() => removeActivity(i)}>
+   630→   630→                  <div className="grid sm:grid-cols-3 gap-3">
+   631→   631→                    <Field label="Year">
+   632→   632→                      <Input value={act.year ?? ""} onChange={(e) => updateActivity(i, { year: e.target.value })} placeholder="2025" />
+   633→   633→                    </Field>
+   634→   634→                    <Field label="Month (range)">
+   635→   635→                      <Input value={act.period} onChange={(e) => updateActivity(i, { period: e.target.value })} placeholder="1-5" />
+   636→   636→                    </Field>
+   637→   637→                    <Field label="Duration (for JP resume, e.g. '9 months')">
+   638→   638→                      <Input value={act.duration ?? ""} onChange={(e) => updateActivity(i, { duration: e.target.value })} placeholder="9 months" />
+   639→   639→                    </Field>
+   640→   640→                    <Field label="Role">
+   641→   641→                      <Input value={act.role} onChange={(e) => updateActivity(i, { role: e.target.value })} placeholder="Research Intern" />
+   642→   642→                    </Field>
+   643→   643→                    <Field label="Organization" className="sm:col-span-2">
+   644→   644→                      <Input value={act.organization} onChange={(e) => updateActivity(i, { organization: e.target.value })} placeholder="SRM University AP" />
+   645→   645→                    </Field>
+   646→   646→                  </div>
+   647→   647→                  <Field label="Description (what you did)" className="mt-3">
+   648→   648→                    <Textarea rows={3} value={act.duties} onChange={(e) => updateActivity(i, { duties: e.target.value })} placeholder="Engineered an automated skin disease prediction system using Deep Learning..." />
+   649→   649→                  </Field>
+   650→   650→                </Card>
+   651→   651→              ))}
+   652→   652→            </div>
+   653→   653→          </Section>
+   654→   654→
+   655→   655→          {/* Certifications / Awards */}
+   656→   656→          <Section id="section-certifications" icon={Award} title="Certifications / Achievements" desc="Professional certifications and honors" action={<AddButton onClick={addAward} />}>
+   657→   657→            <div className="space-y-4">
+   658→   658→              {data.awards.length === 0 && <EmptyHint text="No certifications yet. Click Add to start." />}
+   659→   659→              {data.awards.map((aw, i) => (
+   660→   660→                <Card key={i} onRemove={() => removeAward(i)}>
+   661→   661→                  <div className="grid sm:grid-cols-3 gap-3">
+   662→   662→                    <Field label="Year">
+   663→   663→                      <Input value={aw.year} onChange={(e) => updateAward(i, { year: e.target.value })} placeholder="2025" />
+   664→   664→                    </Field>
+   665→   665→                    <Field label="Month">
+   666→   666→                      <Input value={aw.month ?? ""} onChange={(e) => updateAward(i, { month: e.target.value })} placeholder="4" />
+   667→   667→                    </Field>
+   668→   668→                    <Field label="Organization / Issuer">
+   669→   669→                      <Input value={aw.organization} onChange={(e) => updateAward(i, { organization: e.target.value })} placeholder="MongoDB, Inc." />
+   670→   670→                    </Field>
+   671→   671→                    <Field label="Title" className="sm:col-span-3">
+   672→   672→                      <Input value={aw.title} onChange={(e) => updateAward(i, { title: e.target.value })} placeholder="MongoDB Certified Associate Developer" />
+   673→   673→                    </Field>
+   674→   674→                  </div>
+   675→   675→                  <Field label="Description (details / credential ID / tasks)" className="mt-3">
+   676→   676→                    <Textarea rows={2} value={aw.description} onChange={(e) => updateAward(i, { description: e.target.value })} placeholder="Issued: April 2025. Credential ID: MDB4amndwj352" />
+   677→   677→                  </Field>
+   678→   678→                </Card>
+   679→   679→              ))}
+   680→   680→            </div>
+   681→   681→          </Section>
+   682→   682→
+   683→   683→          {/* Projects */}
+   684→   684→          <Section id="section-projects" icon={Code2} title="Projects / Co-Curricular Activities" desc="Technical projects and co-curricular work" action={<AddButton onClick={addProject} />}>
+   685→   685→            <div className="space-y-4">
+   686→   686→              {data.projects.length === 0 && <EmptyHint text="No projects yet. Click Add to start." />}
+   687→   687→              {data.projects.map((proj, i) => (
+   688→   688→                <Card key={i} onRemove={() => removeProject(i)}>
+   689→   689→                  <div className="grid sm:grid-cols-2 gap-3">
+   690→   690→                    <Field label="Year">
+   691→   691→                      <Input value={proj.year ?? ""} onChange={(e) => updateProject(i, { year: e.target.value })} placeholder="2025" />
+   692→   692→                    </Field>
+   693→   693→                    <Field label="Month (range)">
+   694→   694→                      <Input value={proj.period} onChange={(e) => updateProject(i, { period: e.target.value })} placeholder="2-5" />
+   695→   695→                    </Field>
+   696→   696→                    <Field label="Project name" className="sm:col-span-2">
+   697→   697→                      <Input value={proj.name} onChange={(e) => updateProject(i, { name: e.target.value })} placeholder="CollabLearn – Online Collaborative Learning Platform" />
+   698→   698→                    </Field>
+   699→   699→                    <Field label="Tech stack" className="sm:col-span-2">
+   700→   700→                      <Input value={proj.techStack ?? ""} onChange={(e) => updateProject(i, { techStack: e.target.value })} placeholder="React.js, Tailwind CSS, Firebase, JavaScript" />
+   701→   701→                    </Field>
+   702→   702→                  </div>
+   703→   703→                  <Field label="Description" className="mt-3">
+   704→   704→                    <Textarea rows={3} value={proj.description} onChange={(e) => updateProject(i, { description: e.target.value })} placeholder="Built a real-time learning portal with Firebase authentication..." />
+   705→   705→                  </Field>
+   706→   706→                </Card>
+   707→   707→              ))}
+   708→   708→            </div>
+   709→   709→          </Section>
+   710→   710→
+   711→   711→          {/* Skills */}
+   712→   712→          <Section id="section-skills" icon={Code2} title="Skills" desc="Mark your proficiency for each skill" action={<AddButton onClick={addSkill} />}>
+   713→   713→            <div className="space-y-3">
+   714→   714→              {data.skills.length === 0 && <EmptyHint text="No skills yet. Click Add to start." />}
+   715→   715→              {data.skills.map((s, i) => (
+   716→   716→                <div key={i} className="relative rounded-xl border border-border bg-background p-4">
+   717→   717→                  <button
+   718→   718→                    onClick={() => removeSkill(i)}
+   719→   719→                    className="absolute top-3 right-3 grid place-items-center h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
+   720→   720→                    aria-label="Remove"
+   721→   721→                  >
+   722→   722→                    <Trash2 className="h-4 w-4" />
+   723→   723→                  </button>
+   724→   724→                  <div className="grid sm:grid-cols-[1fr_auto_auto_auto] items-center gap-4">
+   725→   725→                    <Field label="Skill name">
+   726→   726→                      <Input value={s.name} onChange={(e) => updateSkill(i, { name: e.target.value })} placeholder="HTML, CSS, JavaScript, React..." />
+   727→   727→                    </Field>
+   728→   728→                    <CheckboxField
+   729→   729→                      label="Learned in class"
+   730→   730→                      checked={s.learnedInClass}
+   731→   731→                      onChange={(v) => updateSkill(i, { learnedInClass: v })}
+   732→   732→                    />
+   733→   733→                    <CheckboxField
+   734→   734→                      label="Can operate alone"
+   735→   735→                      checked={s.canOperate}
+   736→   736→                      onChange={(v) => updateSkill(i, { canOperate: v })}
+   737→   737→                    />
+   738→   738→                    <CheckboxField
+   739→   739→                      label="Can teach others"
+   740→   740→                      checked={s.canTeach}
+   741→   741→                      onChange={(v) => updateSkill(i, { canTeach: v })}
+   742→   742→                    />
+   743→   743→                  </div>
+   744→   744→                </div>
+   745→   745→              ))}
+   746→   746→            </div>
+   747→   747→          </Section>
+   748→   748→
+   749→   749→          {/* Skills in Which I Excel */}
+   750→   750→          <Section id="section-excel" icon={ListChecks} title="Skills in Which I Excel" desc="Numbered summary of strengths and growth areas" action={<AddButton onClick={addExcelItem} />}>
+   751→   751→            <div className="space-y-3">
+   752→   752→              {(data.skillsExcelSummary ?? []).length === 0 && <EmptyHint text="No summary points yet. Click Add to start." />}
+   753→   753→              {(data.skillsExcelSummary ?? []).map((line, i) => (
+   754→   754→                <div key={i} className="relative rounded-xl border border-border bg-background p-4 pr-12">
+   755→   755→                  <button
+   756→   756→                    onClick={() => removeExcelItem(i)}
+   757→   757→                    className="absolute top-3 right-3 grid place-items-center h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
+   758→   758→                    aria-label="Remove"
+   759→   759→                  >
+   760→   760→                    <Trash2 className="h-4 w-4" />
+   761→   761→                  </button>
+   762→   762→                  <div className="flex gap-3">
+   763→   763→                    <span className="grid place-items-center h-7 w-7 rounded-full bg-saffron/10 text-saffron font-bold text-sm shrink-0">
+   764→   764→                      {i + 1}
+   765→   765→                    </span>
+   766→   766→                    <Textarea
+   767→   767→                      rows={2}
+   768→   768→                      value={line}
+   769→   769→                      onChange={(e) => updateExcelItem(i, e.target.value)}
+   770→   770→                      placeholder="I have developed strong expertise in web development technologies, including HTML, CSS, JavaScript and React..."
+   771→   771→                      className="flex-1"
+   772→   772→                    />
+   773→   773→                  </div>
+   774→   774→                </div>
+   775→   775→              ))}
+   776→   776→            </div>
+   777→   777→          </Section>
+   778→   778→
+   779→   779→          {/* Japanese Proficiency & Other Languages */}
+   780→   780→          <Section id="section-jlpt" icon={Languages} title="Japanese Proficiency & Other Languages" desc="JLPT levels and additional languages">
+   781→   781→            <div className="space-y-4">
+   782→   782→              <Field label="Current Japanese Proficiency Level (JLPT)">
+   783→   783→                <Select
+   784→   784→                  value={data.currentJlpt ?? ""}
+   785→   785→                  onValueChange={(v) => update("currentJlpt", v as JlptLevel)}
+   786→   786→                >
+   787→   787→                  <SelectTrigger className="h-10">
+   788→   788→                    <SelectValue placeholder="Select current JLPT level" />
+   789→   789→                  </SelectTrigger>
+   790→   790→                  <SelectContent>
+   791→   791→                    {JLPT_OPTIONS.map((lvl) => (
+   792→   792→                      <SelectItem key={lvl} value={lvl}>
+   793→   793→                        {lvl}
+   794→   794→                      </SelectItem>
+   795→   795→                    ))}
+   796→   796→                  </SelectContent>
+   797→   797→                </Select>
+   798→   798→              </Field>
+   799→   799→              <Field label="Expected JLPT level by graduation time">
+   800→   800→                <Select
+   801→   801→                  value={data.expectedJlpt ?? ""}
+   802→   802→                  onValueChange={(v) => update("expectedJlpt", v as JlptLevel)}
+   803→   803→                >
+   804→   804→                  <SelectTrigger className="h-10">
+   805→   805→                    <SelectValue placeholder="Select expected JLPT level" />
+   806→   806→                  </SelectTrigger>
+   807→   807→                  <SelectContent>
+   808→   808→                    {JLPT_OPTIONS.map((lvl) => (
+   809→   809→                      <SelectItem key={lvl} value={lvl}>
+   810→   810→                        {lvl}
+   811→   811→                      </SelectItem>
+   812→   812→                    ))}
+   813→   813→                  </SelectContent>
+   814→   814→                </Select>
+   815→   815→              </Field>
+   816→   816→              <Field label="Other languages (comma-separated, e.g. 'English, Telugu, Hindi')">
+   817→   817→                <Input
+   818→   818→                  value={data.otherLanguages ?? ""}
+   819→   819→                  onChange={(e) => update("otherLanguages", e.target.value)}
+   820→   820→                  placeholder="English, Telugu, Hindi"
+   821→   821→                />
+   822→   822→              </Field>
+   823→   823→            </div>
+   824→   824→          </Section>
+   825→   825→
+   826→   826→          {/* Why Japan? */}
+   827→   827→          <Section id="section-japan" icon={MapPin} title="More About Why You Want to Work in Japan" desc="Three short essays — these appear on the English resume only">
+   828→   828→            <Field label="Why do you want to work in Japan? (日本で働きたい理由は何ですか？)">
+   829→   829→              <Textarea
+   830→   830→                rows={4}
+   831→   831→                value={data.japanMotivation?.whyJapan ?? ""}
+   832→   832→                onChange={(e) => updateJapan("whyJapan", e.target.value)}
+   833→   833→                placeholder="Japan is known for its hard work, focus on quality, and constant improvement..."
+   834→   834→              />
+   835→   835→            </Field>
+   836→   836→            <Field label="What kind of career would you like to create in Japan? (日本でどのようなキャリアを作りたいと思いますか？)" className="mt-4">
+   837→   837→              <Textarea
+   838→   838→                rows={4}
+   839→   839→                value={data.japanMotivation?.careerInJapan ?? ""}
+   840→   840→                onChange={(e) => updateJapan("careerInJapan", e.target.value)}
+   841→   841→                placeholder="Aspire to build a career in Japan by contributing to innovative, socially impactful projects..."
+   842→   842→              />
+   843→   843→            </Field>
+   844→   844→            <Field label="What challenges do you foresee in adjusting to life in Japan, and how would you address them? (日本生活への適応において、どのような課題を予想し、どう対処しますか？)" className="mt-4">
+   845→   845→              <Textarea
+   846→   846→                rows={4}
+   847→   847→                value={data.japanMotivation?.challenges ?? ""}
+   848→   848→                onChange={(e) => updateJapan("challenges", e.target.value)}
+   849→   849→                placeholder="Challenges: Adaptation to Work Practices..."
+   850→   850→              />
+   851→   851→            </Field>
+   852→   852→          </Section>
+   853→   853→
+   854→   854→          {/* Self-PR & Hobbies */}
+   855→   855→          <Section id="section-selfpr" icon={Sparkles} title="Self-PR & Hobbies" desc="Personal statement and interests (shown on the JP resume)">
+   856→   856→            <Field label="Self-PR (English)">
+   857→   857→              <Textarea rows={5} value={data.selfPr ?? ""} onChange={(e) => update("selfPr", e.target.value)} placeholder="I am a Computer Science student passionate about full-stack development and AI..." />
+   858→   858→            </Field>
+   859→   859→            <Field label="Hobbies" className="mt-3">
+   860→   860→              <Input value={data.hobbies ?? ""} onChange={(e) => update("hobbies", e.target.value)} placeholder="Badminton, Fitness, Reading" />
+   861→   861→            </Field>
+   862→   862→          </Section>
+   863→   863→
+   864→   864→            </div>
+   865→   865→          </div>
+   866→   866→
+   867→   867→          {/* Save bar (full width across sidebar + content) */}
+   868→   868→          <div className="sticky bottom-4 flex justify-end gap-2 print:hidden">
+   869→   869→            <Button onClick={save} disabled={saving} className="bg-brand-gradient text-white hover:opacity-90 font-semibold shadow-glow-brand">
+   870→   870→              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+   871→   871→              Save Resume
+   872→   872→            </Button>
+   873→   873→          </div>
+   874→   874→        </motion.div>
+   875→   875→      )}
+   876→   876→
+   877→   877→      {/* Previews */}
+   878→   878→      {tab === "preview-ja" && <ResumePreview data={data} lang="ja" />}
+   879→   879→      {tab === "preview-en" && <ResumePreview data={data} lang="en" />}
+   880→   880→    </div>
+   881→   881→  );
+   882→   882→}
+   883→   883→
+   884→   884→function Section({
+   885→   885→  id,
+   886→   886→  icon: Icon,
+   887→   887→  title,
+   888→   888→  desc,
+   889→   889→  action,
+   890→   890→  children,
+   891→   891→}: {
+   892→   892→  id?: string;
+   893→   893→  icon: React.ComponentType<{ className?: string }>;
+   894→   894→  title: string;
+   895→   895→  desc?: string;
+   896→   896→  action?: React.ReactNode;
+   897→   897→  children: React.ReactNode;
+   898→   898→}) {
+   899→   899→  return (
+   900→   900→    <section
+   901→   901→      id={id}
+   902→   902→      className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-premium scroll-mt-6"
+   903→   903→    >
+   904→   904→      <div className="flex items-start justify-between mb-4">
+   905→   905→        <div className="flex items-start gap-3">
+   906→   906→          <div className="grid place-items-center h-10 w-10 rounded-lg bg-saffron/10 text-saffron shrink-0">
+   907→   907→            <Icon className="h-5 w-5" />
+   908→   908→          </div>
+   909→   909→          <div>
+   910→   910→            <h2 className="font-display text-lg font-bold">{title}</h2>
+   911→   911→            {desc && <p className="text-sm text-muted-foreground">{desc}</p>}
+   912→   912→          </div>
+   913→   913→        </div>
+   914→   914→        {action}
+   915→   915→      </div>
+   916→   916→      {children}
+   917→   917→    </section>
+   918→   918→  );
+   919→   919→}
+   920→   920→
+   921→   921→function Card({ children, onRemove }: { children: React.ReactNode; onRemove: () => void }) {
+   922→   922→  return (
+   923→   923→    <div className="relative rounded-xl border border-border bg-background p-4">
+   924→   924→      <button
+   925→   925→        onClick={onRemove}
+   926→   926→        className="absolute top-3 right-3 grid place-items-center h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
+   927→   927→        aria-label="Remove"
+   928→   928→      >
+   929→   929→        <Trash2 className="h-4 w-4" />
+   930→   930→      </button>
+   931→   931→      {children}
+   932→   932→    </div>
+   933→   933→  );
+   934→   934→}
+   935→   935→
+   936→   936→function Field({
+   937→   937→  label,
+   938→   938→  children,
+   939→   939→  className,
+   940→   940→}: {
+   941→   941→  label: string;
+   942→   942→  children: React.ReactNode;
+   943→   943→  className?: string;
+   944→   944→}) {
+   945→   945→  return (
+   946→   946→    <label className={cn("block", className)}>
+   947→   947→      <span className="text-xs font-medium text-muted-foreground mb-1 block">{label}</span>
+   948→   948→      {children}
+   949→   949→    </label>
+   950→   950→  );
+   951→   951→}
+   952→   952→
+   953→   953→function CheckboxField({
+   954→   954→  label,
+   955→   955→  checked,
+   956→   956→  onChange,
+   957→   957→}: {
+   958→   958→  label: string;
+   959→   959→  checked: boolean;
+   960→   960→  onChange: (v: boolean) => void;
+   961→   961→}) {
+   962→   962→  return (
+   963→   963→    <label className="flex items-center gap-2 cursor-pointer select-none mt-5">
+   964→   964→      <Checkbox checked={checked} onCheckedChange={(v) => onChange(!!v)} />
+   965→   965→      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+   966→   966→    </label>
+   967→   967→  );
+   968→   968→}
+   969→   969→
+   970→   970→function AddButton({ onClick }: { onClick: () => void }) {
+   971→   971→  return (
+   972→   972→    <Button size="sm" variant="outline" onClick={onClick} className="font-medium">
+   973→   973→      <Plus className="mr-1 h-3.5 w-3.5" />
+   974→   974→      Add
+   975→   975→    </Button>
+   976→   976→  );
+   977→   977→}
+   978→   978→
+   979→   979→function EmptyHint({ text }: { text: string }) {
+   980→   980→  return (
+   981→   981→    <div className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
+   982→   982→      {text}
+   983→   983→    </div>
+   984→   984→  );
+   985→   985→}
+   986→   986→

@@ -1166,3 +1166,26 @@ Stage Summary:
 - PDF Skills table headers no longer overflow/garble — shortened to fit 20% columns.
 - JP PDF Skills table now uses the same 3-checkbox format as the EN PDF (was still using old 3-tier format).
 - Both PDFs verified clean by VLM.
+
+---
+Task ID: PDF-CHECKBOX-DUPLICATE-FIX
+Agent: main (Z.ai Code)
+Task: Fix selection fields showing all options (checkboxes invisible) + fix duplicate Self-PR content in PDF.
+
+Work Log:
+- Issue 1 (checkboxes invisible): The EN PDF template used Unicode checkbox glyphs ☒ (U+2612) and ☐ (U+2610) for the Skills proficiency table and JLPT levels. Helvetica (the built-in PDF font) doesn't support these Unicode characters — they rendered as invisible, making it look like ALL options were printed with no indication of which was selected. Fixed by replacing with ASCII brackets: `CHECKED = "[X]"` and `UNCHECKED = "[  ]"`. Also applied the same fix to the JP PDF template for consistency.
+- Issue 2 (gender stray space): The gender was rendered as `    Male` (4-space indent). Changed to `  |  Male` for a cleaner separator.
+- Issue 3 (duplicate Self-PR): Investigated the DB and found the `challenges` field contained garbage text + Self-PR content accidentally pasted into it: "Language and cultural differences... online courses.xbasjbxas ccbdcbududucndicidcisdnicnsdincisdn \n\n Cloud-certified engineer (AWS Solutions Architect Associate)...". This was a data issue, not a template bug. Cleaned up the `challenges` field to contain only the actual challenges answer, keeping Self-PR separate in its own field.
+- Agent Browser verification (EN PDF via VLM):
+  - Skills table: [X] and [ ] brackets visible — "Learned in class" and "Can operate alone" checked, "Can teach others" unchecked. ✅
+  - Current JLPT: [X] next to N2 (selected level). ✅
+  - Expected JLPT: [X] next to N3 (selected level). ✅
+  - Self-PR: appears only ONCE under "SELF-PR & HOBBIES" heading — no longer duplicated in challenges. ✅
+  - Gender: shown clearly as "Male". ✅
+- `npx tsc --noEmit` → 0 errors. `bun run lint` → 0 errors.
+
+Stage Summary:
+- Checkbox rendering fixed: [X]/[ ] ASCII brackets work with any font (Helvetica, IPA Gothic).
+- Duplicate Self-PR fixed: cleaned the `challenges` field data (was accidentally contaminated with Self-PR text).
+- Gender formatting improved: ` | ` separator instead of 4-space indent.
+- Files modified: `src/lib/pdf-templates/english-resume-pdf.tsx`, `src/lib/pdf-templates/japanese-resume-pdf.tsx`, DB data cleanup.

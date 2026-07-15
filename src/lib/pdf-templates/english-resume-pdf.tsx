@@ -13,9 +13,11 @@ import {
   type ResumeData,
 } from "@/lib/resume-types";
 
-// Checkmark glyphs used in the Skills + JLPT proficiency tables.
-const CHECKED = "☒";
-const UNCHECKED = "☐";
+// Checkmark indicators for the Skills + JLPT proficiency tables.
+// Using ASCII brackets because Helvetica doesn't support the Unicode
+// checkbox glyphs (☒/☐) — they render as invisible in the PDF.
+const CHECKED = "[X]";
+const UNCHECKED = "[  ]";
 
 const styles = StyleSheet.create({
   page: {
@@ -209,7 +211,7 @@ export function EnglishResumePDF({ data }: { data: ResumeData }) {
           <View style={styles.personalRow}>
             <Text style={styles.personalValue}>
               {dobWithAge}
-              {data.gender ? `    ${genderEn(data.gender)}` : ""}
+              {data.gender ? `  |  ${genderEn(data.gender)}` : ""}
             </Text>
           </View>
 

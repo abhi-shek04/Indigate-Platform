@@ -20,9 +20,10 @@ import {
 // ready before PDF generation — no garbled text.
 // On the client side, use-jp-font.ts handles preloading for <PDFDownloadLink>.
 
-// Checkmark glyphs used in the Skills proficiency table.
-const CHECKED = "☒";
-const UNCHECKED = "☐";
+// Checkmark indicators for the Skills proficiency table.
+// Using ASCII brackets for maximum font compatibility.
+const CHECKED = "[X]";
+const UNCHECKED = "[  ]";
 
 const styles = StyleSheet.create({
   page: {

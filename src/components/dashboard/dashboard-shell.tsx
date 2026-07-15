@@ -262,7 +262,7 @@ function SidebarFooter({
       </button>
       <div className="mt-3 px-3 flex items-center gap-2.5">
         <img
-          src="/indobox-logo.png"
+          src="/indobox-academy-logo.png"
           alt="Indobox Inc"
           className="h-5 w-5 rounded object-contain opacity-60"
         />

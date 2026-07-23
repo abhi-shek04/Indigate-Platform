@@ -79,6 +79,12 @@ import {
   MessageSquare,
   Settings,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type {
   ApplicationDTO,
   CandidateProfileDTO,
@@ -114,7 +120,7 @@ export function CandidateDashboard() {
   const setTab = useApp((s) => s.setCandidateTab);
   const navigate = useApp((s) => s.navigate);
   const unread = useApp((s) => s.messageUnreadCount);
-  const { t } = useT();
+  const { t, pick } = useT();
 
   // Inject the Messages nav entry between `alerts` and `settings` with the
   // live unread badge so the sidebar pill stays in sync with the store.
@@ -137,13 +143,24 @@ export function CandidateDashboard() {
     return <RoleGuard expected="CANDIDATE" />;
   }
 
-  // Wait for the candidate profile to load.
-  if (authLoading || !candidate) {
+  if (authLoading) {
     return (
       <div className="min-h-screen grid place-items-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 rounded-full border-2 border-saffron border-t-transparent animate-spin" />
           <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!candidate) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-background">
+        <div className="p-6 bg-white rounded-2xl shadow border max-w-sm text-center">
+          <h2 className="text-lg font-semibold mb-2">Profile Not Found</h2>
+          <p className="text-sm text-muted-foreground mb-4">Your candidate profile is missing or corrupted. Please log out and contact support.</p>
+          <button className="px-4 py-2 bg-saffron text-white rounded" onClick={() => useApp.getState().logout()}>Log Out</button>
         </div>
       </div>
     );
@@ -165,24 +182,34 @@ export function CandidateDashboard() {
       welcome={welcome}
       subtitle={subtitle}
       avatar={
-        <div className="hidden sm:flex items-center gap-2 pl-2 ml-1 border-l border-border">
-          <CandidateAvatar
-            name={candidate?.fullName || user.name || user.email}
-            photoUrl={candidate?.photoUrl}
-            size={32}
-          />
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="hidden sm:flex items-center gap-2 pl-2 ml-1 border-l border-border hover:opacity-80 transition-opacity outline-none cursor-pointer">
+              <CandidateAvatar
+                name={candidate?.fullName || user.name || user.email}
+                photoUrl={candidate?.photoUrl}
+                size={32}
+              />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setTab("profile")} className="cursor-pointer">
+              {pick("Profile", "プロフィール")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => useApp.getState().logout()} className="cursor-pointer">
+              {t("nav.logout")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       }
       topbarActions={
-        <Button
-          size="sm"
-          variant="outline"
-          className="hidden sm:inline-flex"
+        <button
+          className="hidden sm:inline-flex items-center gap-2 rounded-full bg-background border border-border px-4 py-1.5 text-[13px] font-semibold text-foreground shadow-sm transition-colors hover:bg-foreground hover:text-background"
           onClick={() => navigate("jobs")}
         >
-          <Briefcase className="h-4 w-4" />
+          <Briefcase className="h-3.5 w-3.5" />
           {t("dash.candidate.browse")}
-        </Button>
+        </button>
       }
     >
       {tab === "overview" && <Overview />}
@@ -221,7 +248,7 @@ function computeCompletion(c: CandidateProfileDTO | null): number {
 function Overview() {
   const candidate = useApp((s) => s.candidate);
   const setTab = useApp((s) => s.setCandidateTab);
-  const { t, locale } = useT();
+  const { t, locale, pick } = useT();
   const [apps, setApps] = useState<ApplicationDTO[] | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -425,7 +452,7 @@ function Overview() {
 /* ============== Applications ============== */
 
 function Applications() {
-  const { t, locale } = useT();
+  const { t, locale, pick } = useT();
   const navigate = useApp((s) => s.navigate);
   const refreshAuth = useApp((s) => s.refreshAuth);
   const [apps, setApps] = useState<ApplicationDTO[] | null>(null);
@@ -609,7 +636,7 @@ function Applications() {
 function Profile() {
   const candidate = useApp((s) => s.candidate);
   const refreshAuth = useApp((s) => s.refreshAuth);
-  const { t } = useT();
+  const { t, pick } = useT();
 
   const [form, setForm] = useState({
     fullName: candidate?.fullName ?? "",
@@ -972,7 +999,7 @@ function Profile() {
 function Resume() {
   const candidate = useApp((s) => s.candidate);
   const refreshAuth = useApp((s) => s.refreshAuth);
-  const { t, locale } = useT();
+  const { t, locale, pick } = useT();
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
 
@@ -1095,8 +1122,7 @@ function Resume() {
         <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 p-4 flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <p className="text-sm text-amber-800 dark:text-amber-200">
-            You haven't uploaded a resume yet. A PDF resume is required to apply
-            to most jobs.
+            {t("dash.resume.empty")}
           </p>
         </div>
       )}
@@ -1108,12 +1134,12 @@ function Resume() {
           busy={busy}
           progress={progress ?? undefined}
           title={t("dash.resume.drag")}
-          hint="PDF only · max 5 MB"
+          hint={pick("PDF only · max 5 MB", "PDFのみ・最大5MB")}
           icon={<FileUp className="h-5 w-5" />}
         />
         {candidate?.resumeUrl && (
           <p className="mt-4 text-xs text-muted-foreground text-center">
-            Uploading a new file will replace your current resume.
+            {pick("Uploading a new file will replace your current resume.", "新しいファイルをアップロードすると、現在の履歴書が上書きされます。")}
           </p>
         )}
       </SectionCard>
@@ -1124,7 +1150,7 @@ function Resume() {
 /* ============== Saved Jobs ============== */
 
 function Saved() {
-  const { t } = useT();
+  const { t, pick } = useT();
   const navigate = useApp((s) => s.navigate);
   const [jobs, setJobs] = useState<JobDTO[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1188,7 +1214,7 @@ function Saved() {
 /* ============== Interview Info (Milestone H) ============== */
 
 function InterviewInfo({ app }: { app: ApplicationDTO }) {
-  const { locale } = useT();
+  const { locale, pick } = useT();
   if (!app.interviewDate) return null;
   const d = new Date(app.interviewDate);
   const dateStr = d.toLocaleString(locale === "ja" ? "ja-JP" : "en-US", {

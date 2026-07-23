@@ -28,7 +28,7 @@ import {
 export function Resume() {
   const candidate = useApp((s) => s.candidate);
   const refreshAuth = useApp((s) => s.refreshAuth);
-  const { t, locale } = useT();
+  const { t, locale, pick } = useT();
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
 
@@ -109,7 +109,7 @@ export function Resume() {
                   rel="noreferrer"
                   download
                 >
-                  Download
+                  {pick("Download", "ダウンロード")}
                 </a>
               </Button>
               <AlertDialog>
@@ -125,10 +125,9 @@ export function Resume() {
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Remove resume?</AlertDialogTitle>
+                    <AlertDialogTitle>{pick("Remove resume?", "履歴書を削除しますか？")}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Your resume will be removed from your profile. You can
-                      upload a new one any time.
+                      {pick("Your resume will be removed from your profile. You can upload a new one any time.", "履歴書がプロフィールから削除されます。いつでも新しい履歴書をアップロードできます。")}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -137,7 +136,7 @@ export function Resume() {
                       className="bg-destructive text-white hover:bg-destructive/90"
                       onClick={removeResume}
                     >
-                      Remove
+                      {pick("Remove", "削除")}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

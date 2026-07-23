@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 export function Profile() {
   const candidate = useApp((s) => s.candidate);
   const refreshAuth = useApp((s) => s.refreshAuth);
-  const { t } = useT();
+  const { t, pick } = useT();
 
   const [form, setForm] = useState({
     fullName: candidate?.fullName ?? "",
@@ -121,7 +121,7 @@ export function Profile() {
       <SectionCard title={t("dash.profile.basic")}>
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label htmlFor="fullName">Full name</Label>
+            <Label htmlFor="fullName">{pick("Full name", "氏名")}</Label>
             <Input
               id="fullName"
               value={form.fullName}
@@ -131,7 +131,7 @@ export function Profile() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="phone">Phone</Label>
+            <Label htmlFor="phone">{pick("Phone", "電話番号")}</Label>
             <Input
               id="phone"
               value={form.phone}
@@ -140,16 +140,16 @@ export function Profile() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="location">Location</Label>
+            <Label htmlFor="location">{pick("Location", "居住地")}</Label>
             <Input
               id="location"
               value={form.location}
               onChange={(e) => set("location", e.target.value)}
-              placeholder="e.g. Bengaluru, India"
+              placeholder={pick("e.g. Bengaluru, India", "例：インド、ベンガルール")}
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
+            <Label htmlFor="linkedinUrl">{pick("LinkedIn URL", "LinkedIn URL")}</Label>
             <Input
               id="linkedinUrl"
               value={form.linkedinUrl}
@@ -158,7 +158,7 @@ export function Profile() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="experienceYears">Experience (years)</Label>
+            <Label htmlFor="experienceYears">{pick("Experience (years)", "経験年数")}</Label>
             <Input
               id="experienceYears"
               type="number"
@@ -171,13 +171,13 @@ export function Profile() {
             />
           </div>
           <div className="sm:col-span-2 space-y-1.5">
-            <Label htmlFor="bio">Bio</Label>
+            <Label htmlFor="bio">{pick("Bio", "自己紹介")}</Label>
             <Textarea
               id="bio"
               rows={4}
               value={form.bio}
               onChange={(e) => set("bio", e.target.value)}
-              placeholder="A short professional summary..."
+              placeholder={pick("A short professional summary...", "簡単な職務経歴の要約...")}
               maxLength={2000}
             />
           </div>
@@ -188,7 +188,7 @@ export function Profile() {
       <SectionCard title={t("dash.profile.japan")}>
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label>JLPT level</Label>
+            <Label>{pick("JLPT level", "JLPT レベル")}</Label>
             <Select
               value={form.jlptLevel}
               onValueChange={(v) => set("jlptLevel", v as JLPTLevel)}
@@ -199,14 +199,14 @@ export function Profile() {
               <SelectContent>
                 {JLPT_LEVELS.map((lvl) => (
                   <SelectItem key={lvl} value={lvl}>
-                    {lvl === "NONE" ? "No certification yet" : `JLPT ${lvl}`}
+                    {lvl === "NONE" ? pick("No certification yet", "資格なし") : `JLPT ${lvl}`}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Current badge</Label>
+            <Label>{pick("Current badge", "現在のバッジ")}</Label>
             <div className="flex items-center h-9">
               <Badge
                 variant="outline"
@@ -217,14 +217,14 @@ export function Profile() {
             </div>
           </div>
           <div className="sm:col-span-2 space-y-1.5">
-            <Label>Skills</Label>
+            <Label>{pick("Skills", "スキル")}</Label>
             <SkillsInput
               value={form.skills}
               onChange={(next) => set("skills", next)}
-              placeholder="Type a skill and press Enter"
+              placeholder={pick("Type a skill and press Enter", "スキルを入力してEnterを押してください")}
             />
             <p className="text-xs text-muted-foreground">
-              Add at least 3 skills for the best visibility.
+              {pick("Add at least 3 skills for the best visibility.", "見つけやすくするために、少なくとも3つのスキルを追加してください。")}
             </p>
           </div>
         </div>
@@ -236,14 +236,14 @@ export function Profile() {
         action={
           <Button type="button" size="sm" variant="outline" onClick={addEducation}>
             <Plus className="h-3.5 w-3.5" />
-            Add entry
+            {pick("Add entry", "追加")}
           </Button>
         }
         bodyClassName="space-y-4"
       >
         {form.education.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">
-            No education entries yet. Click "Add entry" to add one.
+            {pick("No education entries yet. Click \"Add entry\" to add one.", "学歴がまだありません。「追加」をクリックして追加してください。")}
           </p>
         ) : (
           form.education.map((ed, i) => (
@@ -253,7 +253,7 @@ export function Profile() {
             >
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Entry #{i + 1}
+                  {pick(`Entry #${i + 1}`, `エントリ #${i + 1}`)}
                 </p>
                 <Button
                   type="button"
@@ -261,42 +261,42 @@ export function Profile() {
                   size="icon"
                   className="h-7 w-7 text-muted-foreground hover:text-destructive"
                   onClick={() => removeEducation(i)}
-                  aria-label="Remove entry"
+                  aria-label={pick("Remove entry", "エントリを削除")}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs">Degree</Label>
+                  <Label className="text-xs">{pick("Degree", "学位")}</Label>
                   <Input
                     value={ed.degree}
                     onChange={(e) =>
                       setEducation(i, { degree: e.target.value })
                     }
-                    placeholder="B.Tech"
+                    placeholder={pick("B.Tech", "例: 学士")}
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Field</Label>
+                  <Label className="text-xs">{pick("Field", "専攻分野")}</Label>
                   <Input
                     value={ed.field}
                     onChange={(e) => setEducation(i, { field: e.target.value })}
-                    placeholder="Computer Science"
+                    placeholder={pick("Computer Science", "例: コンピュータサイエンス")}
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Institution</Label>
+                  <Label className="text-xs">{pick("Institution", "教育機関")}</Label>
                   <Input
                     value={ed.institution}
                     onChange={(e) =>
                       setEducation(i, { institution: e.target.value })
                     }
-                    placeholder="IIT Madras"
+                    placeholder={pick("IIT Madras", "例: インド工科大学")}
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Year</Label>
+                  <Label className="text-xs">{pick("Year", "卒業年")}</Label>
                   <Input
                     value={ed.year}
                     onChange={(e) => setEducation(i, { year: e.target.value })}

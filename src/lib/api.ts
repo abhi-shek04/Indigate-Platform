@@ -279,15 +279,25 @@ function formatNum(n: number): string {
   return String(n);
 }
 
-export function notify(
+export async function notify(
   userId: string,
   title: string,
   message: string,
   link?: string,
 ) {
-  return db.notification.create({
+  const notif = await db.notification.create({
     data: { userId, title, message, link },
   });
+  
+  // Try to emit to any active SSE listeners
+  try {
+    const { emitNotification } = await import("./sse-emitter");
+    emitNotification(userId, toNotificationDTO(notif));
+  } catch {
+    // Ignore if emitter isn't ready
+  }
+  
+  return notif;
 }
 
 export function csvEscape(v: unknown): string {

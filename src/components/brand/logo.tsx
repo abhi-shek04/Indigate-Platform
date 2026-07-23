@@ -52,6 +52,20 @@ export function CompanyAvatar({
     .map((w) => w[0])
     .join("")
     .toUpperCase();
+  
+  if (color && (color.startsWith("http") || color.startsWith("/"))) {
+    return (
+      <img
+        src={color}
+        alt={name}
+        width={size}
+        height={size}
+        className={cn("rounded-xl object-cover shrink-0", className)}
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+
   const bg =
     color && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(color)
       ? color

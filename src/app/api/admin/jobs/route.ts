@@ -24,7 +24,7 @@ export async function GET() {
 }
 
 const createSchema = z.object({
-  companyId: z.string(),
+  companyName: z.string().min(2),
   title: z.string().min(3),
   titleJa: z.string().optional(),
   description: z.string().min(50),
@@ -40,7 +40,7 @@ const createSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-// POST — admin creates a job on behalf of any approved company
+// POST — admin creates a job on behalf of any company (auto-creates if needed)
 export async function POST(req: NextRequest) {
   try {
     await requireRole("ADMIN");
@@ -49,12 +49,32 @@ export async function POST(req: NextRequest) {
     if (!parsed.success)
       return err(parsed.error.issues[0]?.message ?? "Invalid input.", 422);
 
-    const company = await db.companyProfile.findUnique({
-      where: { id: parsed.data.companyId },
+    let company = await db.companyProfile.findFirst({
+      where: { companyName: parsed.data.companyName },
     });
-    if (!company) return err("Company not found.", 404);
-    if (!company.isApproved)
-      return err("Company is not approved. Approve it first.", 400);
+
+    if (!company) {
+      // Auto-create dummy user and company
+      const dummyUser = await db.user.create({
+        data: {
+          email: `system_company_${Date.now()}@indigate.work`,
+          role: "COMPANY",
+          isVerified: true,
+        },
+      });
+      company = await db.companyProfile.create({
+        data: {
+          userId: dummyUser.id,
+          companyName: parsed.data.companyName,
+          isApproved: true,
+        },
+      });
+    } else if (!company.isApproved) {
+      company = await db.companyProfile.update({
+        where: { id: company.id },
+        data: { isApproved: true },
+      });
+    }
 
     const job = await db.job.create({
       data: {

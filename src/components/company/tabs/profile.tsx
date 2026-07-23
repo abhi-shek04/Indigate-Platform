@@ -17,7 +17,7 @@ import { ImageIcon, Clock } from "lucide-react";
 export function Profile() {
   const company = useApp((s) => s.company);
   const refreshAuth = useApp((s) => s.refreshAuth);
-  const { t } = useT();
+  const { t, pick } = useT();
   const [form, setForm] = useState({
     companyName: company?.companyName ?? "",
     industry: company?.industry ?? "",
@@ -106,7 +106,7 @@ export function Profile() {
   return (
     <form onSubmit={save} className="space-y-6 max-w-3xl">
       {/* Logo */}
-      <SectionCard title="Company logo">
+      <SectionCard title={pick("Company logo", "会社のロゴ")}>
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <CompanyAvatar
             name={form.companyName || "?"}
@@ -136,10 +136,10 @@ export function Profile() {
       </SectionCard>
 
       {/* Details */}
-      <SectionCard title="Company details">
+      <SectionCard title={pick("Company details", "会社情報")}>
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="companyName">Company name</Label>
+            <Label htmlFor="companyName">{pick("Company name", "会社名")}</Label>
             <Input
               id="companyName"
               value={form.companyName}
@@ -149,25 +149,25 @@ export function Profile() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="industry">Industry</Label>
+            <Label htmlFor="industry">{pick("Industry", "業種")}</Label>
             <Input
               id="industry"
               value={form.industry}
               onChange={(e) => set("industry", e.target.value)}
-              placeholder="e.g. IT Services"
+              placeholder={pick("e.g. IT Services", "例：ITサービス")}
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="locationJapan">Location (Japan)</Label>
+            <Label htmlFor="locationJapan">{pick("Location (Japan)", "所在地 (日本)")}</Label>
             <Input
               id="locationJapan"
               value={form.locationJapan}
               onChange={(e) => set("locationJapan", e.target.value)}
-              placeholder="e.g. Shibuya, Tokyo"
+              placeholder={pick("e.g. Shibuya, Tokyo", "例：東京都渋谷区")}
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="website">Website</Label>
+            <Label htmlFor="website">{pick("Website", "ウェブサイト")}</Label>
             <Input
               id="website"
               value={form.website}
@@ -176,22 +176,22 @@ export function Profile() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="employeeCount">Employee count</Label>
+            <Label htmlFor="employeeCount">{pick("Employee count", "従業員数")}</Label>
             <Input
               id="employeeCount"
               value={form.employeeCount}
               onChange={(e) => set("employeeCount", e.target.value)}
-              placeholder="e.g. 50-200"
+              placeholder={pick("e.g. 50-200", "例：50-200")}
             />
           </div>
           <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="description">About the company</Label>
+            <Label htmlFor="description">{pick("About the company", "会社について")}</Label>
             <Textarea
               id="description"
               rows={5}
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
-              placeholder="Tell candidates what makes your company special..."
+              placeholder={pick("Tell candidates what makes your company special...", "会社の魅力や特徴を候補者に伝えてください...")}
               maxLength={5000}
             />
           </div>

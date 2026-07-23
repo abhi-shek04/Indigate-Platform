@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/brand/logo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, User, Building2, ArrowLeft, Mail, KeyRound, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, User, Building2, ArrowLeft, Mail, KeyRound, ShieldCheck, Plane, Globe2, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,7 +18,7 @@ type Mode = "login" | "register" | "verify" | "forgot" | "reset";
 
 export function AuthView({ initialMode }: { initialMode: Mode }) {
   const { t } = useT();
-  const { navigate, refreshAuth } = useApp();
+  const { navigate, refreshAuth, googleAuthEnabled } = useApp();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [role, setRole] = useState<"CANDIDATE" | "COMPANY">("CANDIDATE");
   const [showPw, setShowPw] = useState(false);
@@ -145,23 +145,44 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
         />
         <div className="relative max-w-md">
           <Logo size={44} />
-          <h2 className="mt-8 font-display text-4xl font-extrabold tracking-tight leading-tight">
-            Your bridge to a <span className="text-gradient-brand">career in Japan</span>
-          </h2>
-          <p className="mt-4 text-muted-foreground leading-relaxed">
-            Join 1,900+ Indian professionals building careers at Japan's top
-            companies — with visa sponsorship, relocation support, and a human
-            team behind you.
-          </p>
+          <motion.h2
+            key={`panel-${mode}`}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: easeOutExpo }}
+            className="mt-8 font-display text-4xl font-extrabold tracking-tight leading-tight"
+          >
+            {mode === "login" ? (
+              <>Welcome <span className="text-gradient-brand">back</span></>
+            ) : mode === "register" ? (
+              <>Your bridge to a <span className="text-gradient-brand">career in Japan</span></>
+            ) : (
+              <>Your <span className="text-gradient-brand">Japan career</span> awaits</>
+            )}
+          </motion.h2>
+          <div className="mt-4 flex items-center gap-4">
+            <div className="rounded-2xl border border-saffron/20 bg-saffron/8 px-4 py-3 text-center shrink-0">
+              <p className="font-display text-2xl font-extrabold text-gradient-brand leading-none">1,900+</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mt-1">
+                Professionals
+              </p>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Indian professionals building careers at Japan's top companies — with visa
+              sponsorship, relocation support, and a human team behind you.
+            </p>
+          </div>
           <ul className="mt-8 space-y-3">
             {[
-              "Visa-sponsored roles at vetted Japanese employers",
-              "Bilingual platform — English & 日本語",
-              "From application to Tokyo in weeks, not months",
-            ].map((line) => (
-              <li key={line} className="flex items-start gap-2.5">
-                <ShieldCheck className="h-5 w-5 text-saffron shrink-0 mt-0.5" />
-                <span className="text-sm text-foreground/90">{line}</span>
+              { icon: Plane, text: "Visa-sponsored roles at vetted Japanese employers" },
+              { icon: Globe2, text: "Bilingual platform — English & 日本語" },
+              { icon: TrendingUp, text: "From application to Tokyo in weeks, not months" },
+            ].map((item) => (
+              <li key={item.text} className="flex items-start gap-3">
+                <div className="grid place-items-center h-8 w-8 rounded-lg bg-saffron/10 text-saffron ring-1 ring-inset ring-saffron/15 shrink-0 mt-0.5">
+                  <item.icon className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-sm text-foreground/90 leading-relaxed">{item.text}</span>
               </li>
             ))}
           </ul>
@@ -178,8 +199,20 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
       </div>
 
       {/* Right form */}
-      <div className="flex items-center justify-center p-6 sm:p-12 bg-card/30">
+      <div className="flex items-center justify-center p-6 sm:p-12 bg-background">
         <div className="w-full max-w-md">
+          {/* Mobile-only branding — hidden on lg where left panel shows */}
+          <div className="lg:hidden mb-8 text-center">
+            <div className="flex justify-center mb-3">
+              <Logo size={36} />
+            </div>
+            <p className="text-sm text-muted-foreground max-w-[280px] mx-auto leading-relaxed">
+              {mode === "login"
+                ? "Welcome back to IndiGate"
+                : "Your bridge to a career in Japan"}
+            </p>
+          </div>
+
           <button
             onClick={() => navigate("home")}
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-8 transition-colors group"
@@ -249,7 +282,7 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   placeholder="you@example.com"
-                  className="pl-10 h-11 rounded-xl"
+                  className="pl-10 h-11 rounded-xl input-premium"
                 />
               </Field>
             )}
@@ -272,7 +305,7 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
                   placeholder={
                     role === "CANDIDATE" ? "Arjun Sharma" : "TechNova Japan"
                   }
-                  className="pl-10 h-11 rounded-xl"
+                  className="pl-10 h-11 rounded-xl input-premium"
                 />
               </Field>
             )}
@@ -289,7 +322,7 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
                     value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
                     placeholder="••••••••"
-                    className="pl-10 pr-10 h-11 rounded-xl"
+                    className="pl-10 pr-10 h-11 rounded-xl input-premium"
                   />
                   <button
                     type="button"
@@ -312,7 +345,7 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
                     setForm({ ...form, code: e.target.value.replace(/\D/g, "") })
                   }
                   placeholder="123456"
-                  className="pl-10 text-center text-2xl tracking-[0.5em] font-bold h-14 rounded-xl"
+                  className="pl-10 text-center text-2xl tracking-[0.5em] font-bold h-14 rounded-xl input-premium"
                   inputMode="numeric"
                 />
               </Field>
@@ -328,7 +361,7 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
                     setResetCode(e.target.value.replace(/\D/g, ""))
                   }
                   placeholder="123456"
-                  className="pl-10 text-center text-2xl tracking-[0.5em] font-bold h-14 rounded-xl"
+                  className="pl-10 text-center text-2xl tracking-[0.5em] font-bold h-14 rounded-xl input-premium"
                   inputMode="numeric"
                 />
               </Field>
@@ -355,14 +388,14 @@ export function AuthView({ initialMode }: { initialMode: Mode }) {
             </motion.div>
 
             {/* Google OAuth — only on login + register */}
-            {(mode === "login" || mode === "register") && (
+            {(mode === "login" || mode === "register") && googleAuthEnabled && (
               <motion.div variants={staggerItem} className="pt-2">
                 <div className="relative my-4">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t border-border" />
                   </div>
                   <div className="relative flex justify-center">
-                    <span className="bg-card px-3 text-xs text-muted-foreground uppercase tracking-wider">or</span>
+                    <span className="bg-background px-3 text-xs text-muted-foreground uppercase tracking-wider">or</span>
                   </div>
                 </div>
                 <a

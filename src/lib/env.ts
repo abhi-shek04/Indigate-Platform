@@ -109,6 +109,14 @@ export function validateEnv(): void {
     validationError = `Missing required environment variables:\n${missing.map((m) => `  - ${m}`).join("\n")}`;
     throw new Error(validationError);
   }
+
+  if (isProd && !process.env.RESEND_API_KEY) {
+    console.warn("\n" + "=".repeat(60));
+    console.warn("⚠️  WARNING: RESEND_API_KEY is not set.");
+    console.warn("   All transactional emails (verification, reset, alerts)");
+    console.warn("   will ONLY be logged to the console and NOT delivered.");
+    console.warn("=".repeat(60) + "\n");
+  }
 }
 
 /** True if validateEnv() has been called and succeeded. */

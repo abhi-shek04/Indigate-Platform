@@ -38,7 +38,7 @@ import { cn } from "@/lib/utils";
 import { useCompanyJobs } from "../shared";
 
 export function Jobs() {
-  const { t, locale } = useT();
+  const { t, locale, pick } = useT();
   const setTab = useApp((s) => s.setCompanyTab);
   const { jobs, loading, reload } = useCompanyJobs();
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -95,8 +95,8 @@ export function Jobs() {
       ) : !jobs || jobs.length === 0 ? (
         <EmptyState
           icon={Briefcase}
-          title="No jobs yet"
-          description="Post your first role to start receiving applications."
+          title={pick("No jobs yet", "求人がありません")}
+          description={pick("Post your first role to start receiving applications.", "最初の求人を投稿して、応募の受付を開始しましょう。")}
           action={
             <Button
               className="bg-brand-gradient text-white hover:opacity-90"
@@ -113,12 +113,12 @@ export function Jobs() {
             <Table>
               <TableHeader className="sticky top-0 bg-card z-10">
                 <TableRow>
-                  <TableHead className="pl-5 sm:pl-6">Title</TableHead>
-                  <TableHead className="hidden md:table-cell">Location</TableHead>
-                  <TableHead className="hidden md:table-cell">JLPT</TableHead>
-                  <TableHead>Apps</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right pr-5 sm:pr-6">Actions</TableHead>
+                  <TableHead className="pl-5 sm:pl-6">{pick("Title", "タイトル")}</TableHead>
+                  <TableHead className="hidden md:table-cell">{pick("Location", "勤務地")}</TableHead>
+                  <TableHead className="hidden md:table-cell">{pick("JLPT", "JLPT")}</TableHead>
+                  <TableHead>{pick("Apps", "応募")}</TableHead>
+                  <TableHead>{pick("Status", "ステータス")}</TableHead>
+                  <TableHead className="text-right pr-5 sm:pr-6">{pick("Actions", "アクション")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -163,7 +163,7 @@ export function Jobs() {
                             j.isActive ? "bg-emerald-500" : "bg-muted-foreground",
                           )}
                         />
-                        {j.isActive ? "Active" : "Paused"}
+                        {j.isActive ? pick("Active", "募集中") : pick("Paused", "一時停止中")}
                       </button>
                     </TableCell>
                     <TableCell className="text-right pr-5 sm:pr-6">
@@ -176,7 +176,7 @@ export function Jobs() {
                           }
                         >
                           <Users className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Applicants</span>
+                          <span className="hidden sm:inline">{pick("Applicants", "応募者")}</span>
                         </Button>
                         <AlertDialog
                           open={deleteId === j.id}
@@ -187,17 +187,19 @@ export function Jobs() {
                               size="icon"
                               variant="ghost"
                               className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              aria-label="Delete job"
+                              aria-label={pick("Delete job", "求人を削除")}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete this job?</AlertDialogTitle>
+                              <AlertDialogTitle>{pick("Delete this job?", "この求人を削除しますか？")}</AlertDialogTitle>
                               <AlertDialogDescription>
-                                "{j.title}" will be permanently removed. Existing
-                                applications will remain in your applicants tab.
+                                {pick(
+                                  `"${j.title}" will be permanently removed. Existing applications will remain in your applicants tab.`,
+                                  `「${j.title}」は完全に削除されます。既存の応募データは応募者タブに残ります。`
+                                )}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

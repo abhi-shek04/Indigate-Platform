@@ -20,10 +20,12 @@ import {
 // ready before PDF generation — no garbled text.
 // On the client side, use-jp-font.ts handles preloading for <PDFDownloadLink>.
 
-// Checkmark indicators for the Skills proficiency table.
-// Using ASCII brackets for maximum font compatibility.
-const CHECKED = "[X]";
-const UNCHECKED = "[  ]";
+// Custom visual checkbox because some fonts don't cleanly render Unicode checkbox glyphs
+const PdfCheckbox = ({ checked }: { checked: boolean }) => (
+  <View style={{ width: 10, height: 10, borderWidth: 1, borderColor: '#1a1a1a', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+    {checked && <Text style={{ fontSize: 7, fontFamily: 'NotoSansJP', fontWeight: 'bold', color: '#1a1a1a', marginTop: -0.5 }}>X</Text>}
+  </View>
+);
 
 const styles = StyleSheet.create({
   page: {
@@ -80,7 +82,7 @@ const styles = StyleSheet.create({
     lineHeight: 1.5,
   },
   thQuarter: {
-    width: "22%",
+    width: "20%",
     padding: 6,
     fontSize: 9.5,
     fontFamily: "NotoSansJP",
@@ -90,7 +92,7 @@ const styles = StyleSheet.create({
     borderRightColor: "#d4d4d4",
   },
   tdQuarter: {
-    width: "28%",
+    width: "30%",
     padding: 6,
     fontSize: 9.5,
     fontFamily: "NotoSansJP",
@@ -99,7 +101,14 @@ const styles = StyleSheet.create({
     borderRightColor: "#d4d4d4",
   },
   tdLastQuarter: {
-    width: "28%",
+    width: "30%",
+    padding: 6,
+    fontSize: 9.5,
+    fontFamily: "NotoSansJP",
+    lineHeight: 1.5,
+  },
+  tdFull: {
+    width: "80%",
     padding: 6,
     fontSize: 9.5,
     fontFamily: "NotoSansJP",
@@ -173,15 +182,15 @@ export function JapaneseResumePDF({ data }: { data: ResumeData }) {
     return (
       <View key={i} style={styles.row}>
         <Text style={[styles.skillsCell, { width: "40%" }]}>{s.name}</Text>
-        <Text style={[styles.skillsCell, { width: "20%", textAlign: "center" }]}>
-          {s.learnedInClass ? CHECKED : UNCHECKED}
-        </Text>
-        <Text style={[styles.skillsCell, { width: "20%", textAlign: "center" }]}>
-          {s.canOperate ? CHECKED : UNCHECKED}
-        </Text>
-        <Text style={[styles.skillsCellLast, { width: "20%", textAlign: "center" }]}>
-          {s.canTeach ? CHECKED : UNCHECKED}
-        </Text>
+        <View style={[styles.skillsCell, { width: "20%", alignItems: "center", justifyContent: "center" }]}>
+          <PdfCheckbox checked={!!s.learnedInClass} />
+        </View>
+        <View style={[styles.skillsCell, { width: "20%", alignItems: "center", justifyContent: "center" }]}>
+          <PdfCheckbox checked={!!s.canOperate} />
+        </View>
+        <View style={[styles.skillsCellLast, { width: "20%", alignItems: "center", justifyContent: "center" }]}>
+          <PdfCheckbox checked={!!s.canTeach} />
+        </View>
       </View>
     );
   };
@@ -197,38 +206,38 @@ export function JapaneseResumePDF({ data }: { data: ResumeData }) {
             <Text style={styles.thQuarter}>氏名</Text>
             <Text style={styles.tdQuarter}>
               {data.name || "—"}
-              {data.nameJa ? `（${data.nameJa}）` : ""}
+              {data.nameJa ? `\n（${data.nameJa}）` : ""}
             </Text>
-            <Text style={styles.thQuarter}>生年月日</Text>
-            <Text style={styles.tdLastQuarter}>{formatDobJa(data.dob)}</Text>
-          </View>
-          <View style={styles.row}>
             <Text style={styles.thQuarter}>性別</Text>
-            <Text style={styles.tdQuarter}>{genderJa(data.gender)}</Text>
-            <Text style={styles.thQuarter}>メールアドレス</Text>
-            <Text style={styles.tdLastQuarter}>{data.email || "—"}</Text>
+            <Text style={styles.tdLastQuarter}>{genderJa(data.gender)}</Text>
           </View>
           <View style={styles.row}>
+            <Text style={styles.thQuarter}>生年月日</Text>
+            <Text style={styles.tdQuarter}>{formatDobJa(data.dob)}</Text>
             <Text style={styles.thQuarter}>国籍</Text>
-            <Text style={styles.tdQuarter}>{nationalityJa(data.nationality)}</Text>
-            <Text style={styles.thQuarter}>本籍地</Text>
-            <Text style={styles.tdLastQuarter}>{stateJa(data.placeOfOrigin)}</Text>
+            <Text style={styles.tdLastQuarter}>{nationalityJa(data.nationality)}</Text>
           </View>
           <View style={styles.row}>
+            <Text style={styles.thQuarter}>メール</Text>
+            <Text style={styles.tdQuarter}>{data.email || "—"}</Text>
             <Text style={styles.thQuarter}>電話番号</Text>
-            <Text style={styles.tdQuarter}>{data.phone || "—"}</Text>
-            <Text style={styles.thQuarter}>住所</Text>
-            <Text style={styles.tdLastQuarter}>{data.address || "—"}</Text>
+            <Text style={styles.tdLastQuarter}>{data.phone || "—"}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.thQuarter}>既習言語</Text>
-            <Text style={[styles.tdLastQuarter, { width: "78%" }]}>
-              {data.languagesJa.length > 0
-                ? data.languagesJa.join("、")
-                : data.languages.length > 0
-                  ? data.languages.join("、")
-                  : "—"}
-            </Text>
+            <Text style={styles.thQuarter}>住所</Text>
+            <Text style={styles.tdFull}>{data.address || "—"}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.thQuarter}>本籍地</Text>
+            <Text style={styles.tdFull}>{stateJa(data.placeOfOrigin)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.thQuarter}>在学中の学位</Text>
+            <Text style={styles.tdFull}>{data.currentDegree || "—"}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.thQuarter}>卒業見込時期</Text>
+            <Text style={styles.tdFull}>{data.expectedGraduation || "—"}</Text>
           </View>
         </View>
 

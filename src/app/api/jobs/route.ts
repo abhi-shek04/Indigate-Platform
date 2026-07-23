@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
     const jlptLevel = searchParams.get("jlptLevel") || "";
     const salaryMin = Number(searchParams.get("salaryMin") || 0);
     const companyId = searchParams.get("companyId") || "";
+    const sortParam = searchParams.get("sort") || "newest";
 
     const where: Record<string, unknown> = { isActive: true };
     if (search) {
@@ -31,12 +32,17 @@ export async function GET(req: NextRequest) {
     if (salaryMin) where.salaryMin = { gte: salaryMin };
     if (companyId) where.companyId = companyId;
 
+    let orderBy: any = { postedAt: "desc" };
+    if (sortParam === "salary") {
+      orderBy = { salaryMin: "desc" };
+    }
+
     const [total, rows] = await Promise.all([
       db.job.count({ where }),
       db.job.findMany({
         where,
         include: { company: true, applications: { select: { id: true } } },
-        orderBy: { postedAt: "desc" },
+        orderBy,
         skip: (page - 1) * limit,
         take: limit,
       }),

@@ -77,7 +77,7 @@ import { cn } from "@/lib/utils";
 import { useCompanyJobs, useCompanyApps } from "../shared";
 
 export function Applicants() {
-  const { t, locale } = useT();
+  const { t, locale, pick } = useT();
   const jobId = useApp((s) => s.companyApplicantsJobId);
   const setTab = useApp((s) => s.setCompanyTab);
   const { jobs } = useCompanyJobs();
@@ -167,10 +167,10 @@ export function Applicants() {
               }}
             >
               <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="All jobs" />
+                <SelectValue placeholder={pick("All jobs", "すべての求人")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All jobs</SelectItem>
+                <SelectItem value="all">{pick("All jobs", "すべての求人")}</SelectItem>
                 {jobs.map((j) => (
                   <SelectItem key={j.id} value={j.id}>
                     {j.title}
@@ -204,11 +204,11 @@ export function Applicants() {
         <EmptyState
           icon={Users}
           title={t("dash.company.applicants.empty")}
-          description="Try changing the status filter or check back later."
+          description={pick("Try changing the status filter or check back later.", "ステータスフィルターを変更するか、後でもう一度確認してください。")}
           action={
             <Button variant="outline" onClick={() => setTab("jobs")}>
               <Briefcase className="h-4 w-4" />
-              View your jobs
+              {pick("View your jobs", "求人を表示")}
             </Button>
           }
         />
@@ -218,12 +218,12 @@ export function Applicants() {
             <Table>
               <TableHeader className="sticky top-0 bg-card z-10">
                 <TableRow>
-                  <TableHead className="pl-5 sm:pl-6">Candidate</TableHead>
-                  <TableHead className="hidden md:table-cell">JLPT</TableHead>
-                  <TableHead className="hidden lg:table-cell">Skills</TableHead>
-                  <TableHead className="hidden sm:table-cell">Applied</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right pr-5 sm:pr-6">Action</TableHead>
+                  <TableHead className="pl-5 sm:pl-6">{pick("Candidate", "候補者")}</TableHead>
+                  <TableHead className="hidden md:table-cell">{pick("JLPT", "JLPT")}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{pick("Skills", "スキル")}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{pick("Applied", "応募日")}</TableHead>
+                  <TableHead>{pick("Status", "ステータス")}</TableHead>
+                  <TableHead className="text-right pr-5 sm:pr-6">{pick("Action", "アクション")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -361,7 +361,7 @@ function ApplicantDetail({
     interview?: { date: string; notes: string },
   ) => void;
 }) {
-  const { t, locale } = useT();
+  const { t, locale, pick } = useT();
   const c = app.candidate;
   const setActiveConversation = useApp((s) => s.setActiveConversation);
   const setCompanyTab = useApp((s) => s.setCompanyTab);
@@ -440,8 +440,8 @@ function ApplicantDetail({
 
   const actions: { label: string; status: ApplicationStatus; icon: typeof Star; accent: string }[] = [
     { label: t("status.SHORTLISTED"), status: "SHORTLISTED", icon: Star, accent: "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-950 dark:text-amber-300" },
-    { label: "Schedule interview", status: "INTERVIEWED", icon: CalendarClock, accent: "bg-violet-100 text-violet-700 hover:bg-violet-200 dark:bg-violet-950 dark:text-violet-300" },
-    { label: "Make offer", status: "OFFERED", icon: Trophy, accent: "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-300" },
+    { label: pick("Schedule interview", "面接をスケジュール"), status: "INTERVIEWED", icon: CalendarClock, accent: "bg-violet-100 text-violet-700 hover:bg-violet-200 dark:bg-violet-950 dark:text-violet-300" },
+    { label: pick("Make offer", "オファーを出す"), status: "OFFERED", icon: Trophy, accent: "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-300" },
     { label: t("status.REJECTED"), status: "REJECTED", icon: XCircle, accent: "bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-950 dark:text-rose-300" },
   ];
 
@@ -501,7 +501,7 @@ function ApplicantDetail({
       {/* Quick facts */}
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div className="rounded-lg border border-border bg-background/60 p-3">
-          <p className="text-xs text-muted-foreground uppercase">JLPT</p>
+          <p className="text-xs text-muted-foreground uppercase">{pick("JLPT", "JLPT")}</p>
           <Badge
             variant="outline"
             className={cn("mt-1 font-semibold", JLPT_BADGE[c.jlptLevel])}
@@ -510,7 +510,7 @@ function ApplicantDetail({
           </Badge>
         </div>
         <div className="rounded-lg border border-border bg-background/60 p-3">
-          <p className="text-xs text-muted-foreground uppercase">Experience</p>
+          <p className="text-xs text-muted-foreground uppercase">{pick("Experience", "経験年数")}</p>
           <p className="mt-1 font-semibold">
             {c.experienceYears} year{c.experienceYears === 1 ? "" : "s"}
           </p>
@@ -524,7 +524,7 @@ function ApplicantDetail({
         </p>
         <div className="flex flex-wrap gap-1.5">
           {c.skills.length === 0 ? (
-            <span className="text-sm text-muted-foreground">No skills listed</span>
+            <span className="text-sm text-muted-foreground">{pick("No skills listed", "スキル未登録")}</span>
           ) : (
             c.skills.map((s) => (
               <Badge key={s} variant="secondary" className="font-medium">
@@ -696,16 +696,18 @@ function ApplicantDetail({
       <Dialog open={showSchedule} onOpenChange={setShowSchedule}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Schedule Interview</DialogTitle>
+            <DialogTitle>{pick("Schedule Interview", "面接をスケジュール")}</DialogTitle>
             <DialogDescription>
-              Set the interview date/time and notes for {c.fullName}. These
-              will be visible to the candidate.
+              {pick(
+                `Set the interview date/time and notes for ${c.fullName}. These will be visible to the candidate.`,
+                `${c.fullName}の面接日時とメモを設定します。これらは候補者にも表示されます。`
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
               <label className="text-sm font-medium mb-1.5 block">
-                Interview date &amp; time (JST)
+                {pick("Interview date & time (JST)", "面接日時（日本時間）")}
               </label>
               <Input
                 type="datetime-local"
@@ -715,13 +717,13 @@ function ApplicantDetail({
             </div>
             <div>
               <label className="text-sm font-medium mb-1.5 block">
-                Notes for candidate
+                {pick("Notes for candidate", "候補者へのメモ")}
               </label>
               <Textarea
                 rows={3}
                 value={intNotes}
                 onChange={(e) => setIntNotes(e.target.value)}
-                placeholder="Include meeting link, format (video/in-person), duration..."
+                placeholder={pick("Include meeting link, format (video/in-person), duration...", "ミーティングリンク、形式（ビデオ/対面）、所要時間などを記載...")}
               />
             </div>
           </div>

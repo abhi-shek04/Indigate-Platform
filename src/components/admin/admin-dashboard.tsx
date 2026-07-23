@@ -16,6 +16,13 @@ import { TestimonialsTab } from "@/components/admin/tabs/testimonials";
 import { ContactsTab } from "@/components/admin/tabs/contacts";
 import { UsersTab } from "@/components/admin/tabs/users";
 import { AuditLogTab } from "@/components/admin/tabs/audit";
+import { AlertsTab } from "@/components/admin/tabs/alerts";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function AdminDashboard() {
   const user = useApp((s) => s.user);
@@ -36,12 +43,21 @@ export function AdminDashboard() {
       welcome={t("admin.title")}
       subtitle="Platform oversight & moderation"
       avatar={
-        <div className="hidden sm:flex items-center gap-2 pl-2 ml-1 border-l border-border">
-          <div className="grid place-items-center h-8 w-8 rounded-lg bg-brand-gradient text-white text-xs font-bold">
-            AD
-          </div>
-          <span className="text-sm font-semibold leading-tight">Admin</span>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="hidden sm:flex items-center gap-2 pl-2 ml-1 border-l border-border hover:opacity-80 transition-opacity outline-none cursor-pointer">
+              <div className="grid place-items-center h-8 w-8 rounded-lg bg-brand-gradient text-white text-xs font-bold">
+                AD
+              </div>
+              <span className="text-sm font-semibold leading-tight">Admin</span>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => useApp.getState().logout()} className="cursor-pointer">
+              {t("nav.logout")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       }
     >
       {tab === "overview" && <Overview />}
@@ -53,6 +69,7 @@ export function AdminDashboard() {
       {tab === "contacts" && <ContactsTab />}
       {tab === "users" && <UsersTab />}
       {tab === "audit" && <AuditLogTab />}
+      {tab === "alerts" && <AlertsTab />}
     </DashboardShell>
   );
 }

@@ -4,8 +4,11 @@ import { ok, toCandidateDTO, toCompanyDTO } from "@/lib/api";
 import type { CandidateProfileDTO, CompanyProfileDTO } from "@/lib/types";
 
 export async function GET() {
+  const googleAuthEnabled =
+    !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET;
+
   const session = await getSession();
-  if (!session) return ok({ user: null });
+  if (!session) return ok({ user: null, googleAuthEnabled });
   const user = { ...session };
   let candidate: CandidateProfileDTO | null = null;
   let company: CompanyProfileDTO | null = null;
@@ -20,5 +23,6 @@ export async function GET() {
     });
     if (c) company = toCompanyDTO(c);
   }
-  return ok({ user, candidate, company });
+
+  return ok({ user, candidate, company, googleAuthEnabled });
 }

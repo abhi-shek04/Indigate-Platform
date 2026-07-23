@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useT } from "@/lib/use-t";
 import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,6 +91,7 @@ const EMPTY_FORM: CreateForm = {
 };
 
 export function JobAlerts() {
+  const { t, pick } = useT();
   const [alerts, setAlerts] = useState<JobAlert[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -205,7 +207,7 @@ export function JobAlerts() {
           className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-premium space-y-4"
         >
           <div className="flex items-center justify-between gap-3">
-            <h3 className="font-display text-lg font-bold">New Alert</h3>
+            <h3 className="font-display text-lg font-bold">{pick("New Alert", "新しいアラート")}</h3>
             <Button
               type="button"
               variant="ghost"
@@ -213,50 +215,50 @@ export function JobAlerts() {
               onClick={resetForm}
               className="text-muted-foreground"
             >
-              Cancel
+              {pick("Cancel", "キャンセル")}
             </Button>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="alert-name">Alert name</Label>
+              <Label htmlFor="alert-name">{pick("Alert name", "アラート名")}</Label>
               <Input
                 id="alert-name"
                 value={form.name}
                 onChange={(e) => setField("name", e.target.value)}
-                placeholder="e.g. Tokyo N3 React jobs"
+                placeholder={pick("e.g. Tokyo N3 React jobs", "例：東京 N3 React エンジニア")}
                 required
                 minLength={2}
                 maxLength={100}
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="alert-search">Keyword</Label>
+              <Label htmlFor="alert-search">{pick("Keyword", "キーワード")}</Label>
               <Input
                 id="alert-search"
                 value={form.search}
                 onChange={(e) => setField("search", e.target.value)}
-                placeholder="React, Python, …"
+                placeholder={pick("React, Python, …", "React, Python, …")}
                 maxLength={100}
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="alert-location">Location</Label>
+              <Label htmlFor="alert-location">{pick("Location", "勤務地")}</Label>
               <Input
                 id="alert-location"
                 value={form.location}
                 onChange={(e) => setField("location", e.target.value)}
-                placeholder="Tokyo, Osaka, …"
+                placeholder={pick("Tokyo, Osaka, …", "東京, 大阪, …")}
                 maxLength={100}
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Job type</Label>
+              <Label>{pick("Job type", "雇用形態")}</Label>
               <Select
                 value={form.jobType}
                 onValueChange={(v) => setField("jobType", v as JobType)}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Any type" />
+                  <SelectValue placeholder={pick("Any type", "すべての形態")} />
                 </SelectTrigger>
                 <SelectContent>
                   {JOB_TYPES.map((jt) => (
@@ -268,13 +270,13 @@ export function JobAlerts() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>JLPT level</Label>
+              <Label>{pick("JLPT level", "JLPT レベル")}</Label>
               <Select
                 value={form.jlptLevel}
                 onValueChange={(v) => setField("jlptLevel", v as JLPTLevel)}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Any level" />
+                  <SelectValue placeholder={pick("Any level", "すべてのレベル")} />
                 </SelectTrigger>
                 <SelectContent>
                   {JLPT_LEVELS.map((lvl) => (
@@ -286,7 +288,7 @@ export function JobAlerts() {
               </Select>
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="alert-salary">Minimum salary (¥)</Label>
+              <Label htmlFor="alert-salary">{pick("Minimum salary (¥)", "最低給与 (¥)")}</Label>
               <Input
                 id="alert-salary"
                 type="number"
@@ -294,7 +296,7 @@ export function JobAlerts() {
                 step={10000}
                 value={form.salaryMin}
                 onChange={(e) => setField("salaryMin", e.target.value)}
-                placeholder="e.g. 250000"
+                placeholder={pick("e.g. 250000", "例：250000")}
               />
               <p className="text-xs text-muted-foreground">
                 Only show jobs with a salary at or above this amount.
@@ -337,7 +339,7 @@ export function JobAlerts() {
           <div className="mx-auto mb-3 grid place-items-center h-12 w-12 rounded-xl bg-saffron/10 text-saffron">
             <Bell className="h-6 w-6" />
           </div>
-          <p className="font-semibold text-foreground">No alerts yet</p>
+          <p className="font-semibold text-foreground">{pick("No alerts yet", "アラートはまだありません")}</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Create your first alert to be notified when matching jobs are posted.
           </p>
@@ -432,14 +434,14 @@ export function JobAlerts() {
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Delete alert?</AlertDialogTitle>
+                      <AlertDialogTitle>{pick("Delete alert?", "アラートを削除しますか？")}</AlertDialogTitle>
                       <AlertDialogDescription>
                         &ldquo;{a.name}&rdquo; will be permanently removed. You
                         can create a new one any time.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogCancel>{pick("Cancel", "キャンセル")}</AlertDialogCancel>
                       <AlertDialogAction
                         className="bg-destructive text-white hover:bg-destructive/90"
                         onClick={() => deleteAlert(a.id)}

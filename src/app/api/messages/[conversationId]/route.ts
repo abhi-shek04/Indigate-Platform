@@ -160,6 +160,13 @@ export async function POST(
       createdAt: message.createdAt.toISOString(),
     };
 
+    try {
+      const { emitMessage } = await import("@/lib/sse-emitter");
+      emitMessage(recipientId, messageDTO);
+      // We also emit to the sender so other active sessions of the sender sync up
+      emitMessage(session.id, messageDTO);
+    } catch {}
+
     return ok({ message: messageDTO });
   } catch (e) {
     return handleError(e);

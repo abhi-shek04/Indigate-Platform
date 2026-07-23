@@ -71,7 +71,9 @@ import {
   Building2,
   MapPin,
   Users,
+  Sparkles,
 } from "lucide-react";
+import { useCompletion } from "@ai-sdk/react";
 import type { JobDTO, CompanyProfileDTO } from "@/lib/types";
 import { JLPT_LEVELS, JLPT_BADGE, JOB_TYPES } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -409,6 +411,7 @@ export function JobsTab() {
 
 interface JobFormState {
   companyId: string;
+  companyName: string;
   title: string;
   titleJa: string;
   description: string;
@@ -450,7 +453,8 @@ export function JobEditorSheet({
     { id: string; companyName: string }[]
   >([]);
   const [form, setForm] = useState<JobFormState>({
-    companyId: "",
+    companyId: job?.companyId ?? "",
+    companyName: job?.company.companyName ?? "",
     title: "",
     titleJa: "",
     description: "",
@@ -471,10 +475,29 @@ export function JobEditorSheet({
   const [direction, setDirection] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const onFinishRef = useRef((prompt: string, completion: string) => {
+    setForm((prev) => ({ ...prev, description: completion }));
+  });
+  useEffect(() => {
+    onFinishRef.current = (prompt: string, completion: string) => {
+      setForm((prev) => ({ ...prev, description: completion }));
+    };
+  }, []);
+
+  const handleFinish = useCallback((prompt: string, completion: string) => {
+    onFinishRef.current(prompt, completion);
+  }, []);
+
+  const { complete: completeDesc, isLoading: isGeneratingDesc } = useCompletion({
+    api: "/api/ai/generate-job",
+    onFinish: handleFinish,
+  });
+
   useEffect(() => {
     if (job) {
       setForm({
         companyId: job.companyId,
+        companyName: job.company.companyName,
         title: job.title,
         titleJa: job.titleJa ?? "",
         description: job.description,
@@ -528,7 +551,7 @@ export function JobEditorSheet({
 
   function validateStep(s: number): string | null {
     if (s === 0) {
-      if (mode === "create" && !form.companyId) return "Select a company.";
+      if (mode === "create" && form.companyName.trim().length < 2) return "Company name must be at least 2 characters.";
       if (form.title.trim().length < 3) return "Title must be at least 3 characters.";
       if (form.location.trim().length < 2) return "Location is required.";
     }
@@ -619,7 +642,7 @@ export function JobEditorSheet({
         isActive: form.isActive,
       };
       if (mode === "create") {
-        payload.companyId = form.companyId;
+        payload.companyName = form.companyName.trim();
         await api("/api/admin/jobs", {
           method: "POST",
           body: JSON.stringify(payload),
@@ -710,22 +733,14 @@ export function JobEditorSheet({
                     />
 
                     {mode === "create" && (
-                      <Field label="Company" required>
-                        <Select
-                          value={form.companyId}
-                          onValueChange={(v) => update("companyId", v)}
-                        >
-                          <SelectTrigger className="h-11 rounded-xl">
-                            <SelectValue placeholder="Select approved company" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {companies.map((c) => (
-                              <SelectItem key={c.id} value={c.id}>
-                                {c.companyName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                      <Field label="Company Name" required>
+                        <Input
+                          required
+                          value={form.companyName}
+                          onChange={(e) => update("companyName", e.target.value)}
+                          placeholder="e.g. Toyota"
+                          className="h-11 rounded-xl"
+                        />
                       </Field>
                     )}
 
@@ -798,8 +813,29 @@ export function JobEditorSheet({
                     />
 
                     <Field
-                      label="Description (English)"
-                      required
+                      label={
+                        <div className="flex items-center justify-between w-full">
+                          <span>Description (English) <span className="text-destructive">*</span></span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 text-xs text-saffron hover:text-saffron/80 hover:bg-saffron/10 px-2"
+                            disabled={isGeneratingDesc || form.title.length < 3}
+                            onClick={() => {
+                              completeDesc("", {
+                                body: {
+                                  title: form.title,
+                                  companyName: form.companyName,
+                                },
+                              });
+                            }}
+                          >
+                            <Sparkles className="w-3 h-3 mr-1" />
+                            {isGeneratingDesc ? "Generating..." : "Auto-Generate"}
+                          </Button>
+                        </div>
+                      }
                       hint={`${form.description.trim().length}/50 min`}
                     >
                       <Textarea
@@ -1267,7 +1303,7 @@ function Field({
   hint,
   children,
 }: {
-  label: string;
+  label: React.ReactNode;
   required?: boolean;
   hint?: string;
   children: React.ReactNode;

@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { getSession } from "@/lib/auth";
 import { ok, err, handleError } from "@/lib/api";
 import { db } from "@/lib/db";
-import { writeFile, mkdir } from "fs/promises";
+import { getSupabase, SUPABASE_BUCKET } from "@/lib/supabase";
 import path from "path";
 import crypto from "crypto";
 
@@ -42,20 +42,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Save to public/uploads/<kind>/<uuid>-<name>
-    const subdir = kind === "logo" ? "logos" : "resumes";
-    const uploadsDir = path.join(process.cwd(), "public", "uploads", subdir);
-    await mkdir(uploadsDir, { recursive: true });
-
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const ext = kind === "logo" ? path.extname(file.name) || ".png" : "";
+    const ext = kind === "logo" ? (path.extname(file.name) || ".png") : "";
     const filename = `${crypto.randomUUID()}-${safeName}${ext}`;
-    const filepath = path.join(uploadsDir, filename);
+
+    const supabase = getSupabase();
+    if (!supabase) {
+      return err("Storage not configured.", 503);
+    }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(filepath, buffer);
+    
+    const { error: uploadError } = await supabase.storage
+      .from(SUPABASE_BUCKET)
+      .upload(`${kind}s/${filename}`, buffer, {
+        contentType: file.type,
+        upsert: false,
+      });
 
-    const url = `/uploads/${subdir}/${filename}`;
+    if (uploadError) {
+      console.error("[UPLOAD ERROR]", uploadError);
+      return err("Failed to upload file to storage.", 502);
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from(SUPABASE_BUCKET)
+      .getPublicUrl(`${kind}s/${filename}`);
+
+    const url = publicUrlData.publicUrl;
 
     // Persist to the right profile record so refreshAuth() picks it up.
     if (kind === "resume" && session.role === "CANDIDATE") {

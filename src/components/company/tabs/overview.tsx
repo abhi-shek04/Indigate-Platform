@@ -42,7 +42,7 @@ const STATUS_COLORS: Record<ApplicationStatus, { dot: string; text: string }> = 
 export function Overview() {
   const company = useApp((s) => s.company);
   const setTab = useApp((s) => s.setCompanyTab);
-  const { t, locale } = useT();
+  const { t, locale, pick } = useT();
   const { jobs, loading: jobsLoading } = useCompanyJobs();
   const { apps, loading: appsLoading } = useCompanyApps();
 
@@ -135,8 +135,8 @@ export function Overview() {
             <div className="p-6">
               <EmptyState
                 icon={Users}
-                title="No applicants yet"
-                description="Once candidates apply to your jobs, you'll see them here."
+                title={pick("No applicants yet", "まだ応募者がいません")}
+                description={pick("Once candidates apply to your jobs, you'll see them here.", "候補者が応募すると、ここに表示されます。")}
               />
             </div>
           ) : (
@@ -180,7 +180,7 @@ export function Overview() {
 
         {/* Active jobs */}
         <SectionCard
-          title="Active jobs"
+          title={pick("Active jobs", "募集中の求人")}
           icon={Briefcase as LucideIcon}
           action={
             <Button variant="ghost" size="sm" onClick={() => setTab("jobs")}>
@@ -200,8 +200,8 @@ export function Overview() {
             <div className="p-6">
               <EmptyState
                 icon={Briefcase}
-                title="No jobs posted"
-                description="Post your first job to start receiving applications."
+                title={pick("No jobs posted", "求人が投稿されていません")}
+                description={pick("Post your first job to start receiving applications.", "最初の求人を投稿して、応募の受付を開始しましょう。")}
                 action={
                   !pending && (
                     <Button

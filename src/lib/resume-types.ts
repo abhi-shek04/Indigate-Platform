@@ -95,6 +95,7 @@ export interface ResumeData {
   // Skills with proficiency flags + free-text "Skills in Which I Excel" bullet list
   skills: ResumeSkill[];
   skillsExcelSummary?: string[];
+  skillsExcelSummaryJa?: string[];
 
   // Japanese proficiency (current + expected by graduation)
   currentJlpt?: JlptLevel;
@@ -133,6 +134,7 @@ export const EMPTY_RESUME: ResumeData = {
   expectedGraduation: "",
   skills: [],
   skillsExcelSummary: [],
+  skillsExcelSummaryJa: [],
   currentJlpt: "",
   expectedJlpt: "",
   otherLanguages: "",

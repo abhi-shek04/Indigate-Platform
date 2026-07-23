@@ -2,7 +2,8 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { ok, err, handleError } from "@/lib/api";
-import ZAI from "z-ai-web-dev-sdk";
+import { generateText } from "ai";
+import { getAIModel } from "@/lib/ai-provider";
 import type { ResumeData } from "@/lib/resume-types";
 
 /**
@@ -34,8 +35,10 @@ export async function POST(_req: NextRequest) {
 
     // 2. Build a slim "English-only" payload of translatable fields.
     const translatable = {
+      name: data.name ?? "",
       selfPr: data.selfPr ?? "",
       hobbies: data.hobbies ?? "",
+      skillsExcelSummary: data.skillsExcelSummary ?? [],
       japanMotivation: {
         whyJapan: data.japanMotivation?.whyJapan ?? "",
         careerInJapan: data.japanMotivation?.careerInJapan ?? "",
@@ -63,7 +66,6 @@ export async function POST(_req: NextRequest) {
     };
 
     // 3. Call the LLM with a strict system prompt.
-    const zai = await ZAI.create();
     const systemPrompt = `You are a professional Japanese resume (履歴書) translator specializing in career documents for Indian candidates applying to Japanese companies.
 
 Translate the provided JSON fields from English to natural, professional Japanese.
@@ -82,6 +84,7 @@ Return a JSON object with EXACTLY this shape (same array lengths as the input):
   "nameJa": "string (Katakana reading of the name)",
   "selfPrJa": "string",
   "hobbiesJa": "string",
+  "skillsExcelSummaryJa": ["translated string 1", "translated string 2"],
   "japanMotivation": { "whyJapan": "string", "careerInJapan": "string", "challenges": "string" },
   "projects": [{ "nameJa": "string", "descriptionJa": "string" }],
   "activities": [{ "organizationJa": "string", "roleJa": "string", "dutiesJa": "string" }],
@@ -89,27 +92,24 @@ Return a JSON object with EXACTLY this shape (same array lengths as the input):
   "education": [{ "degreeJa": "string", "fieldJa": "string", "institutionJa": "string" }]
 }`;
 
-    const completion = await zai.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: JSON.stringify(translatable, null, 2) },
-      ],
-      thinking: { type: "disabled" },
+    const { text: raw } = await generateText({
+      model: getAIModel(),
+      system: systemPrompt,
+      prompt: JSON.stringify(translatable, null, 2),
+      temperature: 0.2,
     });
-
-    const raw = completion.choices[0]?.message?.content?.trim() ?? "";
     if (!raw) return err("AI returned an empty response. Please try again.", 502);
 
-    // Strip any accidental markdown fences.
-    const cleaned = raw
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```\s*$/i, "")
-      .trim();
+    // Strip any accidental markdown fences or conversational text
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return err("AI returned invalid JSON. Please try again.", 502);
+    const cleaned = jsonMatch[0];
 
     let t: {
       nameJa?: string;
       selfPrJa?: string;
       hobbiesJa?: string;
+      skillsExcelSummaryJa?: string[];
       japanMotivation?: { whyJapan?: string; careerInJapan?: string; challenges?: string };
       projects?: { nameJa?: string; descriptionJa?: string }[];
       activities?: { organizationJa?: string; roleJa?: string; dutiesJa?: string }[];
@@ -128,6 +128,7 @@ Return a JSON object with EXACTLY this shape (same array lengths as the input):
       nameJa: t.nameJa || data.nameJa,
       selfPrJa: t.selfPrJa || data.selfPrJa,
       hobbiesJa: t.hobbiesJa || data.hobbiesJa,
+      skillsExcelSummaryJa: t.skillsExcelSummaryJa || data.skillsExcelSummaryJa || [],
       // Save translated Japan motivation essays in a SEPARATE field so the
       // English resume keeps the English originals.
       japanMotivationJa: {

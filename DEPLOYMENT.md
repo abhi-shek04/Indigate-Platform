@@ -105,7 +105,7 @@ Both must pass before merge. The workflow uses Bun for speed.
 
 - **Cookies**: `indigate_session` is httpOnly + sameSite=lax + signed (HMAC SHA-256). `secure` flag auto-enabled in production.
 - **Session expiry**: 7 days (validated server-side via `iat` claim).
-- **Rate limiting**: In-memory per-instance. Login: 10/15min, Register: 5/hour, Reset: 3/hour, Verify: 5/15min. For multi-instance deployments, replace with Redis-based rate limiting.
+- **Rate limiting**: In-memory per-instance. Login: 10/15min, Register: 5/hour, Reset: 3/hour, Verify: 5/15min. For multi-instance deployments or serverless (Vercel), you MUST replace this with Redis-based rate limiting (e.g. Upstash Rate Limit) in `src/lib/rate-limit.ts` since in-memory state is not shared across instances.
 - **CSP**: Content-Security-Policy header is set via `next.config.ts`. Note: `script-src` currently allows `'unsafe-eval'` (required by some Next.js dev tooling); review tightening this for strict CSP.
 - **Security headers**: X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy (camera/mic/geo disabled).
 

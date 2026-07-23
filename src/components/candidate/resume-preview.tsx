@@ -64,6 +64,12 @@ function todayDdmmyyyy(): string {
 
 // ----- Japanese 履歴書 -----
 function JapaneseResume({ data }: { data: ResumeData }) {
+  const edu = data.education || [];
+  const act = data.activities || [];
+  const awd = data.awards || [];
+  const proj = data.projects || [];
+  const skl = data.skills || [];
+
   return (
     <div className="resume-page resume-en mx-auto bg-white text-black print:shadow-none shadow-premium" lang="ja">
       {/* Title row */}
@@ -73,47 +79,47 @@ function JapaneseResume({ data }: { data: ResumeData }) {
       </div>
 
       {/* Personal info block */}
-      <div className="mb-4 space-y-1 text-sm">
-        <div className="flex">
-          <span className="font-bold w-36">氏名 :</span>
-          <span className="flex-1">
-            {data.name || "—"}
-            {data.nameJa && <span className="ml-2 text-gray-600">（{data.nameJa}）</span>}
-          </span>
-        </div>
-        <div className="flex">
-          <span className="font-bold w-36">生年月日 :</span>
-          <span className="flex-1">{formatDobJa(data.dob)}</span>
-          <span className="font-bold w-28">性別 :</span>
-          <span className="flex-1">{genderJa(data.gender)}</span>
-        </div>
-        <div className="flex">
-          <span className="font-bold w-36">メール :</span>
-          <span className="flex-1">{data.email || "—"}</span>
-          <span className="font-bold w-36">電話番号 :</span>
-          <span className="flex-1">{data.phone || "—"}</span>
-        </div>
-        <div className="flex">
-          <span className="font-bold w-36">住所 :</span>
-          <span className="flex-1">{data.address || "—"}</span>
-        </div>
-        <div className="flex">
-          <span className="font-bold w-44">国籍 :</span>
-          <span className="flex-1">{nationalityJa(data.nationality)}</span>
-        </div>
-        <div className="flex">
-          <span className="font-bold w-44">本籍地 :</span>
-          <span className="flex-1">{stateJa(data.placeOfOrigin)}</span>
-        </div>
-        <div className="flex">
-          <span className="font-bold w-44">在学中の学位 :</span>
-          <span className="flex-1">{data.currentDegree || "—"}</span>
-        </div>
-        <div className="flex">
-          <span className="font-bold w-44">卒業見込時期 :</span>
-          <span className="flex-1">{data.expectedGraduation || "—"}</span>
-        </div>
-      </div>
+      <table className="resume-table mb-6">
+        <tbody>
+          <tr>
+            <th className="w-[20%]">氏名</th>
+            <td className="w-[30%]">
+              {data.name || "—"}
+              {data.nameJa && <div className="text-xs text-gray-500 mt-0.5">（{data.nameJa}）</div>}
+            </td>
+            <th className="w-[20%]">性別</th>
+            <td className="w-[30%]">{genderJa(data.gender)}</td>
+          </tr>
+          <tr>
+            <th>生年月日</th>
+            <td>{formatDobJa(data.dob)}</td>
+            <th>国籍</th>
+            <td>{nationalityJa(data.nationality)}</td>
+          </tr>
+          <tr>
+            <th>メール</th>
+            <td>{data.email || "—"}</td>
+            <th>電話番号</th>
+            <td>{data.phone || "—"}</td>
+          </tr>
+          <tr>
+            <th>住所</th>
+            <td colSpan={3}>{data.address || "—"}</td>
+          </tr>
+          <tr>
+            <th>本籍地</th>
+            <td colSpan={3}>{stateJa(data.placeOfOrigin)}</td>
+          </tr>
+          <tr>
+            <th>在学中の学位</th>
+            <td colSpan={3}>{data.currentDegree || "—"}</td>
+          </tr>
+          <tr>
+            <th>卒業見込時期</th>
+            <td colSpan={3}>{data.expectedGraduation || "—"}</td>
+          </tr>
+        </tbody>
+      </table>
 
       {/* Education */}
       <SectionEn title="教育">
@@ -127,15 +133,15 @@ function JapaneseResume({ data }: { data: ResumeData }) {
             </tr>
           </thead>
           <tbody>
-            {data.education.length === 0 ? (
+            {edu.length === 0 ? (
               <tr><td colSpan={4} className="text-gray-400 italic">教育情報がありません。</td></tr>
             ) : (
-              data.education.map((edu, i) => (
+              edu.map((eduItem, i) => (
                 <tr key={i}>
-                  <td>{edu.year}</td>
-                  <td>{edu.month ?? ""}</td>
-                  <td>{edu.institutionJa || edu.institution || "—"}</td>
-                  <td>{edu.degreeJa || edu.degree || "—"}</td>
+                  <td>{eduItem.year}</td>
+                  <td>{eduItem.month ?? ""}</td>
+                  <td>{eduItem.institutionJa || eduItem.institution || "—"}</td>
+                  <td>{eduItem.degreeJa || eduItem.degree || "—"}</td>
                 </tr>
               ))
             )}
@@ -143,7 +149,7 @@ function JapaneseResume({ data }: { data: ResumeData }) {
         </table>
       </SectionEn>
 
-      {data.activities.length > 0 && (
+      {act.length > 0 && (
         <SectionEn title="職歴（インターンシップ / 実習）">
           <table className="resume-table">
             <thead>
@@ -154,7 +160,7 @@ function JapaneseResume({ data }: { data: ResumeData }) {
               </tr>
             </thead>
             <tbody>
-              {data.activities.map((a, i) => (
+              {act.map((a, i) => (
                 <tr key={i}>
                   <td>{a.year ?? ""}</td>
                   <td>{a.period || ""}</td>
@@ -174,7 +180,7 @@ function JapaneseResume({ data }: { data: ResumeData }) {
         </SectionEn>
       )}
 
-      {data.awards.length > 0 && (
+      {awd.length > 0 && (
         <SectionEn title="免許・資格 / 成果">
           <table className="resume-table">
             <thead>
@@ -186,7 +192,7 @@ function JapaneseResume({ data }: { data: ResumeData }) {
               </tr>
             </thead>
             <tbody>
-              {data.awards.map((aw, i) => (
+              {awd.map((aw, i) => (
                 <tr key={i}>
                   <td>{aw.year}</td>
                   <td>{aw.month ?? ""}</td>
@@ -202,7 +208,7 @@ function JapaneseResume({ data }: { data: ResumeData }) {
         </SectionEn>
       )}
 
-      {data.projects.length > 0 && (
+      {proj.length > 0 && (
         <SectionEn title="プロジェクト / 課外活動">
           <table className="resume-table">
             <thead>
@@ -213,7 +219,7 @@ function JapaneseResume({ data }: { data: ResumeData }) {
               </tr>
             </thead>
             <tbody>
-              {data.projects.map((p, i) => (
+              {proj.map((p, i) => (
                 <tr key={i}>
                   <td>{p.year ?? ""}</td>
                   <td>{p.period || ""}</td>
@@ -229,7 +235,7 @@ function JapaneseResume({ data }: { data: ResumeData }) {
         </SectionEn>
       )}
 
-      {data.skills.length > 0 && (
+      {skl.length > 0 && (
         <SectionEn title="スキル">
           <div className="overflow-x-auto">
             <table className="resume-table" style={{ tableLayout: "fixed", width: "100%" }}>
@@ -247,7 +253,7 @@ function JapaneseResume({ data }: { data: ResumeData }) {
                 </tr>
               </thead>
               <tbody>
-                {data.skills.map((s, i) => (
+                {skl.map((s, i) => (
                   <tr key={i}>
                     <td>{s.name}</td>
                     <td className="text-center">{s.learnedInClass ? CHECKED : UNCHECKED}</td>
@@ -264,9 +270,14 @@ function JapaneseResume({ data }: { data: ResumeData }) {
       {data.skillsExcelSummary && data.skillsExcelSummary.length > 0 && (
         <SectionEn title="得意なスキル">
           <ol className="list-decimal pl-6 space-y-2 text-sm">
-            {data.skillsExcelSummary.map((line, i) => (
-              <li key={i}>{line}</li>
-            ))}
+            {data.skillsExcelSummary.map((line, i) => {
+              const jaLine = data.skillsExcelSummaryJa?.[i];
+              return (
+                <li key={i}>
+                  <JaText ja={jaLine} en={line} />
+                </li>
+              );
+            })}
           </ol>
         </SectionEn>
       )}
@@ -356,6 +367,12 @@ function QAItemJa({ question, answer }: { question: string; answer: string }) {
 
 // ----- English resume -----
 function EnglishResume({ data }: { data: ResumeData }) {
+  const edu = data.education || [];
+  const act = data.activities || [];
+  const awd = data.awards || [];
+  const proj = data.projects || [];
+  const skl = data.skills || [];
+
   const age = computeAge(data.dob);
   const dobDisplay = formatDobEn(data.dob);
   const dobWithAge = dobDisplay
@@ -371,36 +388,40 @@ function EnglishResume({ data }: { data: ResumeData }) {
       </div>
 
       {/* Personal info block */}
-      <div className="mb-4 space-y-1 text-sm">
-        <div className="flex">
-          <span className="font-bold w-36">Your Name :</span>
-          <span className="flex-1">{data.name || "—"}</span>
-        </div>
-        <div className="flex">
-          <span className="font-bold w-36">Date of Birth :</span>
-          <span className="flex-1">{dobWithAge || "—"}</span>
-          <span className="font-bold w-28">Gender :</span>
-          <span className="flex-1">{data.gender ? genderEn(data.gender) : "—"}</span>
-        </div>
-        <div className="flex">
-          <span className="font-bold w-36">E-Mail :</span>
-          <span className="flex-1">{data.email || "—"}</span>
-          <span className="font-bold w-36">Telephone Number:</span>
-          <span className="flex-1">{data.phone || "—"}</span>
-        </div>
-        <div className="flex">
-          <span className="font-bold w-36">Address :</span>
-          <span className="flex-1">{data.address || "—"}</span>
-        </div>
-        <div className="flex">
-          <span className="font-bold w-44">Current Degree being Pursued:</span>
-          <span className="flex-1">{data.currentDegree || "—"}</span>
-        </div>
-        <div className="flex">
-          <span className="font-bold w-44">Expected time of Graduation:</span>
-          <span className="flex-1">{data.expectedGraduation || "—"}</span>
-        </div>
-      </div>
+      <table className="resume-table mb-6">
+        <tbody>
+          <tr>
+            <th className="w-[20%]">Your Name</th>
+            <td className="w-[30%]">{data.name || "—"}</td>
+            <th className="w-[20%]">Gender</th>
+            <td className="w-[30%]">{data.gender ? genderEn(data.gender) : "—"}</td>
+          </tr>
+          <tr>
+            <th>Date of Birth</th>
+            <td>{dobWithAge || "—"}</td>
+            <th>Nationality</th>
+            <td>{data.nationality || "—"}</td>
+          </tr>
+          <tr>
+            <th>E-Mail</th>
+            <td>{data.email || "—"}</td>
+            <th>Telephone Number</th>
+            <td>{data.phone || "—"}</td>
+          </tr>
+          <tr>
+            <th>Address</th>
+            <td colSpan={3}>{data.address || "—"}</td>
+          </tr>
+          <tr>
+            <th>Current Degree</th>
+            <td colSpan={3}>{data.currentDegree || "—"}</td>
+          </tr>
+          <tr>
+            <th>Expected Graduation</th>
+            <td colSpan={3}>{data.expectedGraduation || "—"}</td>
+          </tr>
+        </tbody>
+      </table>
 
       {/* Education */}
       <SectionEn title="Education">
@@ -414,15 +435,15 @@ function EnglishResume({ data }: { data: ResumeData }) {
             </tr>
           </thead>
           <tbody>
-            {data.education.length === 0 ? (
+            {edu.length === 0 ? (
               <tr><td colSpan={4} className="text-gray-400 italic">No education entries.</td></tr>
             ) : (
-              data.education.map((edu, i) => (
+              edu.map((eduItem, i) => (
                 <tr key={i}>
-                  <td>{edu.year}</td>
-                  <td>{edu.month ?? ""}</td>
-                  <td>{edu.institution || "—"}</td>
-                  <td>{edu.degree || edu.field || "—"}</td>
+                  <td>{eduItem.year}</td>
+                  <td>{eduItem.month ?? ""}</td>
+                  <td>{eduItem.institution || "—"}</td>
+                  <td>{eduItem.degree || eduItem.field || "—"}</td>
                 </tr>
               ))
             )}
@@ -430,7 +451,7 @@ function EnglishResume({ data }: { data: ResumeData }) {
         </table>
       </SectionEn>
 
-      {data.activities.length > 0 && (
+      {act.length > 0 && (
         <SectionEn title="Work Experience (Apprenticeship/Internship)">
           <table className="resume-table">
             <thead>
@@ -441,7 +462,7 @@ function EnglishResume({ data }: { data: ResumeData }) {
               </tr>
             </thead>
             <tbody>
-              {data.activities.map((a, i) => (
+              {act.map((a, i) => (
                 <tr key={i}>
                   <td>{a.year ?? ""}</td>
                   <td>{a.period || ""}</td>
@@ -461,7 +482,7 @@ function EnglishResume({ data }: { data: ResumeData }) {
         </SectionEn>
       )}
 
-      {data.awards.length > 0 && (
+      {awd.length > 0 && (
         <SectionEn title="Certifications / Achievements">
           <table className="resume-table">
             <thead>
@@ -473,15 +494,15 @@ function EnglishResume({ data }: { data: ResumeData }) {
               </tr>
             </thead>
             <tbody>
-              {data.awards.map((aw, i) => (
+              {awd.map((awdItem, i) => (
                 <tr key={i}>
-                  <td>{aw.year}</td>
-                  <td>{aw.month ?? ""}</td>
+                  <td>{awdItem.year}</td>
+                  <td>{awdItem.month ?? ""}</td>
                   <td>
-                    {aw.title}
-                    {aw.organization && <div className="text-xs text-gray-600">{aw.organization}</div>}
+                    {awdItem.title || "—"}
+                    {awdItem.organization && <div className="text-xs text-gray-600">{awdItem.organization}</div>}
                   </td>
-                  <td>{aw.description || ""}</td>
+                  <td>{awdItem.description || "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -489,7 +510,7 @@ function EnglishResume({ data }: { data: ResumeData }) {
         </SectionEn>
       )}
 
-      {data.projects.length > 0 && (
+      {proj.length > 0 && (
         <SectionEn title="Projects / Co-Curricular Activities">
           <table className="resume-table">
             <thead>
@@ -500,14 +521,14 @@ function EnglishResume({ data }: { data: ResumeData }) {
               </tr>
             </thead>
             <tbody>
-              {data.projects.map((p, i) => (
+              {proj.map((projItem, i) => (
                 <tr key={i}>
-                  <td>{p.year ?? ""}</td>
-                  <td>{p.period || ""}</td>
+                  <td>{projItem.year ?? ""}</td>
+                  <td>{projItem.period || ""}</td>
                   <td>
-                    <span className="font-medium">{p.name}</span>
-                    {p.techStack && <div className="text-xs text-gray-600">Tech Stack: {p.techStack}</div>}
-                    {p.description && <div className="text-sm mt-1">{p.description}</div>}
+                    <div className="font-bold">{projItem.name || "—"}</div>
+                    {projItem.techStack && <div className="text-xs text-gray-600">Tech Stack: {projItem.techStack}</div>}
+                    {projItem.description && <div className="text-sm mt-1">{projItem.description}</div>}
                   </td>
                 </tr>
               ))}
@@ -516,7 +537,7 @@ function EnglishResume({ data }: { data: ResumeData }) {
         </SectionEn>
       )}
 
-      {data.skills.length > 0 && (
+      {skl.length > 0 && (
         <SectionEn title="Skills">
           <div className="overflow-x-auto">
             <table className="resume-table" style={{ tableLayout: "fixed", width: "100%" }}>
@@ -534,7 +555,7 @@ function EnglishResume({ data }: { data: ResumeData }) {
                 </tr>
               </thead>
               <tbody>
-                {data.skills.map((s, i) => (
+                {skl.map((s, i) => (
                   <tr key={i}>
                     <td>{s.name}</td>
                     <td className="text-center">{s.learnedInClass ? CHECKED : UNCHECKED}</td>

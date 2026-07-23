@@ -41,11 +41,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ConversationDTO, MessageDTO, Locale, Role } from "@/lib/types";
+import { useSSE } from "@/lib/use-sse";
 
 type TFunc = (key: string, vars?: Record<string, string | number>) => string;
 
 export function MessagesView() {
-  const { t, locale } = useT();
+  const { t, locale, pick } = useT();
   const user = useApp((s) => s.user);
   const activeId = useApp((s) => s.activeConversationId);
   const setActiveId = useApp((s) => s.setActiveConversation);
@@ -80,9 +81,13 @@ export function MessagesView() {
 
   useEffect(() => {
     void fetchConversations();
-    const id = setInterval(() => void fetchConversations(), 10000);
-    return () => clearInterval(id);
   }, [fetchConversations]);
+
+  useSSE((message: MessageDTO) => {
+    // If we receive a message and the conversation isn't active,
+    // or even if it is, we should refresh the conversation list to update snippets and badges.
+    void fetchConversations();
+  }, undefined);
 
   // When an active conversation is selected, jump to thread view on mobile.
   // When cleared, fall back to the list.
@@ -292,6 +297,7 @@ function ChatThread({
   role: Role | undefined;
   currentUserId: string;
 }) {
+  const { pick } = useT();
   const isCandidate = role === "CANDIDATE";
   const otherName = isCandidate
     ? conversation.companyName
@@ -324,9 +330,21 @@ function ChatThread({
     setMessages(null);
     setDraft("");
     void fetchMessages();
-    const id = setInterval(() => void fetchMessages(), 5000);
-    return () => clearInterval(id);
   }, [fetchMessages]);
+
+  useSSE((message: MessageDTO) => {
+    if (message.conversationId === conversation.id) {
+      setMessages((prev) => {
+        if (!prev) return [message];
+        // avoid duplicates if we optimistically added it or already have it
+        if (prev.some((m) => m.id === message.id)) return prev;
+        return [...prev, message];
+      });
+      // Tell server we've read it by fetching again, or we can just let the conversation list fetch handle it.
+      // But fetchMessages calls the GET endpoint which marks it as read.
+      void fetchMessages();
+    }
+  }, undefined);
 
   // Auto-scroll to bottom whenever messages change.
   useEffect(() => {
@@ -385,7 +403,7 @@ function ChatThread({
         <button
           type="button"
           onClick={onBack}
-          aria-label="Back to conversations"
+          aria-label={pick("Back to conversations", "会話一覧に戻る")}
           className="md:hidden grid place-items-center h-9 w-9 -ml-1 rounded-lg hover:bg-accent transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />

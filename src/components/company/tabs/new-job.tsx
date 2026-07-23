@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useApp } from "@/lib/store";
 import { useT } from "@/lib/use-t";
@@ -27,7 +27,9 @@ import {
   FileUp,
   MapPin,
   Building2,
+  Sparkles,
 } from "lucide-react";
+import { useCompletion } from "@ai-sdk/react";
 import type { JobDTO, JobType, JLPTLevel, SalaryType } from "@/lib/types";
 import { JLPT_LEVELS, JOB_TYPES, SALARY_TYPES } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -59,7 +61,7 @@ interface FormState {
 }
 
 export function NewJob() {
-  const { t, locale } = useT();
+  const { t, locale, pick } = useT();
   const setTab = useApp((s) => s.setCompanyTab);
   const [saving, setSaving] = useState(false);
   const [step, setStep] = useState(0);
@@ -79,6 +81,22 @@ export function NewJob() {
     currency: "JPY",
     skills: [],
     deadline: "",
+  });
+
+  const onFinishRef = useRef((prompt: string, completion: string) => {});
+  useEffect(() => {
+    onFinishRef.current = (prompt: string, completion: string) => {
+      set("description", completion);
+    };
+  });
+
+  const handleFinish = useCallback((prompt: string, completion: string) => {
+    onFinishRef.current(prompt, completion);
+  }, []);
+
+  const { complete: completeDesc, isLoading: isGeneratingDesc } = useCompletion({
+    api: "/api/ai/generate-job",
+    onFinish: handleFinish,
   });
 
   function set<K extends keyof FormState>(k: K, v: FormState[K]) {
@@ -222,7 +240,7 @@ export function NewJob() {
             {t("dash.company.post")}
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Build a premium job listing in 4 quick steps.
+            {pick("Build a premium job listing in 4 quick steps.", "4つの簡単なステップでプレミアムな求人を作成します。")}
           </p>
         </div>
       </div>
@@ -232,7 +250,7 @@ export function NewJob() {
         {/* Step indicator header */}
         <div className="px-6 pt-5 pb-4 border-b border-border bg-muted/20">
           <StepIndicator
-            steps={STEPS.map((s) => s.label)}
+            steps={[pick("Basics", "基本情報"), pick("Details", "詳細"), pick("Compensation", "給与・条件"), pick("Review", "確認")]}
             current={step}
             onJump={(i) => {
               if (i < step) {
@@ -259,8 +277,8 @@ export function NewJob() {
                 <div className="space-y-5">
                   <StepHeader
                     index={1}
-                    title="Basic Information"
-                    subtitle="Tell candidates what the role is and where it's based."
+                    title={pick("Basic Information", "基本情報")}
+                    subtitle={pick("Tell candidates what the role is and where it's located.", "役職と勤務地について候補者に伝えます。")}
                   />
 
                   <Field
@@ -271,7 +289,7 @@ export function NewJob() {
                     <Input
                       value={form.title}
                       onChange={(e) => set("title", e.target.value)}
-                      placeholder="e.g. Senior Frontend Engineer (React)"
+                      placeholder={pick("e.g. Senior Frontend Engineer (React)", "例：シニアフロントエンドエンジニア (React)")}
                       required
                       minLength={3}
                       maxLength={120}
@@ -280,7 +298,7 @@ export function NewJob() {
                   </Field>
 
                   <Field
-                    label="Job Title (Japanese)"
+                    label={pick("Job Title (Japanese)", "求人タイトル (日本語)")}
                     hint={`${form.titleJa.length}/120`}
                   >
                     <Input
@@ -300,7 +318,7 @@ export function NewJob() {
                       <Input
                         value={form.location}
                         onChange={(e) => set("location", e.target.value)}
-                        placeholder="e.g. Tokyo, Japan"
+                        placeholder={pick("e.g. Tokyo, Japan", "例：東京都")}
                         required
                         minLength={2}
                         className="h-11 rounded-xl"
@@ -332,20 +350,41 @@ export function NewJob() {
                 <div className="space-y-5">
                   <StepHeader
                     index={2}
-                    title="Role Details"
-                    subtitle="Describe responsibilities and required skills."
+                    title={pick("Role Details", "役職の詳細")}
+                    subtitle={pick("Describe responsibilities and required skills.", "職務内容と必要なスキルを説明します。")}
                   />
 
                   <Field
-                    label={t("dash.company.post.desc")}
-                    required
+                    label={
+                      <div className="flex items-center justify-between w-full">
+                        <span>{t("dash.company.post.desc")} <span className="text-destructive">*</span></span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-xs text-saffron hover:text-saffron/80 hover:bg-saffron/10 px-2"
+                          disabled={isGeneratingDesc || form.title.length < 3}
+                          onClick={() => {
+                            completeDesc("", {
+                              body: {
+                                title: form.title,
+                                companyName: "our company", // Handled by API auth if empty
+                              },
+                            });
+                          }}
+                        >
+                          <Sparkles className="w-3 h-3 mr-1" />
+                          {isGeneratingDesc ? "Generating..." : "Auto-Generate"}
+                        </Button>
+                      </div>
+                    }
                     hint={`${form.description.trim().length}/50 min`}
                   >
                     <Textarea
                       rows={6}
                       value={form.description}
                       onChange={(e) => set("description", e.target.value)}
-                      placeholder="Describe responsibilities, requirements, and what makes this role exciting..."
+                      placeholder={pick("Describe responsibilities, requirements, and what makes this role exciting...", "職務内容、要件、この役職の魅力について記載してください...")}
                       required
                       minLength={50}
                       className="rounded-xl resize-none"
@@ -381,7 +420,7 @@ export function NewJob() {
                   </div>
 
                   <Field
-                    label="Description (Japanese)"
+                    label={pick("Description (Japanese)", "職務内容 (日本語)")}
                     hint={`${form.descriptionJa.length} chars`}
                   >
                     <Textarea
@@ -433,8 +472,8 @@ export function NewJob() {
                 <div className="space-y-5">
                   <StepHeader
                     index={3}
-                    title="Compensation & Timeline"
-                    subtitle="Set salary range and application deadline."
+                    title={pick("Compensation & Timeline", "給与と期限")}
+                    subtitle={pick("Set salary range and application deadline.", "給与範囲と応募の締め切りを設定します。")}
                   />
 
                   <div className="grid grid-cols-2 gap-3">
@@ -444,7 +483,7 @@ export function NewJob() {
                         min={0}
                         value={form.salaryMin}
                         onChange={(e) => set("salaryMin", e.target.value)}
-                        placeholder="e.g. 250000"
+                        placeholder={pick("e.g. 250000", "例：250000")}
                         className="h-11 rounded-xl"
                       />
                     </Field>
@@ -454,7 +493,7 @@ export function NewJob() {
                         min={0}
                         value={form.salaryMax}
                         onChange={(e) => set("salaryMax", e.target.value)}
-                        placeholder="e.g. 400000"
+                        placeholder={pick("e.g. 400000", "例：400000")}
                         className="h-11 rounded-xl"
                       />
                     </Field>
@@ -478,7 +517,7 @@ export function NewJob() {
                         </SelectContent>
                       </Select>
                     </Field>
-                    <Field label="Currency">
+                    <Field label={pick("Currency", "通貨")}>
                       <Select
                         value={form.currency}
                         onValueChange={(v) => set("currency", v)}
@@ -542,8 +581,8 @@ export function NewJob() {
                 <div className="space-y-4">
                   <StepHeader
                     index={4}
-                    title="Review & Publish"
-                    subtitle="Confirm the details before publishing."
+                    title={pick("Review & Publish", "確認と公開")}
+                    subtitle={pick("Confirm the details before publishing.", "公開前に詳細を確認してください。")}
                   />
 
                   <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 px-4 py-3 flex items-center gap-3">
@@ -558,21 +597,21 @@ export function NewJob() {
 
                   <ReviewRow
                     icon={<Building2 className="h-3.5 w-3.5" />}
-                    label="Title"
+                    label={pick("Title", "タイトル")}
                     value={form.title || "—"}
                     sub={form.titleJa || undefined}
                   />
                   <ReviewRow
                     icon={<MapPin className="h-3.5 w-3.5" />}
-                    label="Location"
+                    label={pick("Location", "勤務地")}
                     value={form.location || "—"}
                   />
                   <ReviewRow
-                    label="Job Type"
+                    label={pick("Job Type", "雇用形態")}
                     value={t(`jobtype.${form.jobType}`)}
                   />
                   <ReviewRow
-                    label="JLPT Required"
+                    label={pick("JLPT Required", "必須JLPT")}
                     value={
                       form.jlptRequired === "NONE"
                         ? "Any JLPT"
@@ -580,7 +619,7 @@ export function NewJob() {
                     }
                   />
                   <ReviewRow
-                    label="Salary"
+                    label={pick("Salary", "給与")}
                     value={
                       form.salaryMin || form.salaryMax
                         ? `${form.salaryMin || "—"} – ${form.salaryMax || "—"} ${form.currency} / ${form.salaryType.toLowerCase()}`
@@ -588,7 +627,7 @@ export function NewJob() {
                     }
                   />
                   <ReviewRow
-                    label="Skills"
+                    label={pick("Skills", "スキル")}
                     value={
                       form.skills.length > 0
                         ? form.skills.join(", ")
@@ -596,7 +635,7 @@ export function NewJob() {
                     }
                   />
                   <ReviewRow
-                    label="Deadline"
+                    label={pick("Deadline", "締め切り")}
                     value={
                       form.deadline
                         ? new Date(form.deadline).toLocaleDateString(
@@ -781,7 +820,7 @@ function Field({
   hint,
   children,
 }: {
-  label: string;
+  label: React.ReactNode;
   required?: boolean;
   hint?: string;
   children: React.ReactNode;

@@ -74,7 +74,7 @@
 
   /* Brand */
   --saffron: oklch(0.72 0.17 68);
-  --crimson: oklch(0.52 0.2 27);
+  --crimson: oklch(0.60 0.19 60); /* Pure vibrant orange */
   --ink: oklch(0.21 0.02 30);
 
   --chart-1: oklch(0.55 0.18 32);
@@ -114,11 +114,11 @@
   --ring: oklch(0.72 0.17 68);
 
   --saffron: oklch(0.76 0.16 68);
-  --crimson: oklch(0.6 0.19 27);
+  --crimson: oklch(0.65 0.19 60);
   --ink: oklch(0.96 0.01 75);
 
   --chart-1: oklch(0.72 0.17 68);
-  --chart-2: oklch(0.6 0.19 27);
+  --chart-2: oklch(0.65 0.19 60);
   --chart-3: oklch(0.65 0.13 200);
   --chart-4: oklch(0.6 0.14 145);
   --chart-5: oklch(0.6 0.14 280);
@@ -177,24 +177,67 @@
       0 0 0 4px color-mix(in oklch, var(--saffron) 14%, transparent);
   }
 
+  /* Section brand-gradient divider line */
+  .section-divider {
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      color-mix(in oklch, var(--saffron) 30%, transparent) 30%,
+      color-mix(in oklch, var(--crimson) 30%, transparent) 70%,
+      transparent
+    );
+    max-width: 120px;
+    margin: 0.75rem auto 0;
+  }
+
+  /* Hero stat number — use in place of ad-hoc text-gradient-brand spans */
+  .stat-hero {
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    background: linear-gradient(110deg, var(--saffron), var(--crimson));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Input with premium focus ring — apply to raw <input> / <textarea> */
+  .input-premium {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    background: var(--background);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .input-premium:focus {
+    outline: none;
+    border-color: color-mix(in oklch, var(--saffron) 50%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--saffron) 12%, transparent);
+  }
+
+  /* Hide scrollbar (for horizontal scroll strips) */
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+
   /* ===== Premium UI redesign (Task PREMIUM-UI) ===== */
   .card-premium {
-    background: var(--card);
-    border: 1px solid color-mix(in oklch, var(--border) 100%, transparent);
-    border-radius: var(--radius-xl);
-    box-shadow: 0 1px 0 0 color-mix(in oklch, var(--foreground) 4%, transparent) inset,
-      0 -1px 0 0 color-mix(in oklch, var(--foreground) 2%, transparent) inset,
-      0 2px 4px -1px color-mix(in oklch, var(--foreground) 6%, transparent),
-      0 8px 24px -4px color-mix(in oklch, var(--foreground) 4%, transparent);
-    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    background: linear-gradient(160deg, oklch(0.92 0.08 70) 0%, oklch(0.96 0.04 75) 100%); /* Rich warm amber/honey */
+    border: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
+    border-radius: var(--radius-2xl);
+    box-shadow: 0 20px 40px -8px color-mix(in oklch, var(--foreground) 6%, transparent),
+      0 1px 3px -1px color-mix(in oklch, var(--foreground) 10%, transparent);
+    transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s;
+  }
+  .dark .card-premium {
+    background: oklch(0.22 0.02 65); /* Dark mode warm amber tint */
   }
   .card-premium:hover {
-    border-color: color-mix(in oklch, var(--saffron) 35%, var(--border));
-    box-shadow: 0 1px 0 0 color-mix(in oklch, var(--foreground) 4%, transparent) inset,
-      0 -1px 0 0 color-mix(in oklch, var(--foreground) 2%, transparent) inset,
-      0 4px 12px -2px color-mix(in oklch, var(--saffron) 12%, transparent),
-      0 12px 32px -4px color-mix(in oklch, var(--foreground) 8%, transparent);
-    transform: translateY(-2px);
+    border-color: color-mix(in oklch, var(--border) 100%, transparent);
+    box-shadow: 0 30px 60px -12px color-mix(in oklch, var(--foreground) 10%, transparent),
+      0 4px 6px -2px color-mix(in oklch, var(--foreground) 6%, transparent);
+    transform: translateY(-4px) scale(1.01);
   }
   .metric-num {
     font-family: var(--font-display);
@@ -225,21 +268,8 @@
   }
   .nav-item.active {
     opacity: 1;
-    background: color-mix(in oklch, var(--saffron) 14%, transparent);
     color: var(--sidebar-foreground);
     font-weight: 600;
-  }
-  .nav-item.active::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 60%;
-    border-radius: 0 3px 3px 0;
-    background: var(--saffron);
-    box-shadow: 0 0 8px color-mix(in oklch, var(--saffron) 60%, transparent);
   }
   .nav-icon {
     width: 16px;
@@ -372,6 +402,134 @@
       transparent
     );
   }
+
+/* ── 2025 Premium additions ─────────────────────────────────── */
+
+/* Noise texture overlay for depth */
+.noise-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.35;
+  mix-blend-mode: overlay;
+}
+
+/* Inset top highlight — premium glass feeling */
+.inset-highlight {
+  box-shadow:
+    inset 0 1px 0 0 color-mix(in oklch, var(--foreground) 8%, transparent),
+    inset 0 -1px 0 0 color-mix(in oklch, var(--foreground) 3%, transparent);
+}
+
+/* Glow border on focus/hover — for inputs, cards */
+.glow-border {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.glow-border:focus-within {
+  border-color: color-mix(in oklch, var(--saffron) 50%, transparent);
+  box-shadow:
+    0 0 0 3px color-mix(in oklch, var(--saffron) 12%, transparent),
+    0 1px 2px 0 rgba(0,0,0,0.05);
+}
+
+/* Elevated card — more dramatic shadow for hero elements */
+.card-elevated {
+  background: var(--card);
+  border: 1px solid color-mix(in oklch, var(--border) 100%, transparent);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    inset 0 1px 0 0 color-mix(in oklch, var(--foreground) 6%, transparent),
+    0 1px 2px rgba(0,0,0,0.04),
+    0 4px 8px -2px rgba(0,0,0,0.06),
+    0 16px 40px -8px rgba(0,0,0,0.10),
+    0 40px 80px -16px rgba(0,0,0,0.08);
+}
+
+/* Floating label pill — for nav, badges */
+.floating-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 6px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklch, var(--border) 100%, transparent);
+  background: var(--card);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px -2px rgba(0,0,0,0.06);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Saffron glow ring — active states */
+.ring-saffron-glow {
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--saffron) 40%, transparent),
+    0 0 0 4px color-mix(in oklch, var(--saffron) 10%, transparent),
+    0 0 16px -2px color-mix(in oklch, var(--saffron) 20%, transparent);
+}
+
+/* Text shimmer animation — for live/active badges */
+@keyframes text-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.animate-text-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--saffron) 0%,
+    color-mix(in oklch, var(--saffron) 70%, white) 25%,
+    var(--saffron) 50%,
+    var(--crimson) 75%,
+    var(--saffron) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: text-shimmer 3s linear infinite;
+}
+
+/* Soft grid pattern — more refined than the existing one */
+.grid-pattern {
+  background-image:
+    linear-gradient(
+      color-mix(in oklch, var(--foreground) 6%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--foreground) 6%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 32px 32px;
+}
+
+/* Vertical line connector */
+.connector-v {
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in oklch, var(--saffron) 40%, transparent) 30%,
+    color-mix(in oklch, var(--saffron) 40%, transparent) 70%,
+    transparent 100%
+  );
+}
+
+/* Horizontal gradient line */
+.connector-h {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklch, var(--saffron) 40%, transparent) 30%,
+    color-mix(in oklch, var(--crimson) 30%, transparent) 70%,
+    transparent 100%
+  );
+}
 }
 
 /* Custom scrollbar */
@@ -572,7 +730,7 @@ html {
 .resume-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
 .resume-table th, .resume-table td { border: 1px solid #ccc; padding: 10px 14px; text-align: left; vertical-align: top; font-size: 12.5px; }
 .resume-table th { background: #f7f7f8; font-weight: 600; white-space: nowrap; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
-.resume-table td { line-height: 1.6; }
+.resume-table td { line-height: 1.6; word-break: break-word; white-space: pre-wrap; }
 .resume-section { margin-top: 26px; }
 .resume-section-title { font-size: 13px; font-weight: 700; border-bottom: 2px solid #1a1a1a; padding-bottom: 6px; margin-bottom: 12px; letter-spacing: 0.03em; }
 .resume-text { font-size: 13px; line-height: 1.75; }
@@ -587,3 +745,12 @@ html {
 .resume-entry { margin-bottom: 8px; }
 .resume-entry-header { display: flex; justify-content: space-between; align-items: baseline; }
 .resume-declaration-en { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccc; }
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}

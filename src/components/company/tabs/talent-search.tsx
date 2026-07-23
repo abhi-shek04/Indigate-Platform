@@ -24,7 +24,7 @@ import { JLPT_LEVELS, JLPT_BADGE } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export function TalentSearch() {
-  const { t } = useT();
+  const { t, pick } = useT();
   const [search, setSearch] = useState("");
   const [jlpt, setJlpt] = useState("");
   const [minExp, setMinExp] = useState("");
@@ -62,7 +62,7 @@ export function TalentSearch() {
 
   return (
     <div className="space-y-5">
-      <SectionCard title="Find Talent" action={null}>
+      <SectionCard title={pick("Find Talent", "タレントを探す")} action={null}>
         <div className="flex flex-wrap gap-3">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -78,7 +78,7 @@ export function TalentSearch() {
               <SelectValue placeholder={t("dash.company.talent.jlpt")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Any JLPT</SelectItem>
+              <SelectItem value="all">{pick("Any JLPT", "すべてのJLPT")}</SelectItem>
               {JLPT_LEVELS.filter((l) => l !== "NONE").map((l) => (
                 <SelectItem key={l} value={l}>{l}</SelectItem>
               ))}
@@ -89,14 +89,14 @@ export function TalentSearch() {
               <SelectValue placeholder={t("dash.company.talent.exp")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Any experience</SelectItem>
+              <SelectItem value="all">{pick("Any experience", "すべての経験年数")}</SelectItem>
               {[1, 2, 3, 5, 8].map((y) => (
                 <SelectItem key={y} value={String(y)}>{y}+ years</SelectItem>
               ))}
             </SelectContent>
           </Select>
           <Input
-            placeholder="Skills (React, Go...)"
+            placeholder={pick("Skills (React, Go...)", "スキル (React, Go...)")}
             value={skillsInput}
             onChange={(e) => setSkillsInput(e.target.value)}
             className="w-[180px]"
@@ -138,7 +138,7 @@ function CandidateTalentCard({
   candidate: CandidateTalentDTO;
   onView: () => void;
 }) {
-  const { t } = useT();
+  const { t, pick } = useT();
   return (
     <div className="rounded-xl border border-border bg-card p-5 shadow-premium hover:-translate-y-0.5 transition-transform">
       <div className="flex items-start gap-3">
@@ -168,12 +168,12 @@ function CandidateTalentCard({
         <span className="text-xs text-muted-foreground">
           {candidate.experienceYears} {t("dash.company.talent.years")}
           {candidate.hasResume && (
-            <span className="text-emerald-600 font-medium ml-2">✓ Resume</span>
+            <span className="text-emerald-600 font-medium ml-2">✓ {pick("Resume", "履歴書")}</span>
           )}
         </span>
         <Button size="sm" variant="outline" onClick={onView}>
           <Eye className="mr-1.5 h-3.5 w-3.5" />
-          View profile
+          {pick("View profile", "プロフィールを表示")}
         </Button>
       </div>
     </div>
@@ -181,7 +181,7 @@ function CandidateTalentCard({
 }
 
 function CandidateDetailPanel({ candidate }: { candidate: CandidateTalentDTO }) {
-  const { t } = useT();
+  const { t, pick } = useT();
   return (
     <div className="space-y-4 p-6">
       <div className="flex items-center gap-3">
@@ -199,12 +199,12 @@ function CandidateDetailPanel({ candidate }: { candidate: CandidateTalentDTO }) 
       </div>
       {candidate.bio && (
         <div>
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-1">About</h3>
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-1">{pick("About", "概要")}</h3>
           <p className="text-sm leading-relaxed">{candidate.bio}</p>
         </div>
       )}
       <div>
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Skills</h3>
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-2">{pick("Skills", "スキル")}</h3>
         <div className="flex flex-wrap gap-1.5">
           {candidate.skills.map((s) => (
             <Badge key={s} variant="secondary">{s}</Badge>
@@ -213,23 +213,25 @@ function CandidateDetailPanel({ candidate }: { candidate: CandidateTalentDTO }) 
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <p className="text-xs text-muted-foreground">Experience</p>
+          <p className="text-xs text-muted-foreground">{pick("Experience", "経験")}</p>
           <p className="font-medium">{candidate.experienceYears} years</p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground">Education records</p>
+          <p className="text-xs text-muted-foreground">{pick("Education records", "学歴")}</p>
           <p className="font-medium">{candidate.educationCount}</p>
         </div>
         {candidate.hasResume && (
           <div>
-            <p className="text-xs text-muted-foreground">Resume</p>
-            <p className="font-medium text-emerald-600">✓ Uploaded</p>
+            <p className="text-xs text-muted-foreground">{pick("Resume", "履歴書")}</p>
+            <p className="font-medium text-emerald-600">✓ {pick("Uploaded", "アップロード済み")}</p>
           </div>
         )}
       </div>
       <div className="pt-3 border-t text-xs text-muted-foreground leading-relaxed">
-        Contact details (email, phone, resume) are shared only after this
-        candidate applies to your job. Use your job postings to attract them.
+        {pick(
+          "Contact details (email, phone, resume) are shared only after this candidate applies to your job. Use your job postings to attract them.",
+          "連絡先（メール、電話、履歴書）は、この候補者があなたの求人に応募した後にのみ共有されます。求人を投稿してアピールしましょう。"
+        )}
       </div>
     </div>
   );

@@ -61,7 +61,7 @@ export function DashboardShell({
   disabledKeys = [],
   children,
 }: DashboardShellProps) {
-  const { t } = useT();
+  const { t, pick } = useT();
   const logout = useApp((s) => s.logout);
   const navigate = useApp((s) => s.navigate);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -101,7 +101,7 @@ export function DashboardShell({
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
             <button
-              aria-label="Open menu"
+              aria-label={pick("Open menu", "メニューを開く")}
               className="grid place-items-center h-10 w-10 rounded-lg hover:bg-accent transition-colors"
             >
               <Menu className="h-5 w-5" />
@@ -111,7 +111,7 @@ export function DashboardShell({
             side="left"
             className="w-[280px] p-0 bg-sidebar text-sidebar-foreground flex flex-col"
           >
-            <SheetTitle className="sr-only">{brand} menu</SheetTitle>
+            <SheetTitle className="sr-only">{brand} {pick("menu", "メニュー")}</SheetTitle>
             <SidebarHeader brand={brand} />
             <div className="flex-1 overflow-y-auto scroll-area py-4">
               <NavList
@@ -135,19 +135,36 @@ export function DashboardShell({
       {/* Main */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Top bar */}
-        <header className="topbar">
+        <motion.header
+          initial={{ y: -15, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5, ease: easeOutExpo }}
+          className="topbar"
+        >
           <div className="flex items-center gap-4 px-4 sm:px-6 lg:px-8 h-14">
             <div className="lg:hidden">
               {/* Spacer for mobile menu button which is rendered by each dashboard */}
             </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="font-display font-extrabold text-base sm:text-lg leading-tight truncate">
+            <div className="min-w-0 flex-1 flex flex-col justify-center">
+              <motion.h1 
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+                className="font-display font-extrabold text-lg sm:text-xl leading-tight truncate text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/70"
+              >
                 {welcome}
-              </h1>
+              </motion.h1>
               {subtitle && (
-                <p className="text-[11px] text-muted-foreground truncate">
-                  {subtitle}
-                </p>
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.4, delay: 0.2, ease: "easeOut" }}
+                  className="flex items-center mt-1"
+                >
+                  <span className="inline-flex items-center rounded-full bg-saffron/15 px-2.5 py-0.5 text-[10px] font-bold text-saffron uppercase tracking-[0.1em] ring-1 ring-inset ring-saffron/20">
+                    {subtitle}
+                  </span>
+                </motion.div>
               )}
             </div>
             <div className="flex items-center gap-1.5">
@@ -158,7 +175,7 @@ export function DashboardShell({
               {avatar}
             </div>
           </div>
-        </header>
+        </motion.header>
 
         {/* Content */}
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
@@ -195,7 +212,7 @@ function NavList({
   ariaLabel?: string;
 }) {
   return (
-    <nav className="flex flex-col gap-1 px-3" aria-label={ariaLabel ?? "Dashboard navigation"}>
+    <nav className="flex flex-col gap-1.5 px-3" aria-label={ariaLabel ?? "Dashboard navigation"}>
       {nav.map((item, i) => {
         const Icon = item.icon;
         const isActive = item.key === active;
@@ -205,6 +222,8 @@ function NavList({
             key={item.key}
             initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
+            whileHover={!isDisabled ? { scale: 1.02 } : undefined}
+            whileTap={!isDisabled ? { scale: 0.98 } : undefined}
             transition={{ duration: 0.3, ease: easeOutExpo, delay: i * 0.04 }}
             disabled={isDisabled}
             onClick={() => {
@@ -214,11 +233,20 @@ function NavList({
             }}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "nav-item outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+              "nav-item outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring relative z-10",
               isActive && "active",
               isDisabled && "opacity-40 cursor-not-allowed hover:bg-transparent",
             )}
           >
+            {isActive && (
+              <motion.div
+                layoutId="nav-active"
+                className="absolute inset-0 bg-saffron/15 rounded-xl border border-saffron/20 -z-10"
+                transition={{ type: "spring", stiffness: 350, damping: 30 }}
+              >
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[4px] h-[60%] bg-saffron rounded-r-md shadow-[0_0_8px_rgba(var(--saffron-rgb),0.6)]" />
+              </motion.div>
+            )}
             <Icon className="nav-icon" />
             <span className="truncate">{item.label}</span>
             {typeof item.badge === "number" && item.badge > 0 && (
@@ -247,23 +275,28 @@ function SidebarFooter({
   logoutLabel: string;
   brand: string;
 }) {
+  const { pick } = useT();
   return (
     <div className="mt-auto px-3 pb-5 pt-4 border-t border-sidebar-border/60 flex flex-col gap-1.5">
-      <button
+      <motion.button
         onClick={onGoSite}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
         className="nav-item group relative overflow-hidden"
       >
         <span className="absolute inset-0 bg-gradient-to-r from-saffron/0 via-saffron/8 to-saffron/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
         <ArrowLeft className="nav-icon transition-transform group-hover:-translate-x-0.5" />
-        <span>Back to site</span>
-      </button>
-      <button
+        <span>{pick("Back to site", "サイトへ戻る")}</span>
+      </motion.button>
+      <motion.button
         onClick={onLogout}
-        className="nav-item group hover:!bg-destructive/20"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        className="nav-item group hover:!bg-destructive/10 hover:!text-destructive transition-colors"
       >
-        <LogOut className="nav-icon transition-transform group-hover:translate-x-0.5" />
+        <LogOut className="nav-icon transition-transform group-hover:translate-x-0.5 group-hover:text-destructive" />
         <span>{logoutLabel}</span>
-      </button>
+      </motion.button>
       <div className="mt-3 px-3 flex items-center gap-2.5">
         <img
           src="/indobox-logo.png"
@@ -285,11 +318,16 @@ function SidebarFooter({
 
 function SidebarHeader({ brand }: { brand: string }) {
   return (
-    <div className="relative px-5 pt-5 pb-4 border-b border-sidebar-border/60 overflow-hidden">
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: easeOutExpo }}
+      className="relative px-5 pt-5 pb-4 border-b border-sidebar-border/60 overflow-hidden"
+    >
       {/* Saffron corner accent */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-12 -right-12 h-32 w-32 rounded-full bg-saffron/15 blur-2xl"
+        className="pointer-events-none absolute -top-12 -right-12 h-32 w-32 rounded-full bg-saffron/20 blur-3xl animate-pulse"
       />
       <Logo
         size={34}
@@ -301,7 +339,7 @@ function SidebarHeader({ brand }: { brand: string }) {
           {brand} portal
         </p>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -414,14 +452,20 @@ export function SectionCard({
   bodyClassName?: string;
 }) {
   return (
-    <section className={cn("card-premium", className)}>
+    <motion.section
+      initial={{ opacity: 0, y: 15 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5, ease: easeOutExpo }}
+      className={cn("card-premium overflow-hidden", className)}
+    >
       {(title || action) && (
-        <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-border/50 bg-muted/20 backdrop-blur-md">
           {typeof title === "string" ? (
-            <h2 className="font-display font-bold text-base sm:text-lg flex items-center gap-2.5">
+            <h2 className="font-display font-bold text-base sm:text-lg flex items-center gap-3">
               {Icon && (
-                <span className="grid place-items-center h-7 w-7 rounded-lg bg-saffron/12 text-saffron ring-1 ring-inset ring-saffron/20">
-                  <Icon className="h-4 w-4" />
+                <span className="grid place-items-center h-8 w-8 rounded-xl bg-saffron/10 text-saffron ring-1 ring-inset ring-saffron/20 shadow-sm">
+                  <Icon className="h-4.5 w-4.5" />
                 </span>
               )}
               {title}
@@ -432,8 +476,8 @@ export function SectionCard({
           {action}
         </div>
       )}
-      <div className={cn("p-5 sm:p-6", bodyClassName)}>{children}</div>
-    </section>
+      <div className={cn("p-6 sm:p-8", bodyClassName)}>{children}</div>
+    </motion.section>
   );
 }
 
@@ -445,7 +489,7 @@ export function RoleGuard({
   expected: string;
   navigateView?: View;
 }) {
-  const { t } = useT();
+  const { t, pick } = useT();
   const navigate = useApp((s) => s.navigate);
   const user = useApp((s) => s.user);
   const roleLabel =

@@ -12,10 +12,11 @@ import {
 import type { NotificationDTO } from "@/lib/types";
 import { useT } from "@/lib/use-t";
 import { cn } from "@/lib/utils";
+import { useSSE } from "@/lib/use-sse";
 
 export function NotificationsBell() {
+  const { t, pick, locale } = useT();
   const user = useApp((s) => s.user);
-  const { t, locale } = useT();
   const [items, setItems] = useState<NotificationDTO[]>([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
@@ -34,19 +35,15 @@ export function NotificationsBell() {
   }
 
   useEffect(() => {
-    let active = true;
-    // Initial fetch + polling. setState happens after await so it's async,
-    // but the linter conservatively flags the call — disable for this line.
+    // Initial fetch
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
-    const i = setInterval(() => {
-      if (active) load();
-    }, 30000);
-    return () => {
-      active = false;
-      clearInterval(i);
-    };
   }, [user?.id]);
+
+  useSSE(undefined, (notification: NotificationDTO) => {
+    setItems((prev) => [notification, ...prev]);
+    setUnread((u) => u + 1);
+  });
 
   async function markAllRead() {
     await api("/api/notifications", { method: "PATCH" });
@@ -61,10 +58,10 @@ export function NotificationsBell() {
       <PopoverTrigger asChild>
         <button
           className={cn(
-            "relative grid place-items-center h-9 w-9 rounded-lg border transition-colors",
+            "relative grid place-items-center h-[34px] w-[34px] rounded-full transition-colors outline-none shadow-sm border border-border hover:bg-foreground hover:text-background",
             unread > 0
-              ? "border-saffron/40 bg-saffron/10 text-saffron"
-              : "border-border bg-background text-muted-foreground hover:text-foreground hover:bg-accent",
+              ? "bg-foreground text-background"
+              : "bg-background text-muted-foreground",
           )}
           aria-label={t("nav.notifications")}
         >
@@ -86,7 +83,7 @@ export function NotificationsBell() {
         }}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <p className="font-display font-bold text-sm">Notifications</p>
+          <p className="font-display font-bold text-sm">{pick("Notifications", "通知")}</p>
           {unread > 0 && (
             <button
               onClick={markAllRead}
@@ -102,7 +99,7 @@ export function NotificationsBell() {
               <div className="mx-auto mb-3 grid place-items-center h-10 w-10 rounded-xl bg-muted text-muted-foreground">
                 <Bell className="h-5 w-5" />
               </div>
-              <p className="text-sm font-medium">You&rsquo;re all caught up</p>
+              <p className="text-sm font-medium">{pick("You&rsquo;re all caught up", "これで全部追いつきました")}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 No new notifications right now.
               </p>

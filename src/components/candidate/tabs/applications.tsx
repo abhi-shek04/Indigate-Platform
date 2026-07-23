@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useState, useCallback } from "react";
+import { motion } from "framer-motion";
 import { useApp } from "@/lib/store";
 import { useT } from "@/lib/use-t";
 import { api, formatDate } from "@/lib/api-client";
@@ -48,7 +49,7 @@ function progressIndex(status: ApplicationStatus): number {
 }
 
 export function Applications() {
-  const { t, locale } = useT();
+  const { t, locale, pick } = useT();
   const navigate = useApp((s) => s.navigate);
   const refreshAuth = useApp((s) => s.refreshAuth);
   const [apps, setApps] = useState<ApplicationDTO[] | null>(null);
@@ -103,7 +104,7 @@ export function Applications() {
       <EmptyState
         icon={FileText}
         title={t("dash.apps.empty")}
-        description="Browse curated roles in Japan and apply with one click."
+        description={pick("Browse curated roles in Japan and apply with one click.", "厳選された日本の求人を閲覧し、ワンクリックで応募できます。")}
         action={
           <Button
             className="bg-brand-gradient text-white hover:opacity-90"
@@ -120,7 +121,7 @@ export function Applications() {
   return (
     <div className="space-y-4">
       <SectionCard
-        title={`${apps.length} application${apps.length === 1 ? "" : "s"}`}
+        title={apps.length === 1 ? pick("1 application", "1 件の応募") : pick(`${apps.length} applications`, `${apps.length} 件の応募`)}
         icon={FileText}
         bodyClassName="p-5 sm:p-6 space-y-4"
       >
@@ -130,8 +131,14 @@ export function Applications() {
           const isWithdrawn = a.status === "WITHDRAWN";
           return (
             <Fragment key={a.id}>
-              <div className="card-premium p-5">
-                <div className="flex items-start justify-between gap-3">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                whileHover={{ scale: 1.015, y: -2 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                className="card-premium p-6 group cursor-default"
+              >
+                <div className="flex items-start justify-between gap-4">
                   <button
                     onClick={() =>
                       a.job && navigate("job-detail", { jobId: a.job.id })
@@ -139,11 +146,11 @@ export function Applications() {
                     className="text-left min-w-0"
                   >
                     <p className="font-display font-bold text-base hover:text-crimson transition-colors truncate">
-                      {a.job?.title ?? "Job removed"}
+                      {a.job?.title ?? pick("Job removed", "削除された求人")}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {a.job?.company?.companyName} · {a.job?.location} ·{" "}
-                      Applied {formatDate(a.appliedAt, locale)}
+                      {pick("Applied", "応募日")} {formatDate(a.appliedAt, locale)}
                     </p>
                   </button>
                   <span
@@ -194,7 +201,7 @@ export function Applications() {
                                   : "text-muted-foreground",
                             )}
                           >
-                            {stage.label}
+                            {t(`status.${stage.key}`)}
                           </span>
                         </div>
                       </div>
@@ -209,7 +216,7 @@ export function Applications() {
                     <p className="text-xs text-crimson">
                       {a.notes
                         ? a.notes
-                        : "Application was not selected to move forward."}
+                        : pick("Application was not selected to move forward.", "選考を通過しませんでした。")}
                     </p>
                   </div>
                 )}
@@ -267,7 +274,7 @@ export function Applications() {
                     </AlertDialog>
                   </div>
                 )}
-              </div>
+              </motion.div>
             </Fragment>
           );
         })}
@@ -279,7 +286,7 @@ export function Applications() {
 /* ============== Interview Info (Milestone H) ============== */
 
 function InterviewInfo({ app }: { app: ApplicationDTO }) {
-  const { locale } = useT();
+  const { locale, pick } = useT();
   if (!app.interviewDate) return null;
   const d = new Date(app.interviewDate);
   const dateStr = d.toLocaleString(locale === "ja" ? "ja-JP" : "en-US", {

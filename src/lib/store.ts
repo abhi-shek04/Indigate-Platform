@@ -33,6 +33,7 @@ export interface AppState {
   candidate: CandidateProfileDTO | null;
   company: CompanyProfileDTO | null;
   authLoading: boolean;
+  googleAuthEnabled: boolean;
   // Navigation
   view: View;
   selectedJobId: string | null;
@@ -59,7 +60,8 @@ export interface AppState {
     | "testimonials"
     | "contacts"
     | "users"
-    | "audit";
+    | "audit"
+    | "alerts";
   // locale
   locale: Locale;
   // TOTP 2FA
@@ -93,6 +95,7 @@ export const useApp = create<AppState>((set, get) => ({
   candidate: null,
   company: null,
   authLoading: true,
+  googleAuthEnabled: false,
   view: "home",
   selectedJobId: null,
   candidateTab: "overview",
@@ -122,13 +125,13 @@ export const useApp = create<AppState>((set, get) => ({
       if (data.user && currentState.view === "home") {
         const role = data.user.role;
         if (role === "CANDIDATE") {
-          set({ user: data.user, candidate: data.candidate ?? null, company: null, authLoading: false, view: "candidate" });
+          set({ user: data.user, candidate: data.candidate ?? null, company: null, authLoading: false, googleAuthEnabled: data.googleAuthEnabled ?? false, view: "candidate" });
           return;
         } else if (role === "COMPANY") {
-          set({ user: data.user, candidate: null, company: data.company ?? null, authLoading: false, view: "company" });
+          set({ user: data.user, candidate: null, company: data.company ?? null, authLoading: false, googleAuthEnabled: data.googleAuthEnabled ?? false, view: "company" });
           return;
         } else if (role === "ADMIN") {
-          set({ user: data.user, candidate: null, company: null, authLoading: false, view: "admin" });
+          set({ user: data.user, candidate: null, company: null, authLoading: false, googleAuthEnabled: data.googleAuthEnabled ?? false, view: "admin" });
           return;
         }
       }
@@ -137,6 +140,7 @@ export const useApp = create<AppState>((set, get) => ({
         candidate: data.candidate ?? null,
         company: data.company ?? null,
         authLoading: false,
+        googleAuthEnabled: data.googleAuthEnabled ?? false,
       });
     } catch {
       set({ authLoading: false });

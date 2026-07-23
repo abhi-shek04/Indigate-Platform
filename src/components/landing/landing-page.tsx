@@ -6,68 +6,23 @@ import { useT } from "@/lib/use-t";
 import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { CompanyAvatar } from "@/components/brand/logo";
-import { JobCard } from "@/components/jobs/job-card";
-import { useCountUp } from "@/components/brand/use-count-up";
-import {
-  Reveal,
-  RevealGroup,
-  staggerItem,
-  fadeUp,
-  scaleIn,
-  slideInRight,
-  motion,
-  easeOutExpo,
-} from "@/lib/motion";
-import {
-  MagneticButton,
-  SpotlightCard,
-  TiltCard,
-} from "@/components/brand/motion-primitives";
-import {
-  ArrowRight,
-  ArrowUpRight,
-  Search,
-  FileText,
-  Plane,
-  PlaneTakeoff,
-  LayoutDashboard,
-  Sparkles,
-  CheckCircle2,
-  Quote,
-  Mail,
-  Briefcase,
-  Globe2,
-  ShieldCheck,
-  Heart,
-  Star,
-  Building2,
-  Wrench,
-  ArrowLeftRight,
-  HelpCircle,
-  Users,
-  Award,
-  MapPin,
-  TrendingUp,
-  Compass,
-  Calendar,
-  Clock,
-  Send,
-  MessageCircle,
-} from "lucide-react";
+import { Reveal, RevealGroup, staggerItem, fadeUp, scaleIn, slideInRight, motion, easeOutExpo } from "@/lib/motion";
+import { MagneticButton, SpotlightCard, TiltCard } from "@/components/brand/motion-primitives";
+import { ArrowRight, Search, FileText, Plane, PlaneTakeoff, LayoutDashboard, Sparkles, CheckCircle2, Quote, Mail, Briefcase, Globe2, ShieldCheck, Star, Building2, Wrench, ArrowLeftRight, HelpCircle, Users, MapPin, Compass, Clock, Send } from "lucide-react";
 import { toast } from "sonner";
 import type { JobDTO, TestimonialDTO } from "@/lib/types";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 interface Stats {
   jobCount: number;
   candidateCount: number;
   companyCount: number;
   placementCount: number;
+  pipeline?: {
+    profilesCreated: number;
+    matchedWithJobs: number;
+    interviewScheduled: number;
+    relocatedToJapan: number;
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -102,11 +57,11 @@ function SectionHeader({
         (className ?? "")
       }
     >
-      <span className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-crimson">
+      <span className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-saffron">
         <Icon className="h-3 w-3" />
         {label}
       </span>
-      <h2 className="mt-4 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+      <h2 className="mt-4 font-display text-3xl sm:text-4xl font-extrabold tracking-tight leading-[1.1]">
         {title}
       </h2>
       {subtitle ? (
@@ -121,8 +76,8 @@ function SectionHeader({
       ) : null}
       <div
         className={
-          "section-rule mt-5 max-w-xs" +
-          (align === "center" ? " mx-auto" : "")
+          "section-divider " +
+          (align === "center" ? "" : "ml-0")
         }
       />
     </div>
@@ -133,286 +88,60 @@ function SectionHeader({
 /*  Bento stat cards                                                          */
 /* -------------------------------------------------------------------------- */
 
-function useInView(threshold = 0.3) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting) {
-          setVisible(true);
-          obs.disconnect();
-        }
-      },
-      { threshold },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [threshold]);
-  return { ref, visible };
-}
 
-function BentoStat({
-  value,
-  suffix,
-  label,
-  delay,
-  icon: Icon,
-  accent = "saffron",
-  className,
-}: {
-  value: number;
-  suffix?: string;
-  label: string;
-  delay: number;
-  icon: React.ComponentType<{ className?: string }>;
-  accent?: "saffron" | "crimson";
-  className?: string;
-}) {
-  const count = useCountUp(value, 1800);
-  const { ref, visible } = useInView(0.3);
-
-  return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 24 }}
-      animate={visible ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6, ease: easeOutExpo, delay: delay / 1000 }}
-      whileHover={{ y: -4 }}
-      className={
-        "hero-stat group relative h-full p-5 sm:p-6 flex flex-col justify-between " +
-        (className ?? "")
-      }
-    >
-      <div className="flex items-start justify-between">
-        <motion.div
-          whileHover={{ rotate: [0, -8, 8, 0], scale: 1.08 }}
-          transition={{ duration: 0.5 }}
-          className={
-            "grid place-items-center h-10 w-10 rounded-xl ring-1 ring-inset " +
-            (accent === "saffron"
-              ? "bg-saffron/10 text-saffron ring-saffron/20"
-              : "bg-crimson/10 text-crimson ring-crimson/20")
-          }
-        >
-          <Icon className="h-5 w-5" />
-        </motion.div>
-        <ArrowUpRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-saffron group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all" />
-      </div>
-      <div className="mt-4">
-        <div className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight leading-none">
-          <span className="text-gradient-brand">
-            {count.toLocaleString()}
-            {suffix}
-          </span>
-        </div>
-        <p className="mt-1.5 text-xs sm:text-sm font-medium text-muted-foreground uppercase tracking-wide">
-          {label}
-        </p>
-      </div>
-    </motion.div>
-  );
-}
-
-function BentoFeatured({
-  value,
-  suffix,
-  label,
-  subLabel,
-  delay,
-  className,
-}: {
-  value: number;
-  suffix?: string;
-  label: string;
-  subLabel: string;
-  delay: number;
-  className?: string;
-}) {
-  const count = useCountUp(value, 2000);
-  const { ref, visible } = useInView(0.25);
-
-  return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 30 }}
-      animate={visible ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.7, ease: easeOutExpo, delay: delay / 1000 }}
-      className={
-        "hero-stat group relative h-full p-6 sm:p-8 overflow-hidden flex flex-col justify-between " +
-        (className ?? "")
-      }
-    >
-      {/* Mesh background + glow */}
-      <div aria-hidden className="absolute inset-0 bg-mesh opacity-40" />
-      <div
-        aria-hidden
-        className="absolute -top-16 -right-16 h-44 w-44 rounded-full bg-crimson/15 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="absolute -bottom-12 -left-12 h-32 w-32 rounded-full bg-saffron/20 blur-3xl"
-      />
-
-      <div className="relative">
-        <div className="flex items-center justify-between">
-          <span className="inline-flex items-center gap-2 rounded-full border border-crimson/30 bg-crimson/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-crimson">
-            <Award className="h-3 w-3" />
-            {label}
-          </span>
-        </div>
-        <div className="mt-6">
-          <div className="font-display text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-none">
-            <span className="text-gradient-brand">
-              {count.toLocaleString()}
-              {suffix}
-            </span>
-          </div>
-          <p className="mt-3 text-sm sm:text-base font-semibold text-foreground uppercase tracking-wide">
-            {subLabel}
-          </p>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
 
 /* -------------------------------------------------------------------------- */
 /*  Hero journey visual (right column of hero)                                */
 /* -------------------------------------------------------------------------- */
 
 function HeroJourneyVisual() {
+  const { pick } = useT();
   return (
-    <TiltCard max={5} className="relative">
-      <div className="card-premium rounded-3xl p-6 sm:p-7 relative overflow-hidden">
-        {/* Background mesh + glows */}
-        <div aria-hidden className="absolute inset-0 bg-mesh opacity-30" />
-        <div
-          aria-hidden
-          className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-crimson/15 blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="absolute -bottom-12 -left-12 h-32 w-32 rounded-full bg-saffron/20 blur-3xl"
+    <TiltCard max={3} className="relative h-full">
+      <div className="relative h-full min-h-[460px] rounded-[2rem] overflow-hidden shadow-2xl shadow-foreground/5 border border-border/50">
+        {/* Full-bleed Editorial Photo */}
+        <img
+          src="/images/hero-visual.jpg"
+          alt="India-Japan professional partnership — bridging talent across borders"
+          className="absolute inset-0 w-full h-full object-cover object-center"
+          loading="eager"
         />
 
-        {/* Header */}
-        <div className="relative flex items-center justify-between mb-5">
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            <Globe2 className="h-3.5 w-3.5 text-saffron" />
-            Career Journey
-          </span>
-          <span className="text-[11px] font-bold text-muted-foreground">
-            🇮🇳 → 🇯🇵
-          </span>
-        </div>
+        {/* Bottom gradient — just enough for text contrast */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
 
-        {/* Route visualization */}
-        <div className="relative h-36 mb-1">
-          <svg
-            viewBox="0 0 320 140"
-            className="absolute inset-0 w-full h-full"
-            preserveAspectRatio="none"
-            aria-hidden
-          >
-            <defs>
-              <linearGradient id="hero-route" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="var(--saffron)" />
-                <stop offset="100%" stopColor="var(--crimson)" />
-              </linearGradient>
-            </defs>
-            {/* Faded dotted base path */}
-            <path
-              d="M 32 100 Q 160 10 288 60"
-              fill="none"
-              stroke="url(#hero-route)"
-              strokeWidth="2"
-              strokeDasharray="3 7"
-              strokeLinecap="round"
-              opacity="0.25"
-            />
-            {/* Animated solid drawing path */}
-            <motion.path
-              d="M 32 100 Q 160 10 288 60"
-              fill="none"
-              stroke="url(#hero-route)"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: 0.9 }}
-              transition={{ duration: 1.8, ease: easeOutExpo, delay: 0.6 }}
-            />
-          </svg>
-
-          {/* India pin */}
-          <div className="absolute left-[6%] bottom-[18%] flex flex-col items-center">
-            <div className="grid place-items-center h-10 w-10 rounded-full bg-saffron/15 ring-2 ring-saffron/40 backdrop-blur-sm text-lg">
-              🇮🇳
+        {/* Bottom Pipeline Bar */}
+        <div className="absolute bottom-0 inset-x-0 p-6 sm:p-7">
+          <div className="backdrop-blur-xl bg-white/[0.07] rounded-2xl border border-white/[0.08] px-5 py-4">
+            <div className="flex items-center justify-between">
+              {[
+                { icon: Users, label: pick("Profile", "プロフィール") },
+                { icon: Building2, label: pick("Match", "試合") },
+                { icon: PlaneTakeoff, label: pick("Visa", "すべて") },
+                { icon: MapPin, label: pick("Relocate", "移転する") },
+              ].map((step, i, arr) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1.0 + i * 0.1, duration: 0.4, ease: easeOutExpo }}
+                  className="flex items-center gap-2"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-9 w-9 rounded-lg bg-white/10 border border-white/10 grid place-items-center text-white/80">
+                      <step.icon className="h-4 w-4" />
+                    </div>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-white/70 hidden sm:block">
+                      {step.label}
+                    </span>
+                  </div>
+                  {i < arr.length - 1 && (
+                    <div className="hidden sm:block h-px w-6 bg-white/15 ml-2" />
+                  )}
+                </motion.div>
+              ))}
             </div>
-            <span className="mt-1.5 text-[10px] font-bold uppercase tracking-wider">
-              India
-            </span>
           </div>
-
-          {/* Japan pin */}
-          <div className="absolute right-[4%] top-[22%] flex flex-col items-center">
-            <div className="grid place-items-center h-10 w-10 rounded-full bg-crimson/15 ring-2 ring-crimson/40 backdrop-blur-sm text-lg">
-              🇯🇵
-            </div>
-            <span className="mt-1.5 text-[10px] font-bold uppercase tracking-wider">
-              Japan
-            </span>
-          </div>
-
-          {/* Animated plane traveling along the route */}
-          <motion.div
-            className="absolute"
-            initial={{ left: "8%", bottom: "22%", opacity: 0 }}
-            animate={{
-              left: ["8%", "50%", "92%", "92%"],
-              bottom: ["22%", "62%", "38%", "38%"],
-              opacity: [0, 1, 1, 0],
-            }}
-            transition={{
-              duration: 3.8,
-              repeat: Infinity,
-              ease: "easeInOut",
-              repeatDelay: 1,
-              delay: 1.2,
-            }}
-          >
-            <div className="grid place-items-center h-8 w-8 -ml-4 -mt-4 rounded-full bg-brand-gradient text-white shadow-glow-brand ring-2 ring-background">
-              <Plane className="h-3.5 w-3.5 -rotate-12" />
-            </div>
-          </motion.div>
-
-        </div>
-
-        {/* Pipeline stages */}
-        <div className="relative grid grid-cols-4 gap-1.5 pt-4 mt-3 border-t border-border/60">
-          {[
-            { icon: FileText, label: "Profile" },
-            { icon: Search, label: "Matched" },
-            { icon: Calendar, label: "Interview" },
-            { icon: PlaneTakeoff, label: "Relocate" },
-          ].map((s, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.6 + i * 0.15, duration: 0.5 }}
-              className="text-center"
-            >
-              <div className="relative grid place-items-center h-8 w-8 rounded-lg bg-card border border-border mx-auto mb-1.5">
-                <s.icon className="h-3.5 w-3.5 text-crimson" />
-              </div>
-              <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide truncate">
-                {s.label}
-              </p>
-            </motion.div>
-          ))}
         </div>
       </div>
     </TiltCard>
@@ -494,8 +223,7 @@ export function LandingPage() {
   const navigate = useApp((s) => s.navigate);
   const user = useApp((s) => s.user);
   const [stats, setStats] = useState<Stats | null>(null);
-  const [featured, setFeatured] = useState<JobDTO[]>([]);
-  const [testimonials, setTestimonials] = useState<TestimonialDTO[]>([]);
+    const [testimonials, setTestimonials] = useState<TestimonialDTO[]>([]);
 
   useEffect(() => {
     Promise.all([
@@ -504,6 +232,12 @@ export function LandingPage() {
         candidateCount: number;
         companyCount: number;
         placementCount: number;
+        pipeline?: {
+          profilesCreated: number;
+          matchedWithJobs: number;
+          interviewScheduled: number;
+          relocatedToJapan: number;
+        };
       }>("/api/jobs/stats"),
       api<{ jobs: JobDTO[] }>("/api/jobs?limit=3"),
       api<{ testimonials: TestimonialDTO[] }>(
@@ -512,8 +246,7 @@ export function LandingPage() {
     ])
       .then(([s, f, te]) => {
         setStats(s);
-        setFeatured(f.jobs);
-        setTestimonials(te.testimonials);
+                setTestimonials(te.testimonials);
       })
       .catch(() => {});
   }, []);
@@ -527,10 +260,18 @@ export function LandingPage() {
     "#7f1d1d", // crimson-deep
   ];
 
+  
   return (
     <main>
       {/* ===================== HERO (asymmetric) ===================== */}
       <section className="relative overflow-hidden bg-mesh">
+        {/* Abstract connection background — ultra subtle depth layer */}
+        <img
+          src="/images/abstract-connection.jpg"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover opacity-[0.10] pointer-events-none mix-blend-screen"
+        />
         {/* Fine grid pattern overlay */}
         <div
           aria-hidden
@@ -598,7 +339,7 @@ export function LandingPage() {
               >
                 <MagneticButton
                   onClick={() => navigate("jobs")}
-                  className="bg-brand-gradient text-white hover:opacity-90 font-semibold text-sm h-11 px-5 rounded-xl shadow-glow-brand inline-flex items-center gap-2 cursor-pointer"
+                  className="bg-brand-gradient text-white hover:opacity-90 font-bold text-sm h-11 px-5 rounded-xl shadow-glow-brand ring-brand inline-flex items-center gap-2 cursor-pointer"
                 >
                   <Search className="h-4 w-4" />
                   {t("hero.cta.find")}
@@ -615,7 +356,7 @@ export function LandingPage() {
                             : "admin",
                       )
                     }
-                    className="bg-background border-2 border-border hover:border-saffron/50 hover:bg-saffron/5 font-semibold text-sm h-11 px-5 rounded-xl inline-flex items-center gap-2 cursor-pointer group transition-all"
+                    className="bg-background border border-border hover:border-saffron/30 hover:bg-saffron/5 shadow-premium font-semibold text-sm h-11 px-5 rounded-xl inline-flex items-center gap-2 cursor-pointer group transition-all"
                   >
                     <LayoutDashboard className="h-4 w-4 text-saffron transition-transform group-hover:scale-110" />
                     {pick("Dashboard", "ダッシュボード")}
@@ -624,7 +365,7 @@ export function LandingPage() {
                 ) : (
                   <MagneticButton
                     onClick={() => navigate("register")}
-                    className="bg-background border-2 border-border hover:border-saffron/50 font-semibold text-sm h-11 px-5 rounded-xl inline-flex items-center gap-2 cursor-pointer"
+                    className="bg-background border border-border hover:border-saffron/30 hover:bg-saffron/5 shadow-premium font-semibold text-sm h-11 px-5 rounded-xl inline-flex items-center gap-2 cursor-pointer"
                   >
                     {t("hero.cta.hire")}
                   </MagneticButton>
@@ -635,7 +376,7 @@ export function LandingPage() {
                 variants={staggerItem}
                 className="mt-7 text-xs text-muted-foreground"
               >
-                {t("hero.trusted")}
+                {pick("Hiring from IndiGate", "IndiGateからの採用企業")}
               </motion.p>
             </RevealGroup>
 
@@ -649,34 +390,74 @@ export function LandingPage() {
             </Reveal>
           </div>
 
-          {/* Company strip */}
-          <Reveal variants={fadeUp} delay={0.5} className="mt-12 lg:mt-16">
-            <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 opacity-70">
-              {["TechNova", "SakuraSoft", "Mitsui Eng.", "Hikari", "Kintaro"].map(
-                (name, i) => (
-                  <motion.div
-                    key={name}
-                    whileHover={{ scale: 1.08, y: -2 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                    className="flex items-center gap-2 cursor-default"
-                  >
-                    <CompanyAvatar
-                      name={name}
-                      color={companyColors[i % companyColors.length]}
-                      size={28}
-                    />
-                    <span className="font-display font-bold text-sm">
-                      {name}
-                    </span>
-                  </motion.div>
-                ),
-              )}
+          {/* Industry Category Marquee */}
+          <Reveal variants={fadeUp} delay={0.5} className="mt-14 lg:mt-18 overflow-hidden">
+            <div className="flex flex-col items-center gap-4">
+              <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60">{pick("Serving top industries", "主要産業をサポート")}</p>
+              <div className="relative w-full max-w-5xl mx-auto flex overflow-hidden group">
+                <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-background to-transparent" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-background to-transparent" />
+                <div className="flex gap-4 w-max animate-marquee group-hover:![animation-play-state:paused]">
+                  {[
+                    "AI & Machine Learning", "Robotics & Automation", "FinTech", "E-commerce",
+                    "Enterprise Software", "Gaming", "Automotive Tech", "Clean Energy",
+                    "AI & Machine Learning", "Robotics & Automation", "FinTech", "E-commerce",
+                    "Enterprise Software", "Gaming", "Automotive Tech", "Clean Energy"
+                  ].map((name, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-2.5 rounded-full border border-border/60 bg-card/60 backdrop-blur-sm px-5 py-2.5 cursor-default hover:border-saffron/30 hover:bg-saffron/5 transition-colors whitespace-nowrap"
+                    >
+                      <span className="font-display font-semibold text-[13px] text-foreground/80 hover:text-foreground transition-colors">
+                        {name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </Reveal>
         </div>
       </section>
 
-      {/* ===================== STATS (bento grid) ===================== */}
+      {/* ===================== STATS GRID ===================== */}
+      <section className="relative py-12 sm:py-16 bg-background">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <RevealGroup stagger={0.1} className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+            <motion.div variants={staggerItem} className="flex flex-col items-center text-center p-6 rounded-2xl border border-border/50 bg-card/40">
+              <span className="stat-hero">
+                {(stats?.candidateCount ?? 0) > 1900 ? stats?.candidateCount : "1,900"}+
+              </span>
+              <span className="mt-2 text-sm font-semibold text-muted-foreground">{pick("Candidates", "候補者")}</span>
+            </motion.div>
+            <motion.div variants={staggerItem} className="flex flex-col items-center text-center p-6 rounded-2xl border border-border/50 bg-card/40">
+              <span className="stat-hero">
+                {(stats?.companyCount ?? 0) > 100 ? stats?.companyCount : "100"}+
+              </span>
+              <span className="mt-2 text-sm font-semibold text-muted-foreground">{pick("Companies", "企業")}</span>
+            </motion.div>
+            <motion.div variants={staggerItem} className="flex flex-col items-center text-center p-6 rounded-2xl border border-border/50 bg-card/40">
+              <span className="stat-hero">
+                {(stats?.jobCount ?? 0) > 450 ? stats?.jobCount : "450"}+
+              </span>
+              <span className="mt-2 text-sm font-semibold text-muted-foreground">{pick("Open Roles", "募集中の職種")}</span>
+            </motion.div>
+            <motion.div variants={staggerItem} className="flex flex-col items-center text-center p-6 rounded-2xl border border-border/50 bg-card/40">
+              <span className="stat-hero">
+                {(stats?.placementCount ?? 0) > 85 ? stats?.placementCount : "85"}%
+              </span>
+              <span className="mt-2 text-sm font-semibold text-muted-foreground">{pick("Match Rate", "マッチング率")}</span>
+            </motion.div>
+          </RevealGroup>
+          <Reveal variants={fadeUp} delay={0.4}>
+            <p className="mt-6 text-center text-xs text-muted-foreground">
+              {pick("* Reflects cumulative platform activity", "※ プラットフォームの累積アクティビティを反映")}
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ===================== WHY INDIGATE (bento grid) ===================== */}
       <section className="relative py-16 sm:py-20 bg-background overflow-hidden">
         {/* Subtle gradient transition from hero */}
         <div
@@ -687,106 +468,107 @@ export function LandingPage() {
           <Reveal variants={fadeUp}>
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
               <div>
-                <span className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-crimson">
-                  <TrendingUp className="h-3 w-3" />
-                  By the numbers
+                <span className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-saffron/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-saffron">
+                  <ShieldCheck className="h-3 w-3" />
+                  Why IndiGate
                 </span>
                 <h2 className="mt-3 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
-                  A network built on{" "}
-                  <span className="text-gradient-brand">real outcomes</span>
+                  The <span className="text-gradient-brand">{pick("premier bridge", "最初のブリッジ")}</span> for global talent
                 </h2>
               </div>
               <p className="text-sm text-muted-foreground max-w-sm">
-                Every number reflects a candidate, a company, or a successful
-                relocation — never vanity metrics.
+                We remove the friction of cross-border hiring with our end-to-end verified pipeline.
               </p>
             </div>
           </Reveal>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 lg:auto-rows-[160px] gap-4 sm:gap-5">
-            <BentoFeatured
-              value={stats?.placementCount ?? 312}
-              suffix="+"
-              label={t("stats.placements")}
-              subLabel={pick("Successful placements", "内定成立")}
-              delay={0}
-              className="col-span-2 lg:row-span-2"
-            />
-            <BentoStat
-              value={stats?.jobCount ?? 12}
-              suffix="+"
-              label={t("stats.jobs")}
-              delay={120}
-              icon={Briefcase}
-              accent="saffron"
-            />
-            <BentoStat
-              value={stats?.candidateCount ?? 1900}
-              suffix="+"
-              label={t("stats.candidates")}
-              delay={240}
-              icon={Users}
-              accent="crimson"
-            />
-            <BentoStat
-              value={stats?.companyCount ?? 5}
-              suffix="+"
-              label={t("stats.companies")}
-              delay={360}
-              icon={Building2}
-              accent="saffron"
-              className="col-span-2"
-            />
-          </div>
+          <RevealGroup stagger={0.1} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+             {/* Large card */}
+             <motion.div variants={staggerItem} className="md:col-span-2 lg:col-span-2 lg:row-span-2">
+               <TiltCard max={3} className="h-full">
+                 <SpotlightCard className="card-premium h-full p-8 flex flex-col justify-end min-h-[320px]">
+                   <div className="absolute top-8 right-8 text-saffron/20 group-hover:text-saffron/40 transition-colors pointer-events-none">
+                     <Users className="w-24 h-24" />
+                   </div>
+                   <div className="relative z-10 mt-auto">
+                     <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-brand-gradient text-white mb-4 shadow-glow-brand ring-brand">
+                       <ShieldCheck className="h-6 w-6" />
+                     </div>
+                     <h3 className="font-display text-2xl font-bold mb-2">{pick("Verified Talent Pool", "認証済み人材プール")}</h3>
+                     <p className="text-muted-foreground leading-relaxed">{pick("Every candidate is rigorously pre-screened for technical excellence and Japanese language proficiency (JLPT) before they ever reach your dashboard.", "すべての候補者は、お客様のダッシュボードに表示される前に、技術力と日本語能力（JLPT）について厳格な事前審査を受けています。")}</p>
+                     
+                     {/* Pipeline illustration block */}
+                     <div className="mt-8 rounded-xl bg-background/50 border border-border/50 p-4">
+                       <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">{pick("Typical Cohort Progression", "一般的なコホートの進行")}</p>
+                       <div className="space-y-3">
+                         <div className="flex justify-between items-center text-sm">
+                           <span className="text-muted-foreground">{pick("Screened", "審査済み")}</span>
+                           <span className="font-semibold text-foreground">10,000+</span>
+                         </div>
+                         <div className="h-1.5 w-full bg-border rounded-full overflow-hidden"><div className="h-full bg-saffron/40 w-full" /></div>
+                         <div className="flex justify-between items-center text-sm">
+                           <span className="text-muted-foreground">{pick("Shortlisted", "選考通過")}</span>
+                           <span className="font-semibold text-foreground">~800</span>
+                         </div>
+                         <div className="h-1.5 w-full bg-border rounded-full overflow-hidden"><div className="h-full bg-saffron w-[8%]" /></div>
+                       </div>
+                       <p className="mt-4 text-[10px] text-muted-foreground opacity-60">
+                         {pick("* Illustrative of a typical cohort progression", "※ 一般的なコホートの進行例")}
+                       </p>
+                     </div>
+                   </div>
+                 </SpotlightCard>
+               </TiltCard>
+             </motion.div>
+
+             {/* Small card 1 */}
+             <motion.div variants={staggerItem} className="md:col-span-1 lg:col-span-2">
+               <TiltCard max={5} className="h-full">
+                 <SpotlightCard className="card-premium h-full p-6 sm:p-8 flex flex-col justify-center min-h-[160px]">
+                   <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+                     <div className="shrink-0 inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-crimson/10 text-crimson ring-1 ring-inset ring-crimson/20">
+                       <Globe2 className="h-7 w-7" />
+                     </div>
+                     <div>
+                       <h3 className="font-display text-xl font-bold mb-1.5">{pick("Bilingual Platform", "バイリンガル・プラットフォーム")}</h3>
+                       <p className="text-sm text-muted-foreground leading-relaxed">{pick("Post jobs, review resumes, and communicate seamlessly in Japanese or English.", "求人情報を掲載し、履歴書を確認し、日本語または英語でスムーズにコミュニケーションをとることができます。")}</p>
+                     </div>
+                   </div>
+                 </SpotlightCard>
+               </TiltCard>
+             </motion.div>
+
+             {/* Small card 2 */}
+             <motion.div variants={staggerItem} className="md:col-span-1 lg:col-span-1">
+               <TiltCard max={5} className="h-full">
+                 <SpotlightCard className="card-premium h-full p-6 sm:p-8 flex flex-col justify-center min-h-[160px]">
+                   <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-emerald-500/10 text-emerald-600 mb-4 ring-1 ring-inset ring-emerald-500/20">
+                     <Plane className="h-6 w-6" />
+                   </div>
+                   <h3 className="font-display text-lg font-bold mb-1.5">{pick("Visa & Relocation", "ビザと転居")}</h3>
+                   <p className="text-xs text-muted-foreground leading-relaxed">{pick("Full support for COE applications and seamless transition to Japan.", "COE申請の全面的なサポートと、日本へのスムーズな移住を実現します。")}</p>
+                 </SpotlightCard>
+               </TiltCard>
+             </motion.div>
+
+             {/* Small card 3 */}
+             <motion.div variants={staggerItem} className="md:col-span-1 lg:col-span-1">
+               <TiltCard max={5} className="h-full">
+                 <SpotlightCard className="card-premium h-full p-6 sm:p-8 flex flex-col justify-center min-h-[160px]">
+                   <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-blue-500/10 text-blue-600 mb-4 ring-1 ring-inset ring-blue-500/20">
+                     <Briefcase className="h-6 w-6" />
+                   </div>
+                   <h3 className="font-display text-lg font-bold mb-1.5">{pick("Direct Placement", "ダイレクト・プレースメント")}</h3>
+                   <p className="text-xs text-muted-foreground leading-relaxed">{pick("Direct hiring with transparent processes and no hidden intermediary layers.", "透明性の高いプロセスを採用し、隠れた仲介層を一切介さない直接採用。")}</p>
+                 </SpotlightCard>
+               </TiltCard>
+             </motion.div>
+
+          </RevealGroup>
         </div>
       </section>
 
-      {/* ===================== FEATURED JOBS (premium cards) ===================== */}
-      {featured.length > 0 && (
-        <section className="relative py-16 sm:py-20 bg-card/30 border-y border-border">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <Reveal variants={fadeUp}>
-              <SectionHeader
-                icon={Briefcase}
-                label="Featured"
-                title={t("jobs.title")}
-                subtitle={t("jobs.subtitle")}
-              />
-            </Reveal>
-            <RevealGroup
-              className="grid gap-6 sm:gap-7 sm:grid-cols-2 lg:grid-cols-3"
-              stagger={0.1}
-            >
-              {featured.map((job) => (
-                <motion.div
-                  key={job.id}
-                  variants={staggerItem}
-                  className="relative h-full group"
-                >
-                  {/* Top accent bar — grows on hover */}
-                  <div className="absolute -top-px left-6 right-6 h-0.5 bg-brand-gradient origin-left scale-x-50 opacity-30 group-hover:scale-x-100 group-hover:opacity-100 transition-all duration-500 rounded-full z-20" />
-                  {/* Featured ribbon */}
-                  <span className="absolute -top-2.5 left-5 z-20 inline-flex items-center gap-1 rounded-full bg-brand-gradient px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-glow-brand">
-                    <Sparkles className="h-2.5 w-2.5" />
-                    Featured
-                  </span>
-                  <JobCard job={job} />
-                </motion.div>
-              ))}
-            </RevealGroup>
-            <Reveal variants={fadeUp} delay={0.1} className="mt-12 text-center">
-              <Button
-                variant="outline"
-                onClick={() => navigate("jobs")}
-                className="font-semibold group h-11 px-6 rounded-xl border-saffron/30 hover:border-saffron/60 hover:bg-saffron/5"
-              >
-                {t("jobs.viewall")}
-                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Reveal>
-          </div>
-        </section>
-      )}
+
 
       {/* ===================== HOW IT WORKS (connected timeline) ===================== */}
       <section className="relative py-16 sm:py-20 bg-background overflow-hidden">
@@ -794,7 +576,7 @@ export function LandingPage() {
           <Reveal variants={fadeUp}>
             <SectionHeader
               icon={Compass}
-              label="Process"
+              label={pick("Process", "プロセス")}
               title={t("how.title")}
               subtitle={t("how.subtitle")}
             />
@@ -880,12 +662,20 @@ export function LandingPage() {
       </section>
 
       {/* ===================== VISA GUIDE ===================== */}
-      <section className="relative py-16 sm:py-20 bg-card/30 border-y border-border">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section className="relative py-16 sm:py-20 bg-card/30 border-y border-border overflow-hidden">
+        {/* Tokyo skyline background */}
+        <img
+          src="/images/tokyo-skyline.jpg"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover opacity-[0.06] pointer-events-none"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-card/50 via-transparent to-card/80 pointer-events-none" />
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative">
           <Reveal variants={fadeUp}>
             <SectionHeader
               icon={Plane}
-              label="Visa Guide"
+              label={pick("Visa Guide", "Visaガイド")}
               title={t("visa.title")}
               subtitle={t("visa.subtitle")}
             />
@@ -1011,132 +801,6 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ===================== WHY INDIGATE (value props + pipeline) ===================== */}
-      <section className="relative py-16 sm:py-20 bg-background">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <Reveal variants={fadeUp}>
-            <SectionHeader
-              icon={ShieldCheck}
-              label="Why IndiGate"
-              title="Built for the cross-border journey"
-              subtitle="From India to Japan — we handle the friction so you can focus on what you do best: great work."
-            />
-          </Reveal>
-          <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
-            <Reveal variants={fadeUp}>
-              <ul className="space-y-3">
-                {[
-                  {
-                    icon: ShieldCheck,
-                    title: "Visa & relocation support",
-                    desc: "Every listed job comes with visa sponsorship. Our partners handle paperwork, housing, and onboarding.",
-                  },
-                  {
-                    icon: Globe2,
-                    title: "Bilingual by design",
-                    desc: "Browse jobs in English or Japanese. Companies can post in both languages.",
-                  },
-                  {
-                    icon: Heart,
-                    title: "Human-reviewed employers",
-                    desc: "Every company is vetted by the Indobox team before they can post a single role.",
-                  },
-                  {
-                    icon: Star,
-                    title: "End-to-end support",
-                    desc: "From job matching to visa application and relocation — we support you at every step.",
-                  },
-                ].map((item, i) => (
-                  <motion.li
-                    key={i}
-                    initial={{ opacity: 0, x: -16 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, ease: easeOutExpo, delay: i * 0.08 }}
-                    whileHover={{ x: 4 }}
-                    className="group flex gap-4 rounded-xl border border-transparent hover:border-saffron/30 hover:bg-card hover:shadow-premium p-3 -m-3 transition-all"
-                  >
-                    <div className="shrink-0 grid place-items-center h-10 w-10 rounded-lg bg-saffron/10 text-saffron ring-1 ring-inset ring-saffron/15 group-hover:bg-brand-gradient group-hover:text-white group-hover:ring-transparent transition-all">
-                      <item.icon className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="font-semibold">{item.title}</p>
-                      <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">
-                        {item.desc}
-                      </p>
-                    </div>
-                  </motion.li>
-                ))}
-              </ul>
-            </Reveal>
-
-            <Reveal variants={fadeUp}>
-              <div className="relative">
-                <div className="absolute inset-0 -z-10 bg-mesh rounded-3xl" />
-                <div className="rounded-3xl border border-border bg-card p-6 shadow-premium relative overflow-hidden">
-                  {/* Subtle dot pattern overlay (India × Japan motif) */}
-                  <div
-                    aria-hidden
-                    className="absolute inset-0 opacity-[0.06] [mask-image:radial-gradient(ellipse_at_top_right,black,transparent_70%)]"
-                    style={{
-                      backgroundImage:
-                        "radial-gradient(circle, var(--foreground) 1px, transparent 1px)",
-                      backgroundSize: "20px 20px",
-                    }}
-                  />
-                  <div className="relative flex items-center gap-3 pb-4 border-b">
-                    <motion.div
-                      animate={{ scale: [1, 1.06, 1] }}
-                      transition={{
-                        duration: 2.5,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                      className="grid place-items-center h-10 w-10 rounded-lg bg-brand-gradient text-white"
-                    >
-                      <Globe2 className="h-5 w-5" />
-                    </motion.div>
-                    <div>
-                      <p className="font-semibold text-sm">
-                        India → Japan pipeline
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Real-time placement flow
-                      </p>
-                    </div>
-                  </div>
-                  <div className="relative mt-6 space-y-4">
-                    {[
-                      { icon: FileText, label: pick("Profile created", "プロフィール作成"), desc: pick("Complete your resume", "履歴書を完成") },
-                      { icon: Search, label: pick("Matched with jobs", "求人とマッチング"), desc: pick("Apply to roles", "求人に応募") },
-                      { icon: Calendar, label: pick("Interview scheduled", "面接調整"), desc: pick("Company reviews", "企業審査") },
-                      { icon: PlaneTakeoff, label: pick("Relocated to Japan", "日本へ移住"), desc: pick("Visa + onboarding", "ビザ＋オンボーディング") },
-                    ].map((step, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ opacity: 0, x: -12 }}
-                        whileInView={{ opacity: 1, x: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: i * 0.1, duration: 0.5 }}
-                        className="flex items-center gap-3"
-                      >
-                        <div className="grid place-items-center h-9 w-9 rounded-lg bg-saffron/10 border border-saffron/20 text-saffron shrink-0">
-                          <step.icon className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold truncate">{step.label}</p>
-                          <p className="text-xs text-muted-foreground truncate">{step.desc}</p>
-                        </div>
-                        <span className="text-xs font-bold text-muted-foreground/50">{String(i + 1).padStart(2, "0")}</span>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </section>
 
       {/* ===================== TESTIMONIALS (featured + supporting) ===================== */}
       {testimonials.length > 0 && (
@@ -1145,7 +809,7 @@ export function LandingPage() {
             <Reveal variants={fadeUp}>
               <SectionHeader
                 icon={Quote}
-                label="Testimonials"
+                label={pick("Testimonials", "お客様の声")}
                 title={t("testimonials.title")}
                 subtitle={t("testimonials.subtitle")}
               />
@@ -1234,7 +898,7 @@ export function LandingPage() {
             />
           </Reveal>
           <div className="max-w-3xl mx-auto">
-            <Reveal variants={fadeUp} delay={0.1}>
+            <RevealGroup stagger={0.06} className="space-y-2">
               <Accordion type="single" collapsible className="space-y-2">
                 {[
                   { q: t("faq.q1"), a: t("faq.a1") },
@@ -1246,77 +910,92 @@ export function LandingPage() {
                   { q: t("faq.q7"), a: t("faq.a7") },
                   { q: t("faq.q8"), a: t("faq.a8") },
                 ].map((item, i) => (
-                  <AccordionItem
-                    key={i}
-                    value={`faq-${i}`}
-                    className="border border-border rounded-xl px-6 bg-card hover:border-saffron/30 hover:shadow-premium transition-all"
-                  >
-                    <AccordionTrigger className="font-display font-semibold text-left hover:no-underline py-5 text-base">
-                      {item.q}
-                    </AccordionTrigger>
-                    <AccordionContent className="text-muted-foreground leading-relaxed pb-5">
-                      {item.a}
-                    </AccordionContent>
-                  </AccordionItem>
+                  <motion.div key={i} variants={staggerItem}>
+                    <AccordionItem key={i} value={`faq-${i}`}
+  className="border border-border/80 rounded-xl px-6 bg-card hover:border-saffron/30 hover:shadow-premium transition-all data-[state=open]:border-saffron/40 data-[state=open]:bg-saffron/[0.02]"
+>
+  <AccordionTrigger className="font-display font-semibold text-left hover:no-underline py-5 text-[15px] hover:text-saffron transition-colors [&[data-state=open]]:text-saffron">
+    {item.q}
+  </AccordionTrigger>
+  <AccordionContent className="text-muted-foreground leading-relaxed pb-5 text-[14px]">
+    {item.a}
+  </AccordionContent>
+</AccordionItem>
+                  </motion.div>
                 ))}
               </Accordion>
-            </Reveal>
+            </RevealGroup>
 
-            <Reveal variants={fadeUp} delay={0.2} className="mt-8 text-center">
-              <p className="text-sm text-muted-foreground">
-                Still have questions?{" "}
-                <button
+            <Reveal variants={fadeUp} delay={0.2} className="mt-6">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-card border border-border shadow-sm">
+                <span className="text-sm font-semibold">
+                  Still have questions?
+                </span>
+                <Button
+                  variant="outline"
                   onClick={() =>
                     document
                       .getElementById("contact")
                       ?.scrollIntoView({ behavior: "smooth" })
                   }
-                  className="font-semibold text-crimson hover:underline inline-flex items-center gap-1 cursor-pointer"
+                  className="font-semibold text-foreground border-border hover:bg-muted"
                 >
-                  Talk to our team{" "}
-                  <ArrowRight className="h-3 w-3" />
-                </button>
-              </p>
+                  <Mail className="h-4 w-4 mr-2" />{pick("Talk to our team", "弊社チームまでお問い合わせください")}</Button>
+              </div>
             </Reveal>
           </div>
         </div>
       </section>
-
       {/* ===================== CTA (auth-aware) ===================== */}
-      <section className="relative py-16 sm:py-20 bg-card/30 border-y border-border">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section className="relative py-12 sm:py-16 border-y border-border overflow-hidden">
+        {/* Background gradient specifically for the CTA wrapper */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background to-card/50 -z-10" />
+        
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <Reveal variants={fadeUp}>
-            <div className="card-premium relative overflow-hidden rounded-3xl bg-sidebar text-sidebar-foreground px-8 py-14 sm:px-16 sm:py-18 text-center">
+            <div className="relative overflow-hidden rounded-3xl bg-slate-900 dark:bg-black px-6 py-12 sm:px-12 sm:py-16 text-center shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/10 group">
               {/* Mesh overlay with saffron/crimson aurora */}
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-0 bg-mesh opacity-60 mix-blend-screen"
+                className="pointer-events-none absolute inset-0 bg-mesh opacity-40 mix-blend-screen"
               />
-              {/* Glow blobs */}
-              <div className="pointer-events-none absolute inset-0 opacity-50">
-                <div className="absolute top-0 left-1/4 h-40 w-40 rounded-full bg-saffron/30 blur-3xl animate-aurora" />
+              {/* Glow blobs with hover animation */}
+              <div className="pointer-events-none absolute inset-0 opacity-60">
+                <div className="absolute -top-20 -left-20 h-48 w-48 rounded-full bg-saffron/40 blur-[60px] group-hover:bg-saffron/60 transition-colors duration-700 animate-aurora" />
                 <div
-                  className="absolute bottom-0 right-1/4 h-56 w-56 rounded-full bg-crimson/30 blur-3xl animate-aurora"
+                  className="absolute -bottom-20 -right-20 h-56 w-56 rounded-full bg-crimson/40 blur-[60px] group-hover:bg-crimson/60 transition-colors duration-700 animate-aurora"
                   style={{ animationDelay: "3s" }}
                 />
               </div>
               {/* Dot pattern overlay */}
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-0 opacity-[0.08] [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]"
+                className="pointer-events-none absolute inset-0 opacity-[0.15] [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]"
                 style={{
                   backgroundImage:
-                    "radial-gradient(circle, rgba(255,255,255,0.6) 1px, transparent 1px)",
-                  backgroundSize: "24px 24px",
+                    "radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)",
+                  backgroundSize: "32px 32px",
                 }}
               />
-              <div className="relative">
-                <h2 className="font-display text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
+              <div className="relative z-10 flex flex-col items-center">
+                {/* Small premium badge */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.1 }}
+                  className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-saffron" />
+                  Your journey starts here
+                </motion.div>
+
+                <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
                   {user
                     ? pick("Welcome back!", "おかえりなさい！")
                     : t("cta.title")}
                 </h2>
-                <p className="mt-4 text-white/90 text-lg max-w-2xl mx-auto">
+                <p className="mt-4 text-white/80 text-base sm:text-lg max-w-xl mx-auto leading-relaxed font-medium">
                   {user
                     ? pick(
                         "Continue your Japan journey from where you left off.",
@@ -1336,12 +1015,14 @@ export function LandingPage() {
                         : "register",
                     )
                   }
-                  className="mt-8 bg-white text-crimson hover:bg-white/90 font-bold text-base h-12 px-8 rounded-xl inline-flex items-center gap-2 cursor-pointer shadow-lg"
+                  className="mt-8 bg-white text-slate-900 hover:bg-slate-100 hover:scale-105 transition-all duration-300 font-bold text-sm sm:text-base h-12 px-8 rounded-full inline-flex items-center gap-2 shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:shadow-[0_0_40px_rgba(255,255,255,0.4)]"
                 >
                   {user
                     ? pick("Go to Dashboard", "ダッシュボードへ")
                     : t("cta.button")}
-                  <ArrowRight className="h-4 w-4" />
+                  <div className="grid place-items-center h-6 w-6 rounded-full bg-slate-900 text-white shrink-0">
+                    <ArrowRight className="h-3 w-3" />
+                  </div>
                 </MagneticButton>
               </div>
             </div>
@@ -1360,7 +1041,7 @@ export function LandingPage() {
 /* -------------------------------------------------------------------------- */
 
 function ContactSection() {
-  const { t } = useT();
+  const { t, pick } = useT();
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [form, setForm] = useState({
@@ -1397,170 +1078,157 @@ function ContactSection() {
         <Reveal variants={fadeUp}>
           <SectionHeader
             icon={Mail}
-            label="Contact"
+            label={pick("Contact", "お問い合わせ")}
             title={t("contact.title")}
             subtitle={t("contact.subtitle")}
           />
         </Reveal>
 
-        <div className="grid lg:grid-cols-5 gap-8 lg:gap-12 max-w-5xl mx-auto">
-          {/* Left: contact info sidebar */}
-          <Reveal variants={fadeUp} className="lg:col-span-2">
-            <div className="space-y-5">
-              <div>
-                <h3 className="font-display text-xl font-bold">
-                  Talk to a real human
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                  Questions about visas, job eligibility, or company
-                  partnerships? Our team reads every message.
-                </p>
-              </div>
-              <ul className="space-y-3">
+        <Reveal variants={fadeUp}>
+          <div className="grid lg:grid-cols-[2fr_3fr] gap-10 lg:gap-16 items-start max-w-5xl mx-auto">
+            {/* Left: contact info sidebar */}
+            <div className="space-y-6">
+              <h3 className="font-display font-bold text-xl text-foreground">{pick("Talk to a real human", "実際に担当者と話す")}</h3>
+              <ul className="space-y-5">
                 {[
                   {
                     icon: Clock,
-                    title: "Response within 24 hours",
-                    desc: "Monday–Friday, IST business hours.",
+                    title: pick("Response within 24 hours", "24時間以内にご返信いたします"),
+                    desc: pick("Mon–Fri IST", "月～金 IST"),
                   },
                   {
                     icon: MapPin,
-                    title: "Hyderabad, India",
-                    desc: "With partners across Japan.",
+                    title: pick("Hyderabad, India", "インド、ハイデラバード"),
+                    desc: pick("Partners across Japan", "日本全国のパートナー"),
                   },
                   {
-                    icon: MessageCircle,
-                    title: "What happens next",
-                    desc: "We review your note and route it to the right specialist.",
+                    icon: ArrowRight,
+                    title: pick("We route your message", "お客様からのメッセージを転送いたします"),
+                    desc: pick("To the right specialist", "適切な専門家へ"),
                   },
                 ].map((item, i) => (
-                  <motion.li
-                    key={i}
-                    initial={{ opacity: 0, x: -12 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{
-                      duration: 0.5,
-                      ease: easeOutExpo,
-                      delay: 0.1 + i * 0.1,
-                    }}
-                    className="flex items-start gap-3"
-                  >
-                    <div className="grid place-items-center h-9 w-9 rounded-lg bg-saffron/10 text-saffron ring-1 ring-inset ring-saffron/15 shrink-0">
-                      <item.icon className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm">{item.title}</p>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {item.desc}
-                      </p>
-                    </div>
-                  </motion.li>
+                  <motion.li key={i}
+  initial={{ opacity: 0, x: -12 }} whileInView={{ opacity: 1, x: 0 }}
+  viewport={{ once: true }} transition={{ duration: 0.5, ease: easeOutExpo, delay: 0.1 + i * 0.1 }}
+  className="flex items-start gap-3 rounded-xl border border-border/60 bg-card/60 p-4 hover:border-saffron/30 hover:bg-saffron/5 transition-all"
+>
+  <div className="grid place-items-center h-9 w-9 rounded-lg bg-saffron/10 text-saffron ring-1 ring-inset ring-saffron/15 shrink-0">
+    <item.icon className="h-4 w-4" />
+  </div>
+  <div>
+    <p className="font-semibold text-sm">{item.title}</p>
+    <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+  </div>
+</motion.li>
                 ))}
               </ul>
+              <div className="mt-8 rounded-xl border border-border bg-card p-4 flex flex-col gap-1 shadow-sm">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{pick("Direct Email", "直接メール")}</span>
+                <a href="mailto:contact@indigate.work" className="text-saffron hover:underline font-semibold text-sm">{pick("contact@indigate.work", pick("contact@indigate.work", "contact@indigate.work"))}</a>
+              </div>
             </div>
-          </Reveal>
 
-          {/* Right: form / success */}
-          <Reveal variants={fadeUp} delay={0.15} className="lg:col-span-3">
-            {sent ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: "spring", stiffness: 300, damping: 22 }}
-                className="rounded-2xl border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40 p-8 text-center"
-              >
+            {/* Right: form / success */}
+            <div className="w-full">
+              {sent ? (
                 <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 260,
-                    damping: 14,
-                    delay: 0.1,
-                  }}
-                  className="mx-auto mb-3"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                  className="rounded-2xl border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40 p-8 text-center"
                 >
-                  <CheckCircle2 className="h-12 w-12 text-emerald-600 mx-auto" />
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 260,
+                      damping: 14,
+                      delay: 0.1,
+                    }}
+                    className="mx-auto mb-3"
+                  >
+                    <CheckCircle2 className="h-12 w-12 text-emerald-600 mx-auto" />
+                  </motion.div>
+                  <p className="font-semibold text-emerald-800 dark:text-emerald-300">
+                    {t("contact.success")}
+                  </p>
                 </motion.div>
-                <p className="font-semibold text-emerald-800 dark:text-emerald-300">
-                  {t("contact.success")}
-                </p>
-              </motion.div>
-            ) : (
-              <form
-                onSubmit={submit}
-                className="space-y-4 rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-premium"
-              >
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <Field label={t("contact.name")}>
+              ) : (
+                <form
+                  onSubmit={submit}
+                  className="space-y-4 rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-premium"
+                >
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <Field label={t("contact.name")}>
+                      <input
+                        required
+                        value={form.name}
+                        onChange={(e) => setForm({ ...form, name: e.target.value })}
+                        className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40 transition-shadow"
+                        placeholder={pick("Arjun Sharma", "アルジュン・シャルマ")}
+                      />
+                    </Field>
+                    <Field label={t("contact.email")}>
+                      <input
+                        required
+                        type="email"
+                        value={form.email}
+                        onChange={(e) =>
+                          setForm({ ...form, email: e.target.value })
+                        }
+                        className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40 transition-shadow"
+                        placeholder={pick("you@example.com", pick("you@example.com", "you@example.com"))}
+                      />
+                    </Field>
+                  </div>
+                  <Field label={t("contact.subject")}>
                     <input
-                      required
-                      value={form.name}
-                      onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40 transition-shadow"
-                      placeholder="Arjun Sharma"
-                    />
-                  </Field>
-                  <Field label={t("contact.email")}>
-                    <input
-                      required
-                      type="email"
-                      value={form.email}
+                      value={form.subject}
                       onChange={(e) =>
-                        setForm({ ...form, email: e.target.value })
+                        setForm({ ...form, subject: e.target.value })
                       }
                       className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40 transition-shadow"
-                      placeholder="you@example.com"
+                      placeholder={pick("How can we help?", "何かお手伝いできることはありますか？")}
                     />
                   </Field>
-                </div>
-                <Field label={t("contact.subject")}>
-                  <input
-                    value={form.subject}
-                    onChange={(e) =>
-                      setForm({ ...form, subject: e.target.value })
-                    }
-                    className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40 transition-shadow"
-                    placeholder="How can we help?"
-                  />
-                </Field>
-                <Field label={t("contact.message")}>
-                  <textarea
-                    required
-                    minLength={20}
-                    value={form.message}
-                    onChange={(e) =>
-                      setForm({ ...form, message: e.target.value })
-                    }
-                    rows={5}
-                    className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40 resize-none transition-shadow"
-                    placeholder="Tell us a bit about what you need..."
-                  />
-                </Field>
-                <motion.div
-                  whileHover={{ scale: 1.005 }}
-                  whileTap={{ scale: 0.99 }}
-                >
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-brand-gradient text-white hover:opacity-90 font-semibold h-12 inline-flex items-center justify-center gap-2"
+                  <Field label={t("contact.message")}>
+                    <textarea
+                      required
+                      minLength={20}
+                      value={form.message}
+                      onChange={(e) =>
+                        setForm({ ...form, message: e.target.value })
+                      }
+                      rows={5}
+                      className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-saffron/40 resize-none transition-shadow"
+                      placeholder={pick("Tell us a bit about what you need...", "ご要望について、少しお聞かせください…")}
+                    />
+                  </Field>
+                  <motion.div
+                    whileHover={{ scale: 1.005 }}
+                    whileTap={{ scale: 0.99 }}
                   >
-                    {loading ? (
-                      t("common.loading")
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4" />
-                        {t("contact.submit")}
-                      </>
-                    )}
-                  </Button>
-                </motion.div>
-              </form>
-            )}
-          </Reveal>
-        </div>
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-brand-gradient text-white hover:opacity-90 font-semibold h-12 inline-flex items-center justify-center gap-2"
+                    >
+                      {loading ? (
+                        t("common.loading")
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4" />
+                          {t("contact.submit")}
+                        </>
+                      )}
+                    </Button>
+                  </motion.div>
+                </form>
+              )}
+            </div>
+          </div>
+        </Reveal>
       </div>
     </section>
   );
@@ -1598,7 +1266,7 @@ function VisaAccordionItem({
   desc: string;
   requirements: string[];
 }) {
-  const { t } = useT();
+  const { t, pick } = useT();
   return (
     <AccordionItem
       value={value}

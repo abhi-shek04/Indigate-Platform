@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -40,7 +40,7 @@ import {
   MapPin,
   ListChecks,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -104,6 +104,21 @@ function computeProgress(data: ResumeData): number {
   );
 }
 
+function getSectionCompletion(data: ResumeData): Record<string, boolean> {
+  return {
+    "section-personal":       !!(data.name?.trim() && data.email?.trim()),
+    "section-education":      data.education.length > 0,
+    "section-experience":     data.activities.length > 0,
+    "section-certifications": data.awards.length > 0,
+    "section-projects":       data.projects.length > 0,
+    "section-skills":         data.skills.length > 0,
+    "section-excel":          (data.skillsExcelSummary?.length ?? 0) > 0,
+    "section-jlpt":           !!(data.currentJlpt || data.otherLanguages?.trim()),
+    "section-japan":          !!(data.japanMotivation?.whyJapan?.trim()),
+    "section-selfpr":         !!(data.selfPr?.trim() || data.hobbies?.trim()),
+  };
+}
+
 export function ResumeBuilder() {
   const { t } = useT();
   const navigate = useApp((s) => s.navigate);
@@ -113,6 +128,7 @@ export function ResumeBuilder() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<Tab>("edit");
+  const sectionCompletion = getSectionCompletion(data);
   const [langInput, setLangInput] = useState("");
   const [activeSection, setActiveSection] = useState<string>(
     "section-personal",
@@ -161,6 +177,13 @@ export function ResumeBuilder() {
         setData({
           ...EMPTY_RESUME,
           ...res.resumeData,
+          education: res.resumeData.education ?? EMPTY_RESUME.education,
+          activities: res.resumeData.activities ?? EMPTY_RESUME.activities,
+          projects: res.resumeData.projects ?? EMPTY_RESUME.projects,
+          awards: res.resumeData.awards ?? EMPTY_RESUME.awards,
+          skills: res.resumeData.skills ?? EMPTY_RESUME.skills,
+          languages: res.resumeData.languages ?? EMPTY_RESUME.languages,
+          languagesJa: res.resumeData.languagesJa ?? EMPTY_RESUME.languagesJa,
           japanMotivation: {
             ...EMPTY_RESUME.japanMotivation,
             ...(res.resumeData.japanMotivation ?? {}),
@@ -384,121 +407,192 @@ export function ResumeBuilder() {
   const progress = computeProgress(data);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8 print:max-w-none print:p-0">
-      {/* Header */}
-      <div className="print:hidden flex items-center justify-between flex-wrap gap-4 mb-6">
-        <div>
-          <button
-            onClick={() => navigate("candidate")}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground mb-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {t("common.back")}
-          </button>
-          <h1 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight flex items-center gap-2">
-            <FileText className="h-7 w-7 text-saffron" />
-            Resume Builder
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Create your resume in English first, then translate to Japanese with AI.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button onClick={save} disabled={saving} className="bg-brand-gradient text-white hover:opacity-90 font-semibold">
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            Save
-          </Button>
-          <Button onClick={print} variant="ghost" size="sm" className="font-semibold h-9">
-            <Printer className="h-4 w-4 mr-1.5" />
-            Print
-          </Button>
+    <div className="min-h-screen bg-background pb-12 print:p-0 print:bg-white">
+      {/* Premium Sticky Action Header */}
+      <div className="print:hidden sticky top-0 z-50 w-full backdrop-blur-xl bg-background/85 border-b border-border shadow-sm mb-8">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate("candidate")}
+              className="grid place-items-center h-9 w-9 rounded-full bg-muted hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <div>
+              <h1 className="font-display text-xl sm:text-2xl font-extrabold tracking-tight flex items-center gap-2">
+                <FileText className="h-6 w-6 text-saffron" />
+                Resume Builder
+              </h1>
+              <p className="text-[13px] text-muted-foreground hidden sm:block">
+                Auto-saves as you type • English first, AI translation to Japanese
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button onClick={print} variant="outline" size="sm" className="font-semibold h-10 px-4 rounded-xl border-border hover:bg-accent">
+                <Printer className="h-4 w-4 mr-2" />
+                Print PDF
+              </Button>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button onClick={save} disabled={saving} className="bg-brand-gradient text-white h-10 px-5 rounded-xl font-bold shadow-glow-brand hover:opacity-90 transition-opacity border-none">
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Save Draft
+              </Button>
+            </motion.div>
+          </div>
         </div>
       </div>
 
-      {/* 4-step stepper */}
-      <div className="print:hidden flex items-center gap-0 mb-8 overflow-x-auto pb-1">
-        {[
-          { key: "edit" as const, step: 1, label: "Fill English Form", icon: FileText },
-          { key: "preview-en" as const, step: 2, label: "Preview & Download EN", icon: Eye },
-          { key: "translate" as const, step: 3, label: "AI Translate to 日本語", icon: Languages },
-          { key: "preview-ja" as const, step: 4, label: "Japanese 履歴書", icon: Globe },
-        ].map((s, i, arr) => {
-          const isActive = tab === s.key;
-          const isDone =
-            (s.key === "edit" && tab !== "edit") ||
-            (s.key === "preview-en" && (tab === "translate" || tab === "preview-ja")) ||
-            (s.key === "translate" && tab === "preview-ja" && translated);
-          const isDisabled =
-            (s.key === "translate" && !data.name) ||
-            (s.key === "preview-ja" && !translated);
-          return (
-            <div key={s.key} className="flex items-center">
-              <button
-                onClick={() => !isDisabled && setTab(s.key)}
-                disabled={isDisabled}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all",
-                  isActive && "bg-card shadow-premium text-foreground border border-border",
-                  isDone && !isActive && "text-saffron hover:text-saffron/80",
-                  !isActive && !isDone && !isDisabled && "text-muted-foreground hover:text-foreground",
-                  isDisabled && "text-muted-foreground/40 cursor-not-allowed",
-                )}
-              >
-                <span className={cn(
-                  "grid place-items-center h-6 w-6 rounded-full text-xs font-bold shrink-0 transition-colors",
-                  isActive && "bg-saffron text-white",
-                  isDone && !isActive && "bg-saffron/20 text-saffron",
-                  !isActive && !isDone && "bg-muted text-muted-foreground",
-                )}>
-                  {isDone ? "✓" : s.step}
-                </span>
-                {s.label}
-              </button>
-              {i < arr.length - 1 && (
-                <div className="w-6 h-px bg-border mx-1 shrink-0" />
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 print:max-w-none print:px-0">
+        {/* Premium 4-step Stepper */}
+        <div className="print:hidden flex items-center justify-center mb-10 overflow-x-auto pb-4">
+          <div className="flex items-center bg-muted/40 p-1.5 rounded-2xl border border-border/50">
+            {[
+              { key: "edit" as const, step: 1, label: "Fill English Form", icon: FileText },
+              { key: "preview-en" as const, step: 2, label: "Preview EN", icon: Eye },
+              { key: "translate" as const, step: 3, label: "AI Translate to 日本語", icon: Sparkles },
+              { key: "preview-ja" as const, step: 4, label: "Japanese 履歴書", icon: Globe },
+            ].map((s, i, arr) => {
+              const isActive = tab === s.key;
+              const isDone =
+                (s.key === "edit" && tab !== "edit") ||
+                (s.key === "preview-en" && (tab === "translate" || tab === "preview-ja")) ||
+                (s.key === "translate" && tab === "preview-ja" && translated);
+              const isDisabled =
+                (s.key === "translate" && !data.name) ||
+                (s.key === "preview-ja" && !translated);
+
+              return (
+                <div key={s.key} className="relative flex items-center">
+                  <button
+                    onClick={() => !isDisabled && setTab(s.key)}
+                    disabled={isDisabled}
+                    className={cn(
+                      "relative z-10 flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors duration-200",
+                      isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                      isDisabled && "text-muted-foreground/30 cursor-not-allowed"
+                    )}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeTabPill"
+                        className="absolute inset-0 bg-background rounded-xl border border-border/60 shadow-sm"
+                        initial={false}
+                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                      />
+                    )}
+                    <div className="relative z-20 flex items-center gap-2.5">
+                      <span className={cn(
+                        "grid place-items-center h-6 w-6 rounded-full text-[11px] font-bold shrink-0 transition-colors duration-300",
+                        isActive && "bg-saffron text-white shadow-[0_0_12px_rgba(var(--saffron-rgb,245,158,11),0.4)]",
+                        isDone && !isActive && "bg-saffron/15 text-saffron",
+                        !isActive && !isDone && "bg-muted-foreground/15 text-muted-foreground",
+                        isDisabled && "bg-muted/50 text-muted-foreground/30"
+                      )}>
+                        {isDone ? "✓" : s.step}
+                      </span>
+                      <span>{s.label}</span>
+                    </div>
+                  </button>
+                  {i < arr.length - 1 && (
+                    <div className="w-8 h-[2px] bg-border/40 mx-1 shrink-0 rounded-full" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <AnimatePresence mode="wait">
 
       {/* Edit form */}
       {tab === "edit" && (
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
+          key="edit"
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
           className="print:hidden space-y-6"
         >
+          {/* AI Polish banner — only show if at least one prose section is partially filled */}
+          {(data.selfPr?.trim() || data.projects.some(p => p.description) || data.activities.some(a => a.duties)) && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 rounded-xl border border-saffron/25 bg-saffron/5 px-4 py-3 flex items-center gap-3"
+            >
+              <div className="grid place-items-center h-8 w-8 rounded-lg bg-saffron/15 text-saffron shrink-0">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-semibold text-foreground">
+                  AI Polish is available
+                </p>
+                <p className="text-[11.5px] text-muted-foreground">
+                  Look for the <span className="text-saffron font-semibold">✨ AI Polish</span> button
+                  below any text field to improve it instantly.
+                </p>
+              </div>
+            </motion.div>
+          )}
+
           <div className="lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-6 xl:gap-8 items-start">
             {/* Sidebar — sticky nav (lg+ only; mobile keeps single column) */}
             <aside className="hidden lg:block print:hidden">
               <div className="sticky top-6 space-y-3">
                 {/* Progress card */}
-                <div className="rounded-2xl border border-border bg-card p-4 shadow-premium">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Progress
-                    </span>
-                    <span className="font-display text-sm font-bold text-gradient-brand">
-                      {progress}%
-                    </span>
+                <div className="rounded-2xl border border-border bg-card p-4 shadow-premium relative overflow-hidden">
+                  {/* Subtle glow behind the number */}
+                  <span
+                    className="absolute -top-4 -right-4 h-16 w-16 rounded-full blur-2xl pointer-events-none"
+                    style={{ background: "color-mix(in oklch, var(--saffron) 20%, transparent)" }}
+                  />
+                  <div className="relative flex items-start justify-between mb-3">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70 mb-0.5">
+                        Profile Strength
+                      </p>
+                      <p className="text-[11px] text-muted-foreground leading-snug">
+                        {progress === 100
+                          ? "🎉 All sections complete!"
+                          : `${SECTIONS.length - Object.values(sectionCompletion).filter(Boolean).length} sections remaining`}
+                      </p>
+                    </div>
                   </div>
-                  <Progress value={progress} className="h-2 bg-muted" />
-                  <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
-                    {progress === 100
-                      ? "Looking great — resume is complete!"
-                      : "Fill in each section to complete your resume."}
-                  </p>
+                  {/* Segmented bar — 10 segments */}
+                  <div className="flex gap-0.5">
+                    {Array.from({ length: 10 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          "h-1.5 flex-1 rounded-full transition-all duration-500",
+                          i < Math.round(progress / 10) ? "bg-brand-gradient" : "bg-muted",
+                        )}
+                        style={{ transitionDelay: `${i * 50}ms` }}
+                      />
+                    ))}
+                  </div>
                 </div>
+
                 {/* Section nav */}
-                <nav
-                  aria-label="Resume sections"
-                  className="rounded-2xl border border-border bg-card p-2 shadow-premium"
-                >
-                  <ul className="space-y-0.5">
-                    {SECTIONS.map((s) => {
+                <nav aria-label="Resume sections" className="rounded-2xl border border-border bg-card overflow-hidden shadow-premium">
+                  {/* Nav header */}
+                  <div className="px-3 pt-3 pb-2 border-b border-border/60">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">
+                      Sections
+                    </p>
+                  </div>
+
+                  <ul className="p-2 space-y-0.5">
+                    {SECTIONS.map((s, idx) => {
                       const active = activeSection === s.id;
+                      const done = sectionCompletion[s.id] ?? false;
                       const Icon = s.icon;
+                      const stepNum = String(idx + 1).padStart(2, "0");
+
                       return (
                         <li key={s.id}>
                           <button
@@ -506,22 +600,90 @@ export function ResumeBuilder() {
                             onClick={() => scrollToSection(s.id)}
                             aria-current={active ? "true" : undefined}
                             className={cn(
-                              "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left",
-                              active
-                                ? "bg-saffron/10 text-saffron shadow-sm"
-                                : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
+                              // Base
+                              "group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl",
+                              "text-left transition-all duration-150",
+                              // Active
+                              active && [
+                                "bg-saffron/10 shadow-sm",
+                                "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2",
+                                "before:h-[60%] before:w-[3px] before:rounded-r-full before:bg-saffron",
+                                "before:shadow-[0_0_8px_rgba(var(--saffron-rgb,245,158,11),0.6)]",
+                              ],
+                              // Inactive
+                              !active && "hover:bg-accent/40",
                             )}
                           >
-                            <Icon className="h-4 w-4 shrink-0" />
-                            <span className="truncate">{s.label}</span>
-                            {active && (
-                              <span className="ml-auto h-1.5 w-1.5 rounded-full bg-saffron shadow-glow-brand" />
+                            {/* Step number — shows as faded watermark */}
+                            <span className={cn(
+                              "shrink-0 font-mono text-[10px] font-bold tracking-tight w-5 text-right leading-none",
+                              active ? "text-saffron" : "text-muted-foreground/35",
+                            )}>
+                              {stepNum}
+                            </span>
+
+                            {/* Icon badge */}
+                            <span className={cn(
+                              "shrink-0 grid place-items-center h-7 w-7 rounded-lg transition-colors",
+                              active
+                                ? "bg-saffron/15 text-saffron"
+                                : "bg-muted/60 text-muted-foreground group-hover:bg-accent group-hover:text-foreground",
+                            )}>
+                              <Icon className="h-3.5 w-3.5" />
+                            </span>
+
+                            {/* Label */}
+                            <span className={cn(
+                              "flex-1 truncate text-[13px] transition-colors font-medium",
+                              active ? "text-saffron font-semibold" : "text-muted-foreground group-hover:text-foreground",
+                            )}>
+                              {s.label}
+                            </span>
+
+                            {/* Completion indicator */}
+                            {done ? (
+                              <span className={cn(
+                                "shrink-0 grid place-items-center h-4 w-4 rounded-full",
+                                active ? "bg-saffron/20 text-saffron" : "bg-emerald-500/15 text-emerald-500",
+                              )}>
+                                {/* Checkmark SVG — small enough to fit in h-4 w-4 */}
+                                <svg viewBox="0 0 12 12" className="h-2.5 w-2.5" fill="none">
+                                  <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.8"
+                                    strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </span>
+                            ) : (
+                              <span className="shrink-0 h-1.5 w-1.5 rounded-full bg-muted-foreground/20" />
                             )}
                           </button>
                         </li>
                       );
                     })}
                   </ul>
+
+                  {/* Completion summary footer */}
+                  <div className="px-3 py-2.5 border-t border-border/60 bg-muted/20">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                        Complete
+                      </span>
+                      <span className="text-[11px] font-bold text-gradient-brand font-display">
+                        {Object.values(sectionCompletion).filter(Boolean).length} / {SECTIONS.length}
+                      </span>
+                    </div>
+                    <div className="flex gap-0.5">
+                      {SECTIONS.map((s, i) => (
+                        <div
+                          key={s.id}
+                          className={cn(
+                            "h-1 flex-1 rounded-full transition-colors duration-500",
+                            sectionCompletion[s.id] ? "bg-brand-gradient" : "bg-muted",
+                          )}
+                          style={{ transitionDelay: `${i * 40}ms` }}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </nav>
               </div>
             </aside>
@@ -532,7 +694,7 @@ export function ResumeBuilder() {
           <Section id="section-personal" icon={User} title="Personal Information" desc="Your basic details — selectable fields make it faster">
             <div className="grid sm:grid-cols-2 gap-4">
               <Field label="Full name">
-                <Input value={data.name} onChange={(e) => update("name", e.target.value)} placeholder="Abhishek" />
+                <Input value={data.name} onChange={(e) => update("name", e.target.value)} placeholder="e.g., John Doe" />
               </Field>
               <Field label="Date of birth">
                 <Input type="date" value={data.dob ?? ""} onChange={(e) => update("dob", e.target.value)} />
@@ -552,10 +714,10 @@ export function ResumeBuilder() {
                 </Select>
               </Field>
               <Field label="Email">
-                <Input type="email" value={data.email} onChange={(e) => update("email", e.target.value)} placeholder="you@example.com" />
+                <Input type="email" value={data.email} onChange={(e) => update("email", e.target.value)} placeholder="e.g., you@example.com" />
               </Field>
               <Field label="Phone">
-                <Input value={data.phone ?? ""} onChange={(e) => update("phone", e.target.value)} placeholder="+91 98765 43210" />
+                <Input value={data.phone ?? ""} onChange={(e) => update("phone", e.target.value)} placeholder="e.g., +1 234 567 8900" />
               </Field>
               <Field label="Nationality">
                 <Select value={data.nationality ?? ""} onValueChange={(v) => update("nationality", v)}>
@@ -590,13 +752,13 @@ export function ResumeBuilder() {
                 </Select>
               </Field>
               <Field label="Address" className="sm:col-span-2">
-                <Input value={data.address ?? ""} onChange={(e) => update("address", e.target.value)} placeholder="Nellore, Andhra Pradesh, 524344, India" />
+                <Input value={data.address ?? ""} onChange={(e) => update("address", e.target.value)} placeholder="e.g., 123 Example Street, City, Country" />
               </Field>
               <Field label="Current degree being pursued" className="sm:col-span-2">
-                <Input value={data.currentDegree ?? ""} onChange={(e) => update("currentDegree", e.target.value)} placeholder="Bachelors in Technology, Computer Science Engineering" />
+                <Input value={data.currentDegree ?? ""} onChange={(e) => update("currentDegree", e.target.value)} placeholder="e.g., Bachelors in Technology, Computer Science Engineering" />
               </Field>
               <Field label="Expected time of graduation" className="sm:col-span-2">
-                <Input value={data.expectedGraduation ?? ""} onChange={(e) => update("expectedGraduation", e.target.value)} placeholder="06/2026" />
+                <Input value={data.expectedGraduation ?? ""} onChange={(e) => update("expectedGraduation", e.target.value)} placeholder="e.g., 06/2026" />
               </Field>
               <Field label="Languages known" className="sm:col-span-2">
                 <div className="space-y-2">
@@ -637,185 +799,189 @@ export function ResumeBuilder() {
 
           {/* Education */}
           <Section id="section-education" icon={GraduationCap} title="Education" desc="Academic history" action={<AddButton onClick={addEducation} />}>
-            <div className="space-y-4">
-              {data.education.length === 0 && <EmptyHint text="No education entries yet. Click Add to start." />}
-              {data.education.map((edu, i) => (
+            <motion.div layout className="space-y-5">
+              <AnimatePresence initial={false}>
+                {data.education.length === 0 && <EmptyHint key="empty-edu" text="No education entries yet. Click Add to start." />}
+                {data.education.map((edu, i) => (
                 <Card key={i} onRemove={() => removeEducation(i)}>
                   <div className="grid sm:grid-cols-2 gap-3">
                     <Field label="Year (graduation)">
-                      <Input value={edu.year} onChange={(e) => updateEducation(i, { year: e.target.value })} placeholder="2026" />
+                      <Input value={edu.year} onChange={(e) => updateEducation(i, { year: e.target.value })} placeholder="e.g., 2026" />
                     </Field>
                     <Field label="Month">
-                      <Input value={edu.month ?? ""} onChange={(e) => updateEducation(i, { month: e.target.value })} placeholder="6" />
+                      <Input value={edu.month ?? ""} onChange={(e) => updateEducation(i, { month: e.target.value })} placeholder="e.g., 6" />
                     </Field>
                     <Field label="Institution (School / University)" className="sm:col-span-2">
-                      <Input value={edu.institution} onChange={(e) => updateEducation(i, { institution: e.target.value })} placeholder="SRM UNIVERSITY AP, India" />
+                      <Input value={edu.institution} onChange={(e) => updateEducation(i, { institution: e.target.value })} placeholder="e.g., Tokyo University" />
                     </Field>
                     <Field label="Degree (combined text shown in PDF)" className="sm:col-span-2">
-                      <Input value={edu.degree} onChange={(e) => updateEducation(i, { degree: e.target.value })} placeholder="Bachelors in Technology with Major in Computer Science." />
+                      <Input value={edu.degree} onChange={(e) => updateEducation(i, { degree: e.target.value })} placeholder="e.g., Bachelor of Engineering" />
                     </Field>
                     <Field label="Field / Specialization" className="sm:col-span-2">
-                      <Input value={edu.field} onChange={(e) => updateEducation(i, { field: e.target.value })} placeholder="Computer Science" />
+                      <Input value={edu.field} onChange={(e) => updateEducation(i, { field: e.target.value })} placeholder="e.g., Information Technology" />
                     </Field>
                   </div>
                 </Card>
-              ))}
-            </div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
           </Section>
 
           {/* Work Experience */}
           <Section id="section-experience" icon={Briefcase} title="Work Experience (Apprenticeship/Internship)" desc="Internships, apprenticeships, and other work experience" action={<AddButton onClick={addActivity} />}>
-            <div className="space-y-4">
-              {data.activities.length === 0 && <EmptyHint text="No work experience yet. Click Add to start." />}
-              {data.activities.map((act, i) => (
+            <motion.div layout className="space-y-5">
+              <AnimatePresence initial={false}>
+                {data.activities.length === 0 && <EmptyHint key="empty-act" text="No work experience yet. Click Add to start." />}
+                {data.activities.map((act, i) => (
                 <Card key={i} onRemove={() => removeActivity(i)}>
                   <div className="grid sm:grid-cols-3 gap-3">
                     <Field label="Year">
-                      <Input value={act.year ?? ""} onChange={(e) => updateActivity(i, { year: e.target.value })} placeholder="2025" />
+                      <Input value={act.year ?? ""} onChange={(e) => updateActivity(i, { year: e.target.value })} placeholder="e.g., 2025" />
                     </Field>
                     <Field label="Month (range)">
-                      <Input value={act.period} onChange={(e) => updateActivity(i, { period: e.target.value })} placeholder="1-5" />
+                      <Input value={act.period} onChange={(e) => updateActivity(i, { period: e.target.value })} placeholder="e.g., 1-5" />
                     </Field>
                     <Field label="Duration (for JP resume, e.g. '9 months')">
-                      <Input value={act.duration ?? ""} onChange={(e) => updateActivity(i, { duration: e.target.value })} placeholder="9 months" />
+                      <Input value={act.duration ?? ""} onChange={(e) => updateActivity(i, { duration: e.target.value })} placeholder="e.g., 9 months" />
                     </Field>
                     <Field label="Role">
-                      <Input value={act.role} onChange={(e) => updateActivity(i, { role: e.target.value })} placeholder="Research Intern" />
+                      <Input value={act.role} onChange={(e) => updateActivity(i, { role: e.target.value })} placeholder="e.g., Software Engineering Intern" />
                     </Field>
                     <Field label="Organization" className="sm:col-span-2">
-                      <Input value={act.organization} onChange={(e) => updateActivity(i, { organization: e.target.value })} placeholder="SRM University AP" />
+                      <Input value={act.organization} onChange={(e) => updateActivity(i, { organization: e.target.value })} placeholder="e.g., Tech Corp" />
                     </Field>
                   </div>
                   <Field label="Description (what you did)" className="mt-3">
-                    <Textarea rows={3} value={act.duties} onChange={(e) => updateActivity(i, { duties: e.target.value })} placeholder="Engineered an automated skin disease prediction system using Deep Learning..." />
+                    <Textarea rows={3} value={act.duties} onChange={(e) => updateActivity(i, { duties: e.target.value })} placeholder="e.g., Developed an automated data processing pipeline..." />
+                    <PolishButton field="activityDesc" current={act.duties} onAccept={(v) => updateActivity(i, { duties: v })} context={act.role ? `Role: ${act.role} at ${act.organization}` : undefined} />
                   </Field>
                 </Card>
-              ))}
-            </div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
           </Section>
 
           {/* Certifications / Awards */}
           <Section id="section-certifications" icon={Award} title="Certifications / Achievements" desc="Professional certifications and honors" action={<AddButton onClick={addAward} />}>
-            <div className="space-y-4">
-              {data.awards.length === 0 && <EmptyHint text="No certifications yet. Click Add to start." />}
-              {data.awards.map((aw, i) => (
+            <motion.div layout className="space-y-5">
+              <AnimatePresence initial={false}>
+                {data.awards.length === 0 && <EmptyHint key="empty-awa" text="No certifications yet. Click Add to start." />}
+                {data.awards.map((aw, i) => (
                 <Card key={i} onRemove={() => removeAward(i)}>
                   <div className="grid sm:grid-cols-3 gap-3">
                     <Field label="Year">
-                      <Input value={aw.year} onChange={(e) => updateAward(i, { year: e.target.value })} placeholder="2025" />
+                      <Input value={aw.year} onChange={(e) => updateAward(i, { year: e.target.value })} placeholder="e.g., 2025" />
                     </Field>
                     <Field label="Month">
-                      <Input value={aw.month ?? ""} onChange={(e) => updateAward(i, { month: e.target.value })} placeholder="4" />
+                      <Input value={aw.month ?? ""} onChange={(e) => updateAward(i, { month: e.target.value })} placeholder="e.g., 4" />
                     </Field>
                     <Field label="Organization / Issuer">
-                      <Input value={aw.organization} onChange={(e) => updateAward(i, { organization: e.target.value })} placeholder="MongoDB, Inc." />
+                      <Input value={aw.organization} onChange={(e) => updateAward(i, { organization: e.target.value })} placeholder="e.g., Tech Certification Board" />
                     </Field>
                     <Field label="Title" className="sm:col-span-3">
-                      <Input value={aw.title} onChange={(e) => updateAward(i, { title: e.target.value })} placeholder="MongoDB Certified Associate Developer" />
+                      <Input value={aw.title} onChange={(e) => updateAward(i, { title: e.target.value })} placeholder="e.g., Certified Developer" />
                     </Field>
                   </div>
                   <Field label="Description (details / credential ID / tasks)" className="mt-3">
-                    <Textarea rows={2} value={aw.description} onChange={(e) => updateAward(i, { description: e.target.value })} placeholder="Issued: April 2025. Credential ID: MDB4amndwj352" />
+                    <Textarea rows={2} value={aw.description} onChange={(e) => updateAward(i, { description: e.target.value })} placeholder="e.g., Issued: April 2024. Credential ID: 123456" />
+                    <PolishButton field="awardDesc" current={aw.description} onAccept={(v) => updateAward(i, { description: v })} context={aw.title ? `Certification: ${aw.title}` : undefined} />
                   </Field>
                 </Card>
-              ))}
-            </div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
           </Section>
 
           {/* Projects */}
           <Section id="section-projects" icon={Code2} title="Projects / Co-Curricular Activities" desc="Technical projects and co-curricular work" action={<AddButton onClick={addProject} />}>
-            <div className="space-y-4">
-              {data.projects.length === 0 && <EmptyHint text="No projects yet. Click Add to start." />}
-              {data.projects.map((proj, i) => (
+            <motion.div layout className="space-y-5">
+              <AnimatePresence initial={false}>
+                {data.projects.length === 0 && <EmptyHint key="empty-proj" text="No projects yet. Click Add to start." />}
+                {data.projects.map((proj, i) => (
                 <Card key={i} onRemove={() => removeProject(i)}>
                   <div className="grid sm:grid-cols-2 gap-3">
                     <Field label="Year">
-                      <Input value={proj.year ?? ""} onChange={(e) => updateProject(i, { year: e.target.value })} placeholder="2025" />
+                      <Input value={proj.year ?? ""} onChange={(e) => updateProject(i, { year: e.target.value })} placeholder="e.g., 2025" />
                     </Field>
                     <Field label="Month (range)">
-                      <Input value={proj.period} onChange={(e) => updateProject(i, { period: e.target.value })} placeholder="2-5" />
+                      <Input value={proj.period} onChange={(e) => updateProject(i, { period: e.target.value })} placeholder="e.g., 2-5" />
                     </Field>
                     <Field label="Project name" className="sm:col-span-2">
-                      <Input value={proj.name} onChange={(e) => updateProject(i, { name: e.target.value })} placeholder="CollabLearn – Online Collaborative Learning Platform" />
+                      <Input value={proj.name} onChange={(e) => updateProject(i, { name: e.target.value })} placeholder="e.g., E-commerce Web Application" />
                     </Field>
                     <Field label="Tech stack" className="sm:col-span-2">
-                      <Input value={proj.techStack ?? ""} onChange={(e) => updateProject(i, { techStack: e.target.value })} placeholder="React.js, Tailwind CSS, Firebase, JavaScript" />
+                      <Input value={proj.techStack ?? ""} onChange={(e) => updateProject(i, { techStack: e.target.value })} placeholder="e.g., React, Node.js, TypeScript" />
                     </Field>
                   </div>
                   <Field label="Description" className="mt-3">
-                    <Textarea rows={3} value={proj.description} onChange={(e) => updateProject(i, { description: e.target.value })} placeholder="Built a real-time learning portal with Firebase authentication..." />
+                    <Textarea rows={3} value={proj.description} onChange={(e) => updateProject(i, { description: e.target.value })} placeholder="e.g., Built a full-stack application with user authentication..." />
+                    <PolishButton field="projectDesc" current={proj.description} onAccept={(v) => updateProject(i, { description: v })} context={proj.name ? `Project: ${proj.name}, Stack: ${proj.techStack}` : undefined} />
                   </Field>
                 </Card>
-              ))}
-            </div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
           </Section>
 
           {/* Skills */}
           <Section id="section-skills" icon={Code2} title="Skills" desc="Mark your proficiency for each skill" action={<AddButton onClick={addSkill} />}>
-            <div className="space-y-3">
-              {data.skills.length === 0 && <EmptyHint text="No skills yet. Click Add to start." />}
-              {data.skills.map((s, i) => (
-                <div key={i} className="relative rounded-xl border border-border bg-background p-4 pr-12">
-                  <button
-                    onClick={() => removeSkill(i)}
-                    className="absolute top-3 right-3 grid place-items-center h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
-                    aria-label="Remove"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                  <Field label="Skill name">
-                    <Input value={s.name} onChange={(e) => updateSkill(i, { name: e.target.value })} placeholder="HTML, CSS, JavaScript, React..." />
-                  </Field>
-                  <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 pl-0.5">
-                    <CheckboxField
-                      label="Learned in class"
-                      checked={s.learnedInClass}
-                      onChange={(v) => updateSkill(i, { learnedInClass: v })}
-                    />
-                    <CheckboxField
-                      label="Can operate alone"
-                      checked={s.canOperate}
-                      onChange={(v) => updateSkill(i, { canOperate: v })}
-                    />
-                    <CheckboxField
-                      label="Can teach others"
-                      checked={s.canTeach}
-                      onChange={(v) => updateSkill(i, { canTeach: v })}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+            <motion.div layout className="space-y-5">
+              <AnimatePresence initial={false}>
+                {data.skills.length === 0 && <EmptyHint key="empty-skills" text="No skills yet. Click Add to start." />}
+                {data.skills.map((s, i) => (
+                  <Card key={i} onRemove={() => removeSkill(i)}>
+                    <Field label="Skill name">
+                      <Input value={s.name} onChange={(e) => updateSkill(i, { name: e.target.value })} placeholder="e.g., Python, Java, React..." />
+                    </Field>
+                    <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 pl-0.5">
+                      <CheckboxField
+                        label="Learned in class"
+                        checked={s.learnedInClass}
+                        onChange={(v) => updateSkill(i, { learnedInClass: v })}
+                      />
+                      <CheckboxField
+                        label="Can operate alone"
+                        checked={s.canOperate}
+                        onChange={(v) => updateSkill(i, { canOperate: v })}
+                      />
+                      <CheckboxField
+                        label="Can teach others"
+                        checked={s.canTeach}
+                        onChange={(v) => updateSkill(i, { canTeach: v })}
+                      />
+                    </div>
+                  </Card>
+                ))}
+              </AnimatePresence>
+            </motion.div>
           </Section>
 
           {/* Skills in Which I Excel */}
           <Section id="section-excel" icon={ListChecks} title="Skills in Which I Excel" desc="Numbered summary of strengths and growth areas" action={<AddButton onClick={addExcelItem} />}>
-            <div className="space-y-3">
-              {(data.skillsExcelSummary ?? []).length === 0 && <EmptyHint text="No summary points yet. Click Add to start." />}
-              {(data.skillsExcelSummary ?? []).map((line, i) => (
-                <div key={i} className="relative rounded-xl border border-border bg-background p-4 pr-12">
-                  <button
-                    onClick={() => removeExcelItem(i)}
-                    className="absolute top-3 right-3 grid place-items-center h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
-                    aria-label="Remove"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                  <div className="flex gap-3">
-                    <span className="grid place-items-center h-7 w-7 rounded-full bg-saffron/10 text-saffron font-bold text-sm shrink-0">
-                      {i + 1}
-                    </span>
-                    <Textarea
-                      rows={2}
-                      value={line}
-                      onChange={(e) => updateExcelItem(i, e.target.value)}
-                      placeholder="I have developed strong expertise in web development technologies, including HTML, CSS, JavaScript and React..."
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+            <motion.div layout className="space-y-5">
+              <AnimatePresence initial={false}>
+                {(data.skillsExcelSummary ?? []).length === 0 && <EmptyHint key="empty-excel" text="No summary points yet. Click Add to start." />}
+                {(data.skillsExcelSummary ?? []).map((line, i) => (
+                  <Card key={i} onRemove={() => removeExcelItem(i)}>
+                    <div className="flex gap-4">
+                      <span className="grid place-items-center h-8 w-8 rounded-full bg-saffron/10 text-saffron font-bold text-sm shrink-0 border border-saffron/20 shadow-sm">
+                        {i + 1}
+                      </span>
+                      <div className="flex-1">
+                        <Textarea
+                          rows={2}
+                          value={line}
+                          onChange={(e) => updateExcelItem(i, e.target.value)}
+                          placeholder="e.g., Experienced in building scalable web applications..."
+                          className="w-full"
+                        />
+                        <PolishButton field="skillExcel" current={line} onAccept={(v) => updateExcelItem(i, v)} />
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </AnimatePresence>
+            </motion.div>
           </Section>
 
           {/* Japanese Proficiency & Other Languages */}
@@ -859,7 +1025,7 @@ export function ResumeBuilder() {
                 <Input
                   value={data.otherLanguages ?? ""}
                   onChange={(e) => update("otherLanguages", e.target.value)}
-                  placeholder="English, Telugu, Hindi"
+                  placeholder="e.g., English, Spanish, French"
                 />
               </Field>
             </div>
@@ -867,39 +1033,63 @@ export function ResumeBuilder() {
 
           {/* Why Japan? */}
           <Section id="section-japan" icon={MapPin} title="More About Why You Want to Work in Japan" desc="Three short essays — these appear on the English resume only">
-            <Field label="Why do you want to work in Japan? (日本で働きたい理由は何ですか？)">
-              <Textarea
-                rows={4}
-                value={data.japanMotivation?.whyJapan ?? ""}
-                onChange={(e) => updateJapan("whyJapan", e.target.value)}
-                placeholder="Japan is known for its hard work, focus on quality, and constant improvement..."
-              />
-            </Field>
-            <Field label="What kind of career would you like to create in Japan? (日本でどのようなキャリアを作りたいと思いますか？)" className="mt-4">
-              <Textarea
-                rows={4}
-                value={data.japanMotivation?.careerInJapan ?? ""}
-                onChange={(e) => updateJapan("careerInJapan", e.target.value)}
-                placeholder="Aspire to build a career in Japan by contributing to innovative, socially impactful projects..."
-              />
-            </Field>
-            <Field label="What challenges do you foresee in adjusting to life in Japan, and how would you address them? (日本生活への適応において、どのような課題を予想し、どう対処しますか？)" className="mt-4">
-              <Textarea
-                rows={4}
-                value={data.japanMotivation?.challenges ?? ""}
-                onChange={(e) => updateJapan("challenges", e.target.value)}
-                placeholder="Challenges: Adaptation to Work Practices..."
-              />
-            </Field>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="block text-[13px] font-semibold text-foreground/90 leading-relaxed">
+                  1. Why do you want to work in Japan? <br/>
+                  <span className="text-muted-foreground font-medium text-[12px]">(日本で働きたい理由は何ですか？)</span>
+                </label>
+                <Textarea
+                  rows={4}
+                  value={data.japanMotivation?.whyJapan ?? ""}
+                  onChange={(e) => updateJapan("whyJapan", e.target.value)}
+                  placeholder="e.g., I admire Japan's dedication to quality and innovation..."
+                  className="bg-muted/30 focus:bg-background transition-colors"
+                />
+                <PolishButton field="whyJapan" current={data.japanMotivation?.whyJapan ?? ""} onAccept={(v) => updateJapan("whyJapan", v)} />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="block text-[13px] font-semibold text-foreground/90 leading-relaxed">
+                  2. What kind of career would you like to create in Japan? <br/>
+                  <span className="text-muted-foreground font-medium text-[12px]">(日本でどのようなキャリアを作りたいと思いますか？)</span>
+                </label>
+                <Textarea
+                  rows={4}
+                  value={data.japanMotivation?.careerInJapan ?? ""}
+                  onChange={(e) => updateJapan("careerInJapan", e.target.value)}
+                  placeholder="e.g., I want to contribute my skills to impactful projects in Japan..."
+                  className="bg-muted/30 focus:bg-background transition-colors"
+                />
+                <PolishButton field="careerInJapan" current={data.japanMotivation?.careerInJapan ?? ""} onAccept={(v) => updateJapan("careerInJapan", v)} />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-[13px] font-semibold text-foreground/90 leading-relaxed">
+                  3. What challenges do you foresee in adjusting to life in Japan, and how would you address them? <br/>
+                  <span className="text-muted-foreground font-medium text-[12px]">(日本生活への適応において、どのような課題を予想し、どう対処しますか？)</span>
+                </label>
+                <Textarea
+                  rows={4}
+                  value={data.japanMotivation?.challenges ?? ""}
+                  onChange={(e) => updateJapan("challenges", e.target.value)}
+                  placeholder="e.g., Challenges: Adapting to new business practices..."
+                  className="bg-muted/30 focus:bg-background transition-colors"
+                />
+                <PolishButton field="challenges" current={data.japanMotivation?.challenges ?? ""} onAccept={(v) => updateJapan("challenges", v)} />
+              </div>
+            </div>
           </Section>
 
           {/* Self-PR & Hobbies */}
           <Section id="section-selfpr" icon={Sparkles} title="Self-PR & Hobbies" desc="Personal statement and interests (shown on the JP resume)">
             <Field label="Self-PR (English)">
-              <Textarea rows={5} value={data.selfPr ?? ""} onChange={(e) => update("selfPr", e.target.value)} placeholder="I am a Computer Science student passionate about full-stack development and AI..." />
+              <Textarea rows={5} value={data.selfPr ?? ""} onChange={(e) => update("selfPr", e.target.value)} placeholder="e.g., I am a software engineer passionate about building scalable solutions..." />
+              <PolishButton field="selfPr" current={data.selfPr ?? ""} onAccept={(v) => update("selfPr", v)} />
             </Field>
             <Field label="Hobbies" className="mt-3">
-              <Input value={data.hobbies ?? ""} onChange={(e) => update("hobbies", e.target.value)} placeholder="Badminton, Fitness, Reading" />
+              <Textarea rows={2} value={data.hobbies ?? ""} onChange={(e) => update("hobbies", e.target.value)} placeholder="e.g., Reading, Traveling, Photography" />
+              <PolishButton field="hobbies" current={data.hobbies ?? ""} onAccept={(v) => update("hobbies", v)} />
             </Field>
           </Section>
 
@@ -926,7 +1116,13 @@ export function ResumeBuilder() {
 
       {/* Preview EN tab */}
       {tab === "preview-en" && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+        <motion.div
+          key="preview-en"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        >
           <div className="print:hidden flex items-center justify-between gap-4 mb-6 p-4 rounded-2xl border border-border bg-card flex-wrap">
             <div>
               <p className="font-display font-bold text-[15px]">English Resume Preview</p>
@@ -965,7 +1161,13 @@ export function ResumeBuilder() {
 
       {/* Translate tab */}
       {tab === "translate" && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+        <motion.div
+          key="translate"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        >
           <div className="max-w-2xl mx-auto py-8">
             <div className="text-center mb-8">
               <div className="grid place-items-center h-16 w-16 rounded-2xl bg-saffron/10 border border-saffron/20 mx-auto mb-4">
@@ -1074,7 +1276,13 @@ export function ResumeBuilder() {
 
       {/* Preview JP tab */}
       {tab === "preview-ja" && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+        <motion.div
+          key="preview-ja"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        >
           <div className="print:hidden flex items-center justify-between gap-4 mb-6 p-4 rounded-2xl border border-border bg-card flex-wrap">
             <div>
               <p className="font-display font-bold text-[15px]">Japanese 履歴書 Preview</p>
@@ -1105,17 +1313,14 @@ export function ResumeBuilder() {
           </div>
         </motion.div>
       )}
+      </AnimatePresence>
+      </div>
     </div>
   );
 }
 
 function Section({
-  id,
-  icon: Icon,
-  title,
-  desc,
-  action,
-  children,
+  id, icon: Icon, title, desc, action, children,
 }: {
   id?: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -1125,54 +1330,91 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section
+    <motion.section
       id={id}
-      className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-premium scroll-mt-6"
+      layout
+      initial={{ opacity: 0, y: 15 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      className="rounded-3xl border border-border/80 bg-card/60 backdrop-blur-xl shadow-premium scroll-mt-6 overflow-hidden"
     >
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-start gap-3">
-          <div className="grid place-items-center h-10 w-10 rounded-lg bg-saffron/10 text-saffron shrink-0">
+      {/* Section header with gradient left accent bar */}
+      <div className="relative flex items-center justify-between gap-4 px-6 sm:px-8 py-5 border-b border-border/40 bg-muted/10">
+        {/* Left accent bar */}
+        <span className="absolute left-0 top-0 h-full w-[4px] bg-brand-gradient rounded-r-full" />
+
+        <div className="flex items-center gap-4">
+          {/* Icon badge */}
+          <div className="grid place-items-center h-10 w-10 rounded-xl bg-saffron/10 text-saffron shrink-0 shadow-sm border border-saffron/20">
             <Icon className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="font-display text-lg font-bold">{title}</h2>
-            {desc && <p className="text-sm text-muted-foreground">{desc}</p>}
+            <h2 className="font-display text-[17px] font-bold leading-snug tracking-tight text-foreground">
+              {title}
+            </h2>
+            {desc && (
+              <p className="text-[13px] text-muted-foreground mt-0.5 leading-snug font-medium">
+                {desc}
+              </p>
+            )}
           </div>
         </div>
-        {action}
+
+        {action && <div className="shrink-0">{action}</div>}
       </div>
-      {children}
-    </section>
+
+      {/* Section body */}
+      <div className="p-6 sm:p-8">{children}</div>
+    </motion.section>
   );
 }
 
 function Card({ children, onRemove }: { children: React.ReactNode; onRemove: () => void }) {
   return (
-    <div className="relative rounded-xl border border-border bg-background p-4">
-      <button
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, height: 0, marginTop: 0, marginBottom: 0 }}
+      transition={{ type: "spring", stiffness: 350, damping: 25 }}
+      className="relative rounded-2xl border border-border/80 bg-background/50 shadow-sm p-6 group overflow-hidden"
+    >
+      {/* Subtle top line */}
+      <span className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-saffron/40 via-saffron/10 to-transparent rounded-t-xl" />
+
+      <motion.button
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
         onClick={onRemove}
-        className="absolute top-3 right-3 grid place-items-center h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
+        className={cn(
+          "absolute top-4 right-4 grid place-items-center h-8 w-8 rounded-full",
+          "text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10",
+          "opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-sm border border-transparent hover:border-destructive/20 bg-background",
+        )}
         aria-label="Remove"
       >
         <Trash2 className="h-4 w-4" />
-      </button>
+      </motion.button>
       {children}
-    </div>
+    </motion.div>
   );
 }
 
 function Field({
-  label,
-  children,
-  className,
+  label, children, className, required,
 }: {
-  label: string;
+  label: string | React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  required?: boolean;
 }) {
   return (
     <label className={cn("block", className)}>
-      <span className="text-xs font-medium text-muted-foreground mb-1 block">{label}</span>
+      <span className="flex items-center gap-1 text-[11.5px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">
+        {label}
+        {required && <span className="text-saffron text-xs">*</span>}
+      </span>
       {children}
     </label>
   );
@@ -1195,19 +1437,193 @@ function CheckboxField({
   );
 }
 
-function AddButton({ onClick }: { onClick: () => void }) {
+function AddButton({ onClick, label = "Add" }: { onClick: () => void; label?: string }) {
   return (
-    <Button size="sm" variant="outline" onClick={onClick} className="font-medium">
-      <Plus className="mr-1 h-3.5 w-3.5" />
-      Add
-    </Button>
+    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }}>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={onClick}
+        className="font-semibold rounded-xl border-dashed hover:border-saffron/50 hover:bg-saffron/10 hover:text-saffron transition-all duration-200 shadow-sm"
+      >
+        <Plus className="mr-1.5 h-4 w-4" />
+        {label}
+      </Button>
+    </motion.div>
   );
 }
 
 function EmptyHint({ text }: { text: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
-      {text}
+    <div className="flex flex-col items-center justify-center py-10 rounded-xl border border-dashed border-border/60 bg-muted/20 gap-2">
+      <div className="h-8 w-8 rounded-full bg-muted grid place-items-center">
+        <Plus className="h-4 w-4 text-muted-foreground/50" />
+      </div>
+      <p className="text-[12.5px] text-muted-foreground text-center max-w-[200px] leading-snug">
+        {text}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * PolishButton — "✨ Polish" button that appears below a Textarea.
+ * Calls the /api/candidates/me/resume/polish endpoint and shows
+ * an accept/discard diff UI inline.
+ */
+function PolishButton({
+  field,
+  current,
+  onAccept,
+  context,
+}: {
+  field: string;
+  current: string;
+  onAccept: (v: string) => void;
+  context?: string;
+}) {
+  const [polishing, setPolishing] = useState(false);
+  const [polished, setPolished]   = useState<string | null>(null);
+  const [error, setError]         = useState<string | null>(null);
+
+  async function polish() {
+    if (!current.trim() || current.trim().length < 10) {
+      toast.error("Write at least a sentence before polishing.");
+      return;
+    }
+    setPolishing(true);
+    setPolished(null);
+    setError(null);
+    try {
+      const res = await api<{ polished: string }>(
+        "/api/candidates/me/resume/polish",
+        {
+          method: "POST",
+          body: JSON.stringify({ field, content: current, context }),
+        },
+      );
+      setPolished(res.polished);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Polish failed. Try again.");
+    } finally {
+      setPolishing(false);
+    }
+  }
+
+  function accept() {
+    if (polished) onAccept(polished);
+    setPolished(null);
+  }
+
+  function discard() {
+    setPolished(null);
+    setError(null);
+  }
+
+  return (
+    <div className="mt-1.5">
+      {/* Trigger button — only shown when no result yet */}
+      {!polished && !error && (
+        <button
+          type="button"
+          onClick={polish}
+          disabled={polishing || !current.trim()}
+          className={cn(
+            "inline-flex items-center gap-1.5 text-[11.5px] font-semibold",
+            "px-3 py-1.5 rounded-lg border transition-all duration-150",
+            polishing
+              ? "border-saffron/30 bg-saffron/5 text-saffron cursor-not-allowed"
+              : "border-border text-muted-foreground hover:border-saffron/40 hover:bg-saffron/5 hover:text-saffron",
+            !current.trim() && "opacity-40 cursor-not-allowed",
+          )}
+        >
+          {polishing ? (
+            <>
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Polishing…
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-3 w-3" />
+              AI Polish
+            </>
+          )}
+        </button>
+      )}
+
+      {/* Error state */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mt-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-[12px] text-destructive flex items-center justify-between gap-2"
+          >
+            <span>{error}</span>
+            <button type="button" onClick={discard} className="shrink-0 hover:underline font-medium">
+              Dismiss
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Result — accept / discard */}
+      <AnimatePresence>
+        {polished && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="mt-2 rounded-xl border border-saffron/30 bg-saffron/5 overflow-hidden"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-3 py-2 border-b border-saffron/20">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-saffron" />
+                <span className="text-[11.5px] font-bold text-saffron">
+                  AI suggestion
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={discard}
+                className="grid place-items-center h-5 w-5 rounded text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+
+            {/* Polished text preview */}
+            <p className="px-3 py-2.5 text-[13px] leading-relaxed text-foreground whitespace-pre-wrap">
+              {polished}
+            </p>
+
+            {/* Action row */}
+            <div className="flex items-center gap-2 px-3 pb-3">
+              <button
+                type="button"
+                onClick={accept}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 h-8
+                  rounded-lg bg-saffron text-white text-[12px] font-bold
+                  hover:bg-saffron/90 transition-colors shadow-glow-brand"
+              >
+                ✓ Accept
+              </button>
+              <button
+                type="button"
+                onClick={discard}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 h-8
+                  rounded-lg border border-border text-[12px] font-medium
+                  text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              >
+                Keep original
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

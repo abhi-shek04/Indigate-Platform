@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { Eye, Send, BarChart2 } from "lucide-react";
 
 export function Analytics() {
-  const { t } = useT();
+  const { t, pick } = useT();
   const [data, setData] = useState<{
     totalViews: number;
     totalApplications: number;
@@ -67,21 +67,21 @@ export function Analytics() {
     <div className="space-y-6">
       <div className="grid sm:grid-cols-3 gap-4">
         <MetricCard label={t("dash.company.analytics.views")} value={data.totalViews} icon={Eye} accent="saffron" />
-        <MetricCard label="Total applications" value={data.totalApplications} icon={Send} accent="crimson" />
+        <MetricCard label={pick("Total applications", "応募総数")} value={data.totalApplications} icon={Send} accent="crimson" />
         <MetricCard label={t("dash.company.analytics.conversion")} value={data.averageConversion} icon={BarChart2} accent="emerald" />
       </div>
 
-      <SectionCard title="Per-job breakdown">
+      <SectionCard title={pick("Per-job breakdown", "求人別内訳")}>
         <div className="overflow-x-auto scroll-area">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-xs text-muted-foreground uppercase">
-                <th className="py-2 pr-4">Job Title</th>
-                <th className="py-2 px-4">Views</th>
+                <th className="py-2 pr-4">{pick("Job Title", "求人タイトル")}</th>
+                <th className="py-2 px-4">{pick("Views", "閲覧数")}</th>
                 <th className="py-2 px-4">{t("dash.company.analytics.thisweek")}</th>
-                <th className="py-2 px-4">Applications</th>
-                <th className="py-2 px-4">Conversion</th>
-                <th className="py-2 pl-4">Status</th>
+                <th className="py-2 px-4">{pick("Applications", "応募数")}</th>
+                <th className="py-2 px-4">{pick("Conversion", "コンバージョン")}</th>
+                <th className="py-2 pl-4">{pick("Status", "ステータス")}</th>
               </tr>
             </thead>
             <tbody>
@@ -94,7 +94,7 @@ export function Analytics() {
                   <td className="py-3 px-4 font-semibold">{j.conversionRate}</td>
                   <td className="py-3 pl-4">
                     <Badge variant={j.isActive ? "default" : "secondary"}>
-                      {j.isActive ? "Active" : "Paused"}
+                      {j.isActive ? pick("Active", "募集中") : pick("Paused", "一時停止中")}
                     </Badge>
                   </td>
                 </tr>

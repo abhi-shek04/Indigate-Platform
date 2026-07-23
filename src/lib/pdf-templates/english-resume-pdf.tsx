@@ -13,11 +13,12 @@ import {
   type ResumeData,
 } from "@/lib/resume-types";
 
-// Checkmark indicators for the Skills + JLPT proficiency tables.
-// Using ASCII brackets because Helvetica doesn't support the Unicode
-// checkbox glyphs (☒/☐) — they render as invisible in the PDF.
-const CHECKED = "[X]";
-const UNCHECKED = "[  ]";
+// Custom visual checkbox because Helvetica doesn't support Unicode checkbox glyphs (☒/☐)
+const PdfCheckbox = ({ checked }: { checked: boolean }) => (
+  <View style={{ width: 10, height: 10, borderWidth: 1, borderColor: '#1a1a1a', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+    {checked && <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#1a1a1a', marginTop: -0.5 }}>X</Text>}
+  </View>
+);
 
 const styles = StyleSheet.create({
   page: {
@@ -202,45 +203,36 @@ export function EnglishResumePDF({ data }: { data: ResumeData }) {
         </View>
 
         {/* ── Personal info block ───────────────────────────────────────── */}
-        <View style={styles.personal}>
-          <View style={styles.personalRow}>
-            <Text style={styles.personalLabel}>Your Name :</Text>
-            <Text style={styles.personalValue}>{data.name || "—"}</Text>
+        <View style={[styles.table, { marginBottom: 12 }]}>
+          <View style={styles.row}>
+            <Text style={[styles.cellHeader, { width: "20%" }]}>Your Name</Text>
+            <Text style={[styles.cell, { width: "30%" }]}>{data.name || "—"}</Text>
+            <Text style={[styles.cellHeader, { width: "20%" }]}>Gender</Text>
+            <Text style={[styles.cellLast, { width: "30%" }]}>{data.gender ? genderEn(data.gender) : "—"}</Text>
           </View>
-
-          <View style={styles.personalRow}>
-            <Text style={styles.personalLabel}>Date of Birth :</Text>
-            <Text style={styles.personalValue}>{dobWithAge || "—"}</Text>
-            <Text style={[styles.personalLabel, { width: 130 }]}>Gender :</Text>
-            <Text style={styles.personalValue}>{data.gender ? genderEn(data.gender) : "—"}</Text>
+          <View style={styles.row}>
+            <Text style={[styles.cellHeader, { width: "20%" }]}>Date of Birth</Text>
+            <Text style={[styles.cell, { width: "30%" }]}>{dobWithAge || "—"}</Text>
+            <Text style={[styles.cellHeader, { width: "20%" }]}>Nationality</Text>
+            <Text style={[styles.cellLast, { width: "30%" }]}>{data.nationality || "—"}</Text>
           </View>
-
-          <View style={styles.personalRow}>
-            <Text style={styles.personalLabel}>E-Mail :</Text>
-            <Text style={styles.personalValue}>{data.email || "—"}</Text>
-            <Text style={[styles.personalLabel, { width: 130 }]}>
-              Telephone Number:
-            </Text>
-            <Text style={styles.personalValue}>{data.phone || "—"}</Text>
+          <View style={styles.row}>
+            <Text style={[styles.cellHeader, { width: "20%" }]}>E-Mail</Text>
+            <Text style={[styles.cell, { width: "30%" }]}>{data.email || "—"}</Text>
+            <Text style={[styles.cellHeader, { width: "20%" }]}>Telephone Number</Text>
+            <Text style={[styles.cellLast, { width: "30%" }]}>{data.phone || "—"}</Text>
           </View>
-
-          <View style={styles.personalRow}>
-            <Text style={styles.personalLabel}>Address :</Text>
-            <Text style={styles.personalValue}>{data.address || "—"}</Text>
+          <View style={styles.row}>
+            <Text style={[styles.cellHeader, { width: "20%" }]}>Address</Text>
+            <Text style={[styles.cellLast, { width: "80%" }]}>{data.address || "—"}</Text>
           </View>
-
-          <View style={styles.personalRow}>
-            <Text style={styles.personalLabel}>Current Degree being Pursued:</Text>
-            <Text style={styles.personalValue}>{data.currentDegree || "—"}</Text>
+          <View style={styles.row}>
+            <Text style={[styles.cellHeader, { width: "20%" }]}>Current Degree</Text>
+            <Text style={[styles.cellLast, { width: "80%" }]}>{data.currentDegree || "—"}</Text>
           </View>
-
-          <View style={styles.personalRow}>
-            <Text style={styles.personalLabel}>
-              Expected time of Graduation:
-            </Text>
-            <Text style={styles.personalValue}>
-              {data.expectedGraduation || "—"}
-            </Text>
+          <View style={styles.row}>
+            <Text style={[styles.cellHeader, { width: "20%" }]}>Expected Graduation</Text>
+            <Text style={[styles.cellLast, { width: "80%" }]}>{data.expectedGraduation || "—"}</Text>
           </View>
         </View>
 
@@ -414,15 +406,15 @@ export function EnglishResumePDF({ data }: { data: ResumeData }) {
               {data.skills.map((s, i) => (
                 <View key={i} style={styles.row}>
                   <Text style={[styles.cell, { width: "40%" }]}>{s.name}</Text>
-                  <Text style={[styles.cell, { width: "20%" }]}>
-                    {s.learnedInClass ? CHECKED : UNCHECKED}
-                  </Text>
-                  <Text style={[styles.cell, { width: "20%" }]}>
-                    {s.canOperate ? CHECKED : UNCHECKED}
-                  </Text>
-                  <Text style={[styles.cellLast, { width: "20%" }]}>
-                    {s.canTeach ? CHECKED : UNCHECKED}
-                  </Text>
+                  <View style={[styles.cell, { width: "20%", alignItems: "center", justifyContent: "center" }]}>
+                    <PdfCheckbox checked={!!s.learnedInClass} />
+                  </View>
+                  <View style={[styles.cell, { width: "20%", alignItems: "center", justifyContent: "center" }]}>
+                    <PdfCheckbox checked={!!s.canOperate} />
+                  </View>
+                  <View style={[styles.cellLast, { width: "20%", alignItems: "center", justifyContent: "center" }]}>
+                    <PdfCheckbox checked={!!s.canTeach} />
+                  </View>
                 </View>
               ))}
             </View>
@@ -447,9 +439,10 @@ export function EnglishResumePDF({ data }: { data: ResumeData }) {
           <Text style={styles.sectionTitle}>Current Japanese Proficiency Level</Text>
           <View style={styles.jlptRow}>
             {JLPT_OPTIONS.map((lvl) => (
-              <Text key={lvl} style={styles.jlptItem}>
-                {lvl} {data.currentJlpt === lvl ? CHECKED : UNCHECKED}
-              </Text>
+              <View key={lvl} style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text style={[styles.jlptItem, { marginRight: 4 }]}>{lvl}</Text>
+                <PdfCheckbox checked={data.currentJlpt === lvl} />
+              </View>
             ))}
           </View>
         </View>
@@ -461,9 +454,10 @@ export function EnglishResumePDF({ data }: { data: ResumeData }) {
           </Text>
           <View style={styles.jlptRow}>
             {JLPT_OPTIONS.map((lvl) => (
-              <Text key={lvl} style={styles.jlptItem}>
-                {lvl} {data.expectedJlpt === lvl ? CHECKED : UNCHECKED}
-              </Text>
+              <View key={lvl} style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text style={[styles.jlptItem, { marginRight: 4 }]}>{lvl}</Text>
+                <PdfCheckbox checked={data.expectedJlpt === lvl} />
+              </View>
             ))}
           </View>
         </View>

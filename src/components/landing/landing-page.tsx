@@ -338,11 +338,11 @@ export function LandingPage() {
 
               <motion.div
                 variants={staggerItem}
-                className="mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3"
+                className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-center lg:justify-start gap-3 w-full max-w-md sm:max-w-none mx-auto lg:mx-0"
               >
                 <MagneticButton
                   onClick={() => navigate("jobs")}
-                  className="bg-brand-gradient text-white hover:opacity-90 font-bold text-sm h-11 px-5 rounded-xl shadow-glow-brand ring-brand inline-flex items-center gap-2 cursor-pointer"
+                  className="bg-brand-gradient text-white hover:opacity-90 font-bold text-sm h-11 px-5 rounded-xl shadow-glow-brand ring-brand inline-flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto"
                 >
                   <Search className="h-4 w-4" />
                   {t("hero.cta.find")}
@@ -359,7 +359,7 @@ export function LandingPage() {
                             : "admin",
                       )
                     }
-                    className="bg-background border border-border hover:border-saffron/30 hover:bg-saffron/5 shadow-premium font-semibold text-sm h-11 px-5 rounded-xl inline-flex items-center gap-2 cursor-pointer group transition-all"
+                    className="bg-background border border-border hover:border-saffron/30 hover:bg-saffron/5 shadow-premium font-semibold text-sm h-11 px-5 rounded-xl inline-flex items-center justify-center gap-2 cursor-pointer group transition-all w-full sm:w-auto"
                   >
                     <LayoutDashboard className="h-4 w-4 text-saffron transition-transform group-hover:scale-110" />
                     {pick("Dashboard", "ダッシュボード")}
@@ -368,7 +368,7 @@ export function LandingPage() {
                 ) : (
                   <MagneticButton
                     onClick={() => navigate("register")}
-                    className="bg-background border border-border hover:border-saffron/30 hover:bg-saffron/5 shadow-premium font-semibold text-sm h-11 px-5 rounded-xl inline-flex items-center gap-2 cursor-pointer"
+                    className="bg-background border border-border hover:border-saffron/30 hover:bg-saffron/5 shadow-premium font-semibold text-sm h-11 px-5 rounded-xl inline-flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto"
                   >
                     {t("hero.cta.hire")}
                   </MagneticButton>

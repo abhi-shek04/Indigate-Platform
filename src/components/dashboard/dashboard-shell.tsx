@@ -96,42 +96,6 @@ export function DashboardShell({
         />
       </aside>
 
-      {/* Mobile sidebar (Sheet) */}
-      <div className="lg:hidden">
-        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetTrigger asChild>
-            <button
-              aria-label={pick("Open menu", "メニューを開く")}
-              className="grid place-items-center h-10 w-10 rounded-lg hover:bg-accent transition-colors"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-          </SheetTrigger>
-          <SheetContent
-            side="left"
-            className="w-[280px] p-0 bg-sidebar text-sidebar-foreground flex flex-col"
-          >
-            <SheetTitle className="sr-only">{brand} {pick("menu", "メニュー")}</SheetTitle>
-            <SidebarHeader brand={brand} />
-            <div className="flex-1 overflow-y-auto scroll-area py-4">
-              <NavList
-                nav={nav}
-                active={active}
-                onSelect={onSelect}
-                disabledKeys={disabledKeys}
-                onPick={() => setMobileOpen(false)}
-              />
-            </div>
-            <SidebarFooter
-              onGoSite={goSite}
-              onLogout={handleLogout}
-              logoutLabel={t("nav.logout")}
-              brand={brand}
-            />
-          </SheetContent>
-        </Sheet>
-      </div>
-
       {/* Main */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Top bar */}
@@ -141,9 +105,40 @@ export function DashboardShell({
           transition={{ duration: 0.5, ease: easeOutExpo }}
           className="topbar"
         >
-          <div className="flex items-center gap-4 px-4 sm:px-6 lg:px-8 h-14">
+          <div className="flex items-center gap-3 px-4 sm:px-6 lg:px-8 h-14">
             <div className="lg:hidden">
-              {/* Spacer for mobile menu button which is rendered by each dashboard */}
+              <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+                <SheetTrigger asChild>
+                  <button
+                    aria-label={pick("Open menu", "メニューを開く")}
+                    className="grid place-items-center h-9 w-9 rounded-lg border border-border/60 bg-card/80 hover:bg-card transition-colors shrink-0"
+                  >
+                    <Menu className="h-4 w-4" />
+                  </button>
+                </SheetTrigger>
+                <SheetContent
+                  side="left"
+                  className="w-[280px] p-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border"
+                >
+                  <SheetTitle className="sr-only">{brand} {pick("menu", "メニュー")}</SheetTitle>
+                  <SidebarHeader brand={brand} />
+                  <div className="flex-1 overflow-y-auto scroll-area py-4">
+                    <NavList
+                      nav={nav}
+                      active={active}
+                      onSelect={onSelect}
+                      disabledKeys={disabledKeys}
+                      onPick={() => setMobileOpen(false)}
+                    />
+                  </div>
+                  <SidebarFooter
+                    onGoSite={goSite}
+                    onLogout={handleLogout}
+                    logoutLabel={t("nav.logout")}
+                    brand={brand}
+                  />
+                </SheetContent>
+              </Sheet>
             </div>
             <div className="min-w-0 flex-1 flex flex-col justify-center">
               <motion.h1 

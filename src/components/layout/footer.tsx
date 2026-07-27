@@ -48,12 +48,12 @@ export function Footer() {
       {/* Subtle aurora glow — top-right */}
       <div aria-hidden className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-crimson/8 blur-[80px]" />
 
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-14 pb-8">
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 pb-8">
         {/* ── MAIN GRID ─────────────────────────────────── */}
-        <div className="grid gap-10 lg:grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr] lg:gap-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr] gap-8 sm:gap-10 lg:gap-12">
           
           {/* COL 1 — Brand */}
-          <div>
+          <div className="sm:col-span-2 lg:col-span-1">
             <Logo textClassName="text-sidebar-foreground text-[1.35rem]" />
             <p className="mt-4 text-sm text-sidebar-foreground/60 leading-relaxed max-w-[280px]">
               Connecting exceptional talent with opportunities across India and Japan

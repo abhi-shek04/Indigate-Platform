@@ -143,7 +143,7 @@ export function JobCard({
         job.isFeatured
           ? "shadow-[0_0_0_1px_rgba(245,158,11,0.2),0_8px_32px_-8px_rgba(245,158,11,0.15)] border-amber-500/40 bg-gradient-to-b from-amber-500/5 via-card to-card"
           : "",
-        listMode ? "sm:flex-row sm:items-center sm:gap-6 p-5" : "h-full p-6"
+        listMode ? "flex-col sm:flex-row sm:items-center sm:gap-6 p-4 sm:p-5" : "h-full p-4 sm:p-6"
       )}
     >
       {/* Gold gradient top border — 2px strip */}
@@ -169,7 +169,7 @@ export function JobCard({
 
       {listMode ? (
         <>
-          <div className="relative flex items-center gap-4 flex-1 min-w-0 z-10">
+          <div className="relative flex items-center gap-3.5 flex-1 min-w-0 z-10 w-full">
             <CompanyAvatar
               name={job.company.companyName}
               color={job.company.logoUrl}
@@ -177,7 +177,7 @@ export function JobCard({
             />
             
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-display font-bold text-base leading-snug truncate group-hover:text-crimson transition-colors">
                   {title}
                 </h3>
@@ -190,36 +190,38 @@ export function JobCard({
               <p className="text-xs text-muted-foreground truncate flex items-center gap-1.5 mt-0.5">
                 <span className="font-semibold text-foreground">{companyName}</span>
                 <span aria-hidden>·</span>
-                <MapPin className="h-3 w-3 text-saffron" />
+                <MapPin className="h-3 w-3 text-saffron shrink-0" />
                 {location}
               </p>
             </div>
           </div>
           
-          <div className="relative shrink-0 flex items-center gap-6 z-10">
+          <div className="relative shrink-0 flex items-center justify-between sm:justify-end gap-3 sm:gap-6 z-10 mt-3 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-border/40 w-full sm:w-auto">
             <span className={cn("skill-tag font-semibold text-[10px] py-0.5 px-2", JLPT_BADGE[job.jlptRequired])}>
               {job.jlptRequired}
             </span>
             
-            <div className="w-24 text-right">
+            <div className="text-left sm:text-right">
               <p className="font-display font-bold text-sm text-saffron">{formatSalary(job)}</p>
             </div>
             
-            <button
-              onClick={toggleSave}
-              disabled={saving}
-              aria-label={isSaved ? "Unsave job" : "Save job"}
-              className={cn(
-                "grid place-items-center h-8 w-8 rounded-lg border transition-colors",
-                isSaved
-                  ? "bg-saffron/15 border-saffron/40 text-saffron"
-                  : "bg-background border-border/40 text-muted-foreground hover:text-saffron hover:border-saffron/40",
-              )}
-            >
-              <Bookmark className={cn("h-3.5 w-3.5", isSaved && "fill-current")} />
-            </button>
-            
-            <ArrowRight className="h-4 w-4 text-crimson opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={toggleSave}
+                disabled={saving}
+                aria-label={isSaved ? "Unsave job" : "Save job"}
+                className={cn(
+                  "grid place-items-center h-8 w-8 rounded-lg border transition-colors",
+                  isSaved
+                    ? "bg-saffron/15 border-saffron/40 text-saffron"
+                    : "bg-background border-border/40 text-muted-foreground hover:text-saffron hover:border-saffron/40",
+                )}
+              >
+                <Bookmark className={cn("h-3.5 w-3.5", isSaved && "fill-current")} />
+              </button>
+              
+              <ArrowRight className="h-4 w-4 text-crimson opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+            </div>
           </div>
         </>
       ) : (

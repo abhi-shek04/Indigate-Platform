@@ -99,7 +99,7 @@ function HeroJourneyVisual() {
   const { pick } = useT();
   return (
     <TiltCard max={3} className="relative h-full">
-      <div className="relative h-full min-h-[460px] rounded-[2rem] overflow-hidden shadow-2xl shadow-foreground/5 border border-border/50">
+      <div className="relative h-full min-h-[300px] sm:min-h-[460px] rounded-[2rem] overflow-hidden shadow-2xl shadow-foreground/5 border border-border/50">
         {/* Full-bleed Editorial Photo */}
         <img
           src="/images/hero-visual.jpg"
@@ -112,9 +112,9 @@ function HeroJourneyVisual() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
 
         {/* Bottom Pipeline Bar */}
-        <div className="absolute bottom-0 inset-x-0 p-6 sm:p-7">
-          <div className="backdrop-blur-xl bg-white/[0.07] rounded-2xl border border-white/[0.08] px-5 py-4">
-            <div className="flex items-center justify-between">
+        <div className="absolute bottom-0 inset-x-0 p-3.5 sm:p-7">
+          <div className="backdrop-blur-xl bg-white/[0.07] rounded-2xl border border-white/[0.08] px-3.5 sm:px-5 py-3 sm:py-4">
+            <div className="grid grid-cols-4 sm:flex items-center justify-between gap-1 sm:gap-2">
               {[
                 { icon: Users, label: pick("Profile", "プロフィール") },
                 { icon: Building2, label: pick("Match", "試合") },
@@ -126,18 +126,18 @@ function HeroJourneyVisual() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 1.0 + i * 0.1, duration: 0.4, ease: easeOutExpo }}
-                  className="flex items-center gap-2"
+                  className="flex items-center justify-center sm:justify-start gap-2"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-9 w-9 rounded-lg bg-white/10 border border-white/10 grid place-items-center text-white/80">
-                      <step.icon className="h-4 w-4" />
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg bg-white/10 border border-white/10 grid place-items-center text-white/80 shrink-0">
+                      <step.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </div>
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-white/70 hidden sm:block">
                       {step.label}
                     </span>
                   </div>
                   {i < arr.length - 1 && (
-                    <div className="hidden sm:block h-px w-6 bg-white/15 ml-2" />
+                    <div className="hidden sm:block h-px w-4 lg:w-6 bg-white/15 ml-1" />
                   )}
                 </motion.div>
               ))}

@@ -18,9 +18,9 @@ function OfficeInfo({ icon: Icon, title, lines }: { icon: any, title: string, li
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5 }}
-      className="rounded-xl border border-sidebar-border/40 bg-sidebar-accent/30 p-4 flex items-start gap-3 hover:border-saffron/20 transition-colors"
+      className="w-full rounded-2xl border border-sidebar-border/40 bg-sidebar-accent/30 p-4 flex items-start gap-3.5 hover:border-saffron/20 transition-colors"
     >
-      <span className="grid place-items-center h-9 w-9 rounded-lg bg-saffron/10 border border-saffron/20 text-saffron shrink-0">
+      <span className="grid place-items-center h-9 w-9 rounded-xl bg-saffron/10 border border-saffron/20 text-saffron shrink-0">
         <Icon className="h-4 w-4" />
       </span>
       <div>

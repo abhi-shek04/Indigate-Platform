@@ -18,7 +18,6 @@ import { UsersTab } from "@/components/admin/tabs/users";
 import { AuditLogTab } from "@/components/admin/tabs/audit";
 import { AlertsTab } from "@/components/admin/tabs/alerts";
 import { AdminSupportTab } from "@/components/admin/tabs/support";
-import { MatchingTab } from "@/components/admin/tabs/matching";
 import { AIScoresTab } from "@/components/admin/tabs/ai-scores";
 import {
   DropdownMenu,
@@ -70,7 +69,6 @@ export function AdminDashboard() {
       {tab === "companies" && <CompaniesTab />}
       {tab === "applications" && <ApplicationsTab />}
       {tab === "support" && <AdminSupportTab />}
-      {tab === "matching" && <MatchingTab />}
       {tab === "testimonials" && <TestimonialsTab />}
       {tab === "contacts" && <ContactsTab />}
       {tab === "users" && <UsersTab />}

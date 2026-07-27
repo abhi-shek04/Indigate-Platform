@@ -59,7 +59,6 @@ export interface AppState {
     | "companies"
     | "applications"
     | "support"
-    | "matching"
     | "testimonials"
     | "contacts"
     | "users"

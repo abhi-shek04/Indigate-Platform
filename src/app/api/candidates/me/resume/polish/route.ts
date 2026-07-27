@@ -16,8 +16,8 @@ import { getAIModel } from "@/lib/ai-provider";
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
-    if (!session || session.role !== "CANDIDATE")
-      return err("Candidate access required.", 403);
+    if (!session || (session.role !== "CANDIDATE" && session.role !== "ADMIN"))
+      return err("Candidate or Admin access required.", 403);
 
     const body = await req.json() as {
       field: string;
@@ -26,8 +26,18 @@ export async function POST(req: NextRequest) {
     };
 
     if (!body.content?.trim()) return err("No content provided.", 400);
-    if (body.content.trim().length < 10)
-      return err("Content too short to polish.", 400);
+    if (body.content.trim().length < 10) {
+      return err("Content is too short to polish.", 400);
+    }
+
+    if (
+      !process.env.GOOGLE_GENERATIVE_AI_API_KEY &&
+      !process.env.GOOGLE_API_KEY &&
+      !process.env.GROQ_API_KEY &&
+      !process.env.OPENAI_API_KEY
+    ) {
+      return err("No AI Provider API Keys configured in .env file", 400);
+    }
 
     const fieldDescriptions: Record<string, string> = {
       selfPr:       "Self-PR / professional introduction for a resume",

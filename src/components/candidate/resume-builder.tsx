@@ -39,6 +39,8 @@ import {
   Languages,
   MapPin,
   ListChecks,
+  ShieldAlert,
+  MessageSquare,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -124,6 +126,7 @@ export function ResumeBuilder() {
   const navigate = useApp((s) => s.navigate);
   const candidate = useApp((s) => s.candidate);
   const user = useApp((s) => s.user);
+  const isAdmin = user?.role === "ADMIN";
   const [data, setData] = useState<ResumeData>(EMPTY_RESUME);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -429,12 +432,14 @@ export function ResumeBuilder() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button onClick={print} variant="outline" size="sm" className="font-semibold h-10 px-4 rounded-xl border-border hover:bg-accent">
-                <Printer className="h-4 w-4 mr-2" />
-                Print PDF
-              </Button>
-            </motion.div>
+            {isAdmin && (
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button onClick={print} variant="outline" size="sm" className="font-semibold h-10 px-4 rounded-xl border-border hover:bg-accent">
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print PDF
+                </Button>
+              </motion.div>
+            )}
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Button onClick={save} disabled={saving} className="bg-brand-gradient text-white h-10 px-5 rounded-xl font-bold shadow-glow-brand hover:opacity-90 transition-opacity border-none">
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -446,8 +451,9 @@ export function ResumeBuilder() {
       </div>
 
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 print:max-w-none print:px-0">
-        {/* Premium 4-step Stepper */}
-        <div className="print:hidden flex items-center justify-center mb-10 overflow-x-auto pb-4">
+        {/* Premium 4-step Stepper (Admin Only) */}
+        {isAdmin && (
+          <div className="print:hidden flex items-center justify-center mb-10 overflow-x-auto pb-4">
           <div className="flex items-center bg-muted/40 p-1.5 rounded-2xl border border-border/50">
             {[
               { key: "edit" as const, step: 1, label: "Fill English Form", icon: FileText },
@@ -497,13 +503,17 @@ export function ResumeBuilder() {
                     </div>
                   </button>
                   {i < arr.length - 1 && (
-                    <div className="w-8 h-[2px] bg-border/40 mx-1 shrink-0 rounded-full" />
+                    <div className={cn(
+                      "w-6 sm:w-10 h-px mx-1 transition-colors duration-300",
+                      isDone ? "bg-saffron/50" : "bg-border"
+                    )} />
                   )}
                 </div>
               );
             })}
           </div>
         </div>
+        )}
 
         <AnimatePresence mode="wait">
 
@@ -1130,16 +1140,22 @@ export function ResumeBuilder() {
                 This is exactly what employers will see. Download or continue to Japanese translation.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <div className="text-xs text-muted-foreground bg-saffron/10 border border-saffron/20 rounded-xl px-3 py-2 flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4 text-saffron shrink-0" />
+                <span>PDF download is managed by Admin Support</span>
+              </div>
               <Button
                 variant="outline"
-                className="font-semibold"
+                size="sm"
+                className="font-semibold text-xs border-saffron/40 hover:bg-saffron/10"
                 onClick={() => {
-                  window.open("/api/candidates/me/resume/pdf?lang=en", "_blank");
+                  useApp.getState().setCandidateTab("support");
+                  navigate("candidate");
                 }}
               >
-                <Download className="h-4 w-4 mr-1.5" />
-                Download EN PDF
+                <MessageSquare className="h-3.5 w-3.5 mr-1 text-saffron" />
+                Contact Admin Support
               </Button>
               <Button
                 onClick={() => setTab("translate")}
@@ -1290,19 +1306,22 @@ export function ResumeBuilder() {
                 AI-translated Japanese resume. Download the PDF to share with Japanese employers.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Button variant="outline" size="sm" onClick={() => setTab("translate")}>
                 <Languages className="h-4 w-4 mr-1.5" />
                 Re-translate
               </Button>
               <Button
-                className="bg-brand-gradient text-white font-semibold"
+                variant="outline"
+                size="sm"
+                className="font-semibold text-xs border-saffron/40 hover:bg-saffron/10"
                 onClick={() => {
-                  window.open("/api/candidates/me/resume/pdf?lang=ja", "_blank");
+                  useApp.getState().setCandidateTab("support");
+                  navigate("candidate");
                 }}
               >
-                <Download className="h-4 w-4 mr-1.5" />
-                Download 履歴書 PDF
+                <MessageSquare className="h-3.5 w-3.5 mr-1 text-saffron" />
+                Contact Admin Support
               </Button>
             </div>
           </div>

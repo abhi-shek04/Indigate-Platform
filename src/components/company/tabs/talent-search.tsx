@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { CandidateAvatar } from "@/components/brand/logo";
 import { toast } from "sonner";
 import { Users2, Search, Eye } from "lucide-react";
@@ -124,6 +124,7 @@ export function TalentSearch() {
 
       <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
         <SheetContent className="w-[480px] sm:max-w-[480px] overflow-y-auto scroll-area">
+          <SheetTitle className="sr-only">Candidate Details</SheetTitle>
           {selected && <CandidateDetailPanel candidate={selected} />}
         </SheetContent>
       </Sheet>

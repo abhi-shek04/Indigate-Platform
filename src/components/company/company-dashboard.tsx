@@ -146,7 +146,6 @@ export function CompanyDashboard() {
           {tab === "applicants" && <Applicants />}
           {tab === "talent" && <TalentSearch />}
           {tab === "analytics" && <Analytics />}
-          {tab === "messages" && <MessagesView />}
           {tab === "profile" && <Profile />}
         </>
       )}

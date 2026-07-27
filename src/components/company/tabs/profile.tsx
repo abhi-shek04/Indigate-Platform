@@ -79,6 +79,25 @@ export function Profile() {
     }
   }
 
+  async function removeLogo() {
+    setUploading(true);
+    try {
+      await api("/api/companies/me", {
+        method: "PUT",
+        body: JSON.stringify({
+          logoUrl: null,
+        }),
+      });
+      set("logoUrl", "");
+      toast.success("Logo removed.");
+      await refreshAuth();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to remove logo.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -114,11 +133,25 @@ export function Profile() {
             size={72}
           />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium">
-              {form.logoUrl
-                ? "Logo uploaded"
-                : "No logo yet — using a colored avatar."}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium">
+                {form.logoUrl
+                  ? "Logo uploaded"
+                  : "No logo yet — using a colored avatar."}
+              </p>
+              {form.logoUrl && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-destructive hover:text-destructive/80 hover:bg-destructive/10 px-2"
+                  disabled={uploading}
+                  onClick={removeLogo}
+                >
+                  Remove logo
+                </Button>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground mb-3">
               PNG, JPG or SVG · max 2MB
             </p>

@@ -5,6 +5,7 @@ import {
   View,
   Text,
   StyleSheet,
+  Font,
 } from "@react-pdf/renderer";
 import {
   GENDER_OPTIONS,
@@ -13,6 +14,16 @@ import {
   type ResumeData,
   type ResumeSkill,
 } from "@/lib/resume-types";
+
+// Register NotoSansJP for client-side @react-pdf/renderer rendering
+try {
+  Font.register({
+    family: "NotoSansJP",
+    src: "https://cdn.jsdelivr.net/npm/@canvas-fonts/noto-sans-jp@1.0.4/NotoSansJP-Regular.ttf",
+  });
+} catch {
+  // Ignore if already registered
+}
 
 // The Japanese font is registered by the server-side PDF API route
 // (src/app/api/candidates/me/resume/pdf/route.ts) using a base64 data URL

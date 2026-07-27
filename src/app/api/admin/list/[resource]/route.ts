@@ -98,7 +98,7 @@ export async function GET(
     if (resource === "jobs") {
       const rows = await db.job.findMany({
         include: { company: true, applications: { select: { id: true } } },
-        orderBy: { postedAt: "desc" },
+        orderBy: [{ isFeatured: "desc" }, { postedAt: "desc" }],
       });
       const items = rows.map((j) => toJobDTO(j, j.applications.length));
       if (exportCsv) {

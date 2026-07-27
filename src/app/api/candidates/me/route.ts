@@ -4,6 +4,8 @@ import { getSession } from "@/lib/auth";
 import { parseBody, ok, err, handleError, toCandidateDTO } from "@/lib/api";
 import { z } from "zod";
 
+import { scoreJobsForCandidate } from "@/lib/ai-matching";
+
 export async function GET() {
   try {
     const session = await getSession();
@@ -73,6 +75,10 @@ export async function PUT(req: NextRequest) {
       where: { userId: session.id },
       data,
     });
+
+    // Asynchronously trigger AI match scoring for active jobs (score-on-write)
+    scoreJobsForCandidate(updated.id).catch(console.error);
+
     return ok(toCandidateDTO(updated));
   } catch (e) {
     return handleError(e);

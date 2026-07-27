@@ -20,8 +20,9 @@ export async function api<T = unknown>(
   opts?: RequestInit,
 ): Promise<T> {
   const method = (opts?.method ?? "GET").toUpperCase();
+  const isFormData = opts?.body instanceof FormData;
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...(opts?.headers as Record<string, string> || {}),
   };
 

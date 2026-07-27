@@ -5,6 +5,7 @@ import { useApp } from "@/lib/store";
 import { useT } from "@/lib/use-t";
 import { Logo, CandidateAvatar } from "@/components/brand/logo";
 import { LocaleToggle } from "./locale-toggle";
+import { ThemeToggle } from "./theme-toggle";
 import { NotificationsBell } from "./notifications-bell";
 import { Button } from "@/components/ui/button";
 import {
@@ -112,6 +113,7 @@ export function Navbar() {
 
           {/* ── RIGHT ACTIONS ─────────────────────────────────── */}
           <div className="flex items-center gap-1.5 shrink-0">
+            <ThemeToggle />
             <LocaleToggle className="hidden sm:inline-flex" />
             
             <a
@@ -280,7 +282,10 @@ export function Navbar() {
                       <ExternalLink className="h-3 w-3 opacity-50" />
                     </a>
                     
-                    <LocaleToggle className="justify-start w-full" />
+                    <div className="flex items-center gap-2 w-full">
+                      <LocaleToggle className="justify-start flex-1" />
+                      <ThemeToggle />
+                    </div>
                     {!user && (
                       <div className="space-y-2 mt-2">
                         <Button variant="outline" className="w-full h-10 rounded-xl text-[13px]" onClick={() => go("login")}>

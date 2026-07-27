@@ -11,6 +11,7 @@ import { MagneticButton, SpotlightCard, TiltCard } from "@/components/brand/moti
 import { ArrowRight, Search, FileText, Plane, PlaneTakeoff, LayoutDashboard, Sparkles, CheckCircle2, Quote, Mail, Briefcase, Globe2, ShieldCheck, Star, Building2, Wrench, ArrowLeftRight, HelpCircle, Users, MapPin, Compass, Clock, Send } from "lucide-react";
 import { toast } from "sonner";
 import type { JobDTO, TestimonialDTO } from "@/lib/types";
+import { JobCard } from "@/components/jobs/job-card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 interface Stats {
   jobCount: number;
@@ -223,7 +224,8 @@ export function LandingPage() {
   const navigate = useApp((s) => s.navigate);
   const user = useApp((s) => s.user);
   const [stats, setStats] = useState<Stats | null>(null);
-    const [testimonials, setTestimonials] = useState<TestimonialDTO[]>([]);
+  const [featured, setFeatured] = useState<JobDTO[]>([]);
+  const [testimonials, setTestimonials] = useState<TestimonialDTO[]>([]);
 
   useEffect(() => {
     Promise.all([
@@ -239,14 +241,15 @@ export function LandingPage() {
           relocatedToJapan: number;
         };
       }>("/api/jobs/stats"),
-      api<{ jobs: JobDTO[] }>("/api/jobs?limit=3"),
+      api<{ jobs: JobDTO[] }>("/api/jobs?featured=true&limit=6"),
       api<{ testimonials: TestimonialDTO[] }>(
         "/api/testimonials?active=true",
       ),
     ])
       .then(([s, f, te]) => {
         setStats(s);
-                setTestimonials(te.testimonials);
+        setFeatured(f.jobs);
+        setTestimonials(te.testimonials);
       })
       .catch(() => {});
   }, []);
@@ -801,6 +804,27 @@ export function LandingPage() {
         </div>
       </section>
 
+
+      {/* ===================== FEATURED ROLES CAROUSEL / GRID ===================== */}
+      {featured.length > 0 && (
+        <section className="relative py-16 sm:py-20 bg-mesh/40 border-t border-border overflow-hidden">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <Reveal variants={fadeUp}>
+              <SectionHeader
+                icon={Star}
+                label="Featured Roles"
+                title="Curated for you"
+                subtitle="Hand-picked positions with visa sponsorship — selected by our team for quality and fit."
+              />
+            </Reveal>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+              {featured.map((job) => (
+                <JobCard key={job.id} job={job} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ===================== TESTIMONIALS (featured + supporting) ===================== */}
       {testimonials.length > 0 && (

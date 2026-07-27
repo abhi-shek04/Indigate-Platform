@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { parseBody, ok, err, handleError, toJobDTO } from "@/lib/api";
 import { z } from "zod";
+import { scoreCandidatesForJob } from "@/lib/ai-matching";
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,9 +16,11 @@ export async function GET(req: NextRequest) {
     const jlptLevel = searchParams.get("jlptLevel") || "";
     const salaryMin = Number(searchParams.get("salaryMin") || 0);
     const companyId = searchParams.get("companyId") || "";
+    const onlyFeatured = searchParams.get("featured") === "true";
     const sortParam = searchParams.get("sort") || "newest";
 
     const where: Record<string, unknown> = { isActive: true };
+    if (onlyFeatured) where.isFeatured = true;
     if (search) {
       where.OR = [
         { title: { contains: search } },
@@ -32,9 +35,9 @@ export async function GET(req: NextRequest) {
     if (salaryMin) where.salaryMin = { gte: salaryMin };
     if (companyId) where.companyId = companyId;
 
-    let orderBy: any = { postedAt: "desc" };
+    let orderBy: any = [{ isFeatured: "desc" }, { postedAt: "desc" }];
     if (sortParam === "salary") {
-      orderBy = { salaryMin: "desc" };
+      orderBy = [{ isFeatured: "desc" }, { salaryMin: "desc" }];
     }
 
     const [total, rows] = await Promise.all([
@@ -130,6 +133,10 @@ export async function POST(req: NextRequest) {
       },
       include: { company: true },
     });
+
+    if (job.isActive) {
+      scoreCandidatesForJob(job.id).catch(console.error);
+    }
 
     return ok(toJobDTO({ ...job, applications: [] }), 201);
   } catch (e) {

@@ -34,12 +34,14 @@ const updateSchema = z.object({
   location: z.string().min(2).optional(),
   jobType: z.enum(["FULL_TIME", "PART_TIME", "INTERNSHIP", "CONTRACT"]).optional(),
   jlptRequired: z.enum(["N1", "N2", "N3", "N4", "N5", "NONE"]).optional(),
-  salaryMin: z.number().int().min(0).optional(),
-  salaryMax: z.number().int().min(0).optional(),
+  salaryMin: z.number().int().min(0).max(2147483647, "Salary must be less than 2,000,000,000").optional(),
+  salaryMax: z.number().int().min(0).max(2147483647, "Salary must be less than 2,000,000,000").optional(),
   salaryType: z.enum(["HOURLY", "MONTHLY", "YEARLY"]).optional(),
+  currency: z.string().optional(),
   skillsRequired: z.array(z.string()).optional(),
   deadline: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
+  isFeatured: z.boolean().optional(),
 });
 
 // PUT — admin updates any job field
@@ -70,9 +72,11 @@ export async function PUT(
     if (d.salaryMin !== undefined) data.salaryMin = d.salaryMin;
     if (d.salaryMax !== undefined) data.salaryMax = d.salaryMax;
     if (d.salaryType !== undefined) data.salaryType = d.salaryType;
+    if (d.currency !== undefined) data.currency = d.currency;
     if (d.skillsRequired !== undefined)
       data.skillsRequired = JSON.stringify(d.skillsRequired);
     if (d.isActive !== undefined) data.isActive = d.isActive;
+    if (d.isFeatured !== undefined) data.isFeatured = d.isFeatured;
     if (d.deadline !== undefined)
       data.deadline = d.deadline ? new Date(d.deadline) : null;
 

@@ -71,6 +71,8 @@ model CandidateProfile {
 
   applications Application[]
   conversations Conversation[]
+  supportTickets SupportTicket[]
+  matchScores    MatchScore[]
 }
 
 model CompanyProfile {
@@ -116,6 +118,7 @@ model Job {
   currency       String   @default("JPY")
   skillsRequired String   @default("[]") // JSON string array
   isActive       Boolean  @default(true)
+  isFeatured     Boolean  @default(false)
   deadline       DateTime?
   postedAt       DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -123,8 +126,9 @@ model Job {
   applications Application[]
   views         JobView[]
   conversations Conversation[]
+  matchScores   MatchScore[]
 
-  @@index([isActive, postedAt])
+  @@index([isFeatured, isActive, postedAt])
   @@index([companyId])
 }
 
@@ -263,3 +267,61 @@ model Message {
   @@index([conversationId, createdAt])
   @@index([senderId])
 }
+
+model SupportTicket {
+  id           String   @id @default(cuid())
+  candidateId  String
+  candidate    CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  subject      String
+  category     String   @default("GENERAL") // GENERAL | VISA | APPLICATION | INTERVIEW | TECHNICAL
+  status       String   @default("NEW") // NEW | OPEN | IN_PROGRESS | WAITING | RESOLVED | CLOSED
+  internalNote String?  // admin-only internal notes (never shown to candidate)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  messages     SupportMessage[]
+
+  @@index([candidateId])
+  @@index([status])
+}
+
+model SupportMessage {
+  id         String        @id @default(cuid())
+  ticketId   String
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderId   String        // User.id — either candidate or admin
+  senderRole String        // "CANDIDATE" | "ADMIN"
+  body       String
+  isRead     Boolean       @default(false)
+  createdAt  DateTime      @default(now())
+
+  @@index([ticketId, createdAt])
+}
+
+model MatchScore {
+  id          String           @id @default(cuid())
+  candidateId String
+  candidate   CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobId       String
+  job         Job              @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  score     Float    @default(0) /// 0.0 - 100.0 overall match score
+  breakdown Json     @default("{}") /// { skills: Float, jlpt: Float, salary: Float, experience: Float }
+
+  jlptScore  Int @default(0) // 0-100 JLPT fit sub-score
+  skillScore Int @default(0) // 0-100 skills fit sub-score
+  expScore   Int @default(0) // 0-100 experience fit sub-score
+  motivScore Int @default(0) // 0-100 motivation fit sub-score
+
+  reasons String @default("[]")
+
+  computedAt   DateTime @default(now())
+  modelVersion String   @default("v1")
+
+  @@unique([candidateId, jobId])
+  @@index([candidateId, score(sort: Desc)])
+  @@index([jobId, score(sort: Desc)])
+  @@index([score])
+  @@index([computedAt])
+}
+
+

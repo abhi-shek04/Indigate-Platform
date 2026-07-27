@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { parseBody, ok, err, handleError, toJobDTO } from "@/lib/api";
 import { z } from "zod";
+import { scoreCandidatesForJob } from "@/lib/ai-matching";
 
 export async function GET(
   _req: NextRequest,
@@ -79,6 +80,11 @@ export async function PUT(
       data,
       include: { company: true },
     });
+
+    if (updated.isActive) {
+      scoreCandidatesForJob(updated.id).catch(console.error);
+    }
+
     return ok(toJobDTO({ ...updated, applications: [] }));
   } catch (e) {
     return handleError(e);

@@ -6,13 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CompanyAvatar } from "@/components/brand/logo";
 import { useEffect, useState } from "react";
-import { Reveal, RevealGroup, staggerItem, motion, slideInLeft, slideInRight, scaleIn, fadeUp, easeOutExpo } from "@/lib/motion";;
+import { motion } from "framer-motion";
+import { Reveal, RevealGroup, staggerItem, slideInLeft, slideInRight, scaleIn, fadeUp, easeOutExpo } from "@/lib/motion";
 import { SpotlightCard, MagneticButton, ShimmerText, TiltCard } from "@/components/brand/motion-primitives";
 import { api } from "@/lib/api-client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { JobDTO } from "@/lib/types";
-import { ArrowRight, CheckCircle2, Mail, Plane, ShieldCheck, Globe2, Briefcase, Users, TrendingUp, Heart, Building2, Search, FileText, MapPin, GraduationCap, Languages, Handshake, AlertTriangle, Clock, ArrowUpRight, Zap, ExternalLink, MessageSquare, UserCheck, BadgeCheck, ArrowDown, Sparkles, LayoutDashboard, MessageCircle, Banknote, Compass, PlaneTakeoff, Award } from "lucide-react";;
+import {
+  ArrowRight, CheckCircle2, Mail, Plane, ShieldCheck, Globe2, Briefcase, Users, TrendingUp, Heart, Building2,
+  Search, FileText, MapPin, GraduationCap, Languages, Handshake, AlertTriangle, Clock, ArrowUpRight, Zap,
+  ExternalLink, MessageSquare, UserCheck, BadgeCheck, ArrowDown, Sparkles, LayoutDashboard, MessageCircle,
+  Banknote, Compass, PlaneTakeoff, Award, Rocket, Target, Lightbulb, BookOpen, Timer, Shield, FlaskConical,
+  ChevronRight, Network, Building
+} from "lucide-react";
 
 export function StaticPage({ kind }: { kind: "privacy" | "terms" | "about" | "for-companies" | "companies" | "contact" | "how-it-works" }) {
   if (kind === "privacy") return <Privacy />;
@@ -341,282 +348,550 @@ function Terms() {
 }
 
 function About() {
-  const { pick } = useT();
   const navigate = useApp((s) => s.navigate);
+  const { pick } = useT();
+
   return (
-    <main className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-      
-      {/* 1. Hero & Company Overview */}
-      <div className="text-center max-w-3xl mx-auto mb-16 pt-8">
-        <Reveal>
-          <Badge variant="outline" className="mb-6 border-saffron/40 text-saffron bg-saffron/5">
-            About IndiGate
-          </Badge>
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight mb-6">
-            Building the bridge between <span className="text-gradient-brand">{pick("India and Japan", "インドと日本")}</span>
-          </h1>
-          <div className="section-divider mt-6 mb-6 mx-auto" />
-          <p className="text-lg text-muted-foreground leading-relaxed">
-            {pick("IndiGate is operated by Indobox Inc., a cross-border HR and talent-placement company. We believe that collaboration between these two vibrant nations can create unprecedented value.", "IndiGateは、国境を越えた人材紹介・配置を行う株式会社Indoboxによって運営されています。私たちは、これら2つの活気ある国々の協力が、これまでにない価値を創造できると信じています。")}
-          </p>
+    <div className="overflow-hidden">
+
+    {/* ══════════════════════════════════════════════════════
+        SECTION 1 — HERO
+        Clean, centered, and premium layout for the story.
+    ══════════════════════════════════════════════════════ */}
+    <section className="relative bg-background overflow-hidden pt-24 pb-16 sm:pt-32 sm:pb-24">
+      <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
+        <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-b from-saffron/15 to-saffron/5 border border-saffron/20 px-6 py-16 sm:py-24 sm:px-12 shadow-sm">
+          {/* Subtle overlay texture */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.4]" style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
+          
+          <RevealGroup stagger={0.1} delayChildren={0.05} className="relative z-10">
+            {/* Eyebrow */}
+            <motion.div variants={staggerItem} className="inline-flex items-center gap-2 rounded-full border border-saffron/30 bg-white/60 backdrop-blur-md px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-saffron mb-8 shadow-sm">
+              <Globe2 className="h-3 w-3" />
+              {pick("The IndiGate Story", "IndiGateのストーリー")}
+            </motion.div>
+
+            {/* Headline */}
+            <motion.h1 variants={staggerItem} className="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.06] text-foreground mx-auto max-w-4xl">
+              {pick("Building the bridge", "架け橋を築く")}
+              <br />
+              <span className="text-gradient-brand">{pick("India × Japan", "インド × 日本")}</span>
+            </motion.h1>
+
+            {/* Sub */}
+            <motion.p variants={staggerItem} className="mt-6 text-[15.5px] sm:text-[17px] text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+              {pick(
+                "IndiGate is operated by Indobox Inc. — a cross-border HR and talent-placement company born from the belief that collaboration between India and Japan creates unprecedented value.",
+                "IndiGateは、インドと日本のコラボレーションがかつてない価値を生み出すという信念から生まれた、クロスボーダーHR・人材紹介企業であるIndobox Inc.によって運営されています。"
+              )}
+            </motion.p>
+          </RevealGroup>
+        </div>
+      </div>
+    </section>
+
+    {/* ══════════════════════════════════════════════════════
+        SECTION 2 — MISSION · VISION · VALUES
+        Three distinct premium cards, each with personality.
+    ══════════════════════════════════════════════════════ */}
+    <section className="py-20 sm:py-24 bg-background">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <Reveal variants={fadeUp}>
+          <div className="text-center mb-12">
+            <span className="inline-flex items-center gap-2 rounded-full border border-saffron/25 bg-saffron/8 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-saffron mb-4">
+              <Sparkles className="h-3 w-3" />
+              {pick("Our Foundation", "私たちの基盤")}
+            </span>
+            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+              {pick("What we stand for", "私たちが大切にしていること")}
+            </h2>
+            <div className="section-rule mt-4 max-w-xs mx-auto" />
+          </div>
         </Reveal>
-        
-        <div className="grid sm:grid-cols-2 gap-6 mt-12 text-left">
-          <Reveal variants={slideInLeft} className="h-full">
-            <div className="h-full card-premium border-l-2 border-l-crimson p-6 sm:p-8 relative overflow-hidden">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-crimson/10 flex items-center justify-center shrink-0">
-                  <MapPin className="h-5 w-5 text-crimson" />
+
+        <div className="grid md:grid-cols-3 gap-5">
+          {/* MISSION */}
+          <Reveal variants={fadeUp} delay={0}>
+            <SpotlightCard className="card-premium relative h-full p-6 overflow-hidden">
+              <div aria-hidden className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-saffron via-saffron/60 to-transparent" />
+              <div className="grid place-items-center h-11 w-11 rounded-xl bg-saffron/10 text-saffron ring-1 ring-inset ring-saffron/20 mb-4">
+                <Target className="h-5 w-5" />
+              </div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-saffron mb-2">Mission</p>
+              <p className="font-display font-bold text-[17px] leading-snug">
+                {pick(
+                  "Make India's diversity an essential element of business.",
+                  "インドの多様性をビジネスの不可欠な要素にする。"
+                )}
+              </p>
+            </SpotlightCard>
+          </Reveal>
+
+          {/* VISION */}
+          <Reveal variants={fadeUp} delay={0.08}>
+            <SpotlightCard className="card-premium relative h-full p-6 overflow-hidden">
+              <div aria-hidden className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-crimson via-crimson/60 to-transparent" />
+              <div className="grid place-items-center h-11 w-11 rounded-xl bg-crimson/10 text-crimson ring-1 ring-inset ring-crimson/20 mb-4">
+                <Lightbulb className="h-5 w-5" />
+              </div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-crimson mb-2">Vision</p>
+              <p className="font-display font-bold text-[17px] leading-snug">
+                {pick(
+                  "Through the fusion of Japan and India, turn what doesn't exist yet into what does. Energize both nations.",
+                  "日本とインドの融合により、まだ存在しないものを形にする。両国を活性化する。"
+                )}
+              </p>
+            </SpotlightCard>
+          </Reveal>
+
+          {/* VALUES */}
+          <Reveal variants={fadeUp} delay={0.16}>
+            <SpotlightCard className="card-premium relative h-full p-6 overflow-hidden">
+              <div aria-hidden className="absolute top-0 inset-x-0 h-[2px] bg-brand-gradient" />
+              <div className="grid place-items-center h-11 w-11 rounded-xl bg-saffron/10 text-saffron ring-1 ring-inset ring-saffron/20 mb-4">
+                <Rocket className="h-5 w-5" />
+              </div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-saffron mb-3">Core Values</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  pick("Be creators", "創造者であれ"),
+                  pick("Pursue fusion", "融合を追求する"),
+                  pick("Anticipate & act", "先読みして行動する"),
+                  pick("Embrace change", "変化を受け入れる"),
+                  pick("Challenge & profit", "挑戦して利益を生む"),
+                  pick("Pioneers of diversity", "多様性のパイオニア"),
+                ].map((v) => (
+                  <span key={v} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border border-border/70 bg-muted/60 text-foreground/80 hover:border-saffron/30 hover:bg-saffron/5 hover:text-saffron transition-colors cursor-default">
+                    <span className="h-1 w-1 rounded-full bg-saffron/60 flex-shrink-0" />
+                    {v}
+                  </span>
+                ))}
+              </div>
+            </SpotlightCard>
+          </Reveal>
+        </div>
+      </div>
+    </section>
+
+    {/* ══════════════════════════════════════════════════════
+        SECTION 3 — WHY INDIAN TALENT (dark alternating)
+        B2B sales argument. Leader names as proof points.
+    ══════════════════════════════════════════════════════ */}
+    <section className="py-20 sm:py-24 bg-card/40 border-y border-border">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+
+          {/* Left: copy */}
+          <Reveal variants={fadeUp}>
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-saffron/25 bg-saffron/8 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-saffron mb-5">
+                <TrendingUp className="h-3 w-3" />
+                Why Indian talent — right now?
+              </span>
+              <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight mb-5">
+                To compete globally, you need{" "}
+                <span className="text-gradient-brand">world-class talent.</span>
+              </h2>
+              <p className="text-[14.5px] text-muted-foreground leading-relaxed mb-6">
+                We built IndiGate because we believe hiring from India isn't just an alternative—it is a competitive necessity. The world's most innovative tech giants recognize that Indian engineers bring unparalleled technical depth, adaptability, and a relentless drive to build. If Japanese companies want to win on the global stage, they must tap into this exact same talent pool.
+              </p>
+              {/* Global leader chips */}
+              <div className="flex flex-wrap gap-2 mb-6">
+                {[
+                  { name: "Sundar Pichai", co: "Google CEO" },
+                  { name: "Satya Nadella", co: "Microsoft CEO" },
+                  { name: "Arvind Krishna", co: "IBM CEO" },
+                  { name: "Neal Mohan", co: "YouTube CEO" },
+                  { name: "Leena Nair", co: "Chanel CEO" },
+                ].map((l) => (
+                  <div key={l.name} className="rounded-xl border border-border bg-card px-3 py-2">
+                    <p className="text-[12.5px] font-semibold leading-none">{l.name}</p>
+                    <p className="text-[10.5px] text-saffron font-medium mt-0.5">{l.co}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[13px] text-muted-foreground leading-relaxed">
+                In Japan too: the CEO of Kameda Seika (Lekh Raj Juneja) and the CTO of
+                Fujitsu (Vivek Mahajan) are Indian nationals leading at the highest level.
+              </p>
+            </div>
+          </Reveal>
+
+          {/* Right: IIT stat cards */}
+          <Reveal variants={fadeUp} delay={0.12}>
+            <div>
+              {/* IIT header */}
+              <div className="flex items-center gap-3 mb-5">
+                <div className="grid place-items-center h-12 w-12 rounded-xl bg-brand-gradient text-white shadow-glow-brand">
+                  <GraduationCap className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-display font-bold text-lg">{pick("Indobox Inc. (Japan)", "Indobox Inc.（日本）")}</h3>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">{pick("HQ • Founded May 2023", "本社 • 2023年5月設立")}</p>
+                  <p className="font-display font-bold text-[16px]">Indian Institutes of Technology</p>
+                  <p className="text-[12px] text-muted-foreground">Est. 1951 · 23 campuses · World-class</p>
                 </div>
               </div>
-              <p className="text-sm text-foreground/80 leading-relaxed mb-4">
-                Located in <strong className="text-foreground">{pick("Station Ai", "Ai駅")}</strong> — Japan's largest startup-support & open-innovation hub in Nagoya, Aichi.
-              </p>
-              <div className="text-xs font-medium text-muted-foreground bg-muted/50 inline-block px-3 py-1.5 rounded-md">
-                {pick("Employment Placement License No.: 23-ユ-303072", "有料職業紹介事業許可番号: 23-ユ-303072")}
+              {/* 4 stat cards in 2x2 */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                {[
+                  { value: "1–1.6%", label: "Acceptance rate", sub: "World's most selective" },
+                  { value: "~70", label: "Unicorns", sub: "With IIT co-founders" },
+                  { value: "Top 4", label: "Globally", sub: "In unicorn-producing alumni" },
+                  { value: "~20%", label: "Work overseas", sub: "Building global companies" },
+                ].map((s, i) => (
+                  <motion.div
+                    key={i}
+                    whileHover={{ y: -2 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    className="card-premium p-4 text-center relative overflow-hidden"
+                  >
+                    <span aria-hidden className="absolute inset-x-0 top-0 h-[1.5px] bg-brand-gradient opacity-60" />
+                    <p className="metric-num text-gradient-brand text-[1.5rem]">{s.value}</p>
+                    <p className="text-[12px] font-semibold mt-1">{s.label}</p>
+                    <p className="text-[10.5px] text-muted-foreground mt-0.5">{s.sub}</p>
+                  </motion.div>
+                ))}
+              </div>
+              {/* Tier 2 highlight */}
+              <div className="rounded-xl border border-saffron/25 bg-saffron/5 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="grid place-items-center h-8 w-8 rounded-lg bg-saffron/15 text-saffron shrink-0">
+                    <Network className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-[13.5px]">Tier 2 Universities — Our Strength</p>
+                    <p className="text-[12px] text-muted-foreground leading-relaxed mt-1">
+                      Beyond IITs, India&apos;s Tier 2 universities are rising globally.
+                      Indobox has built deep partnerships here — these students are highly
+                      motivated to work in Japan and are enthusiastic Japanese language
+                      learners.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </Reveal>
 
-          <Reveal variants={slideInRight} className="h-full">
-            <div className="h-full card-premium border-l-2 border-l-saffron p-6 sm:p-8 relative overflow-hidden">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-saffron/10 flex items-center justify-center shrink-0">
-                  <MapPin className="h-5 w-5 text-saffron" />
-                </div>
-                <div>
-                  <h3 className="font-display font-bold text-lg">{pick("Indobox India Pvt. Ltd.", pick("Indobox India Pvt. Ltd.", "Indobox India Pvt. Ltd."))}</h3>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">{pick("India • Founded Dec 2024", "インド • 2024年12月設立")}</p>
-                </div>
-              </div>
-              <p className="text-sm text-foreground/80 leading-relaxed">
-                Located in <strong className="text-foreground">{pick("T-Hub", "テクノロジー・ハブ")}</strong> — India's largest startup-support & innovation hub in Hyderabad, Telangana.
+        </div>
+      </div>
+    </section>
+
+    {/* ══════════════════════════════════════════════════════
+        SECTION 4 — FOUR HIRING PATTERNS
+        Icon-first cards. Each pattern is distinct visually.
+    ══════════════════════════════════════════════════════ */}
+    <section className="py-20 sm:py-24 bg-background">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <Reveal variants={fadeUp}>
+          <div className="text-center mb-12">
+            <span className="inline-flex items-center gap-2 rounded-full border border-saffron/25 bg-saffron/8 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-saffron mb-4">
+              <Handshake className="h-3 w-3" />
+              Hiring Patterns
+            </span>
+            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+              Four ways to hire —{" "}
+              <span className="text-gradient-brand">we match the right one</span>
+            </h2>
+            <p className="mt-3 text-muted-foreground max-w-xl mx-auto text-[14.5px]">
+              Every company is different. We align the hiring pattern to your business
+              model, budget, and timeline.
+            </p>
+            <div className="section-rule mt-4 max-w-xs mx-auto" />
+          </div>
+        </Reveal>
+
+        <RevealGroup className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5" stagger={0.08}>
+          {[
+            {
+              icon: BookOpen,
+              step: "01",
+              title: "Internship",
+              badge: "3rd–4th year",
+              color: "sky",
+              desc: "University students in their 3rd–4th year. High energy, fresh perspective — often leading directly to full-time offers.",
+            },
+            {
+              icon: GraduationCap,
+              step: "02",
+              title: "New Graduate",
+              badge: "Conditional offer",
+              color: "saffron",
+              desc: "Offers as early as 3rd year, conditioned on requirements like JLPT N4 by graduation. Lock in talent early.",
+            },
+            {
+              icon: Briefcase,
+              step: "03",
+              title: "Experienced Hire",
+              badge: "Mid-career",
+              color: "violet",
+              desc: "Mid-career professionals from our wide network. Deep skills, immediate contribution, training as needed.",
+            },
+            {
+              icon: Timer,
+              step: "04",
+              title: "Japan Resident",
+              badge: "1–2 months",
+              color: "emerald",
+              desc: "Indian nationals already in Japan — studying, working, or between roles. Fastest path to onboarding.",
+            },
+          ].map((p, i) => {
+            const colorMap: Record<string, string> = {
+              sky: "bg-sky-400/10 text-sky-400 ring-sky-400/20",
+              saffron: "bg-saffron/10 text-saffron ring-saffron/20",
+              violet: "bg-violet-400/10 text-violet-400 ring-violet-400/20",
+              emerald: "bg-emerald-400/10 text-emerald-400 ring-emerald-400/20",
+            };
+            const badgeMap: Record<string, string> = {
+              sky: "bg-sky-400/10 text-sky-400 border-sky-400/20",
+              saffron: "bg-saffron/10 text-saffron border-saffron/20",
+              violet: "bg-violet-400/10 text-violet-400 border-violet-400/20",
+              emerald: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
+            };
+            return (
+              <motion.div key={i} variants={staggerItem}>
+                <SpotlightCard className="card-premium relative h-full p-5 overflow-hidden group">
+                  {/* Step watermark */}
+                  <span aria-hidden className="absolute top-3 right-4 font-display text-6xl font-extrabold text-foreground/[0.035] select-none leading-none">
+                    {p.step}
+                  </span>
+                  {/* Icon */}
+                  <div className={`grid place-items-center h-11 w-11 rounded-xl ring-1 ring-inset mb-4 ${colorMap[p.color]}`}>
+                    <p.icon className="h-5 w-5" />
+                  </div>
+                  {/* Badge */}
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border mb-2 ${badgeMap[p.color]}`}>
+                    {p.badge}
+                  </span>
+                  <h3 className="font-display font-bold text-[15px] mb-2">{p.title}</h3>
+                  <p className="text-[13px] text-muted-foreground leading-relaxed">{p.desc}</p>
+                </SpotlightCard>
+              </motion.div>
+            );
+          })}
+        </RevealGroup>
+      </div>
+    </section>
+
+    {/* ══════════════════════════════════════════════════════
+        SECTION 5 — INDOBOX ACADEMY
+        Replaces fake data with actual Indobox Academy details.
+    ══════════════════════════════════════════════════════ */}
+    <section className="py-20 sm:py-24 bg-sidebar text-sidebar-foreground overflow-hidden relative">
+      <div aria-hidden className="absolute inset-0 bg-mesh opacity-20" />
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <Reveal variants={fadeUp}>
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-saffron mb-5">
+                <GraduationCap className="h-3 w-3" />
+                {pick("Indobox Academy", "Indobox Academy")}
+              </span>
+              <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-sidebar-foreground mb-5">
+                {pick(
+                  "Immersive language training, built for business",
+                  "ビジネスのために構築された没入型語学トレーニング"
+                )}
+              </h2>
+              <p className="text-[14.5px] text-sidebar-foreground/70 leading-relaxed mb-6">
+                {pick(
+                  "Through Indobox Academy, we provide dedicated Japanese language and business etiquette training. Our certified instructors prepare candidates not just to pass exams, but to thrive in Japanese corporate environments.",
+                  "Indobox Academyを通じて、専任の日本語およびビジネスマナー研修を提供しています。認定講師は、試験合格だけでなく、日本の企業環境で活躍できるよう候補者を育成します。"
+                )}
               </p>
+              
+              <ul className="space-y-3 mb-8 text-[13.5px] text-sidebar-foreground/80">
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-saffron shrink-0 mt-0.5" />
+                  <span>JLPT N5 to N3 curriculum tailored for engineers</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-saffron shrink-0 mt-0.5" />
+                  <span>Practical business etiquette and cultural immersion</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-saffron shrink-0 mt-0.5" />
+                  <span>Online and offline classes at partner universities</span>
+                </li>
+              </ul>
+            </div>
+          </Reveal>
+
+          <Reveal variants={fadeUp} delay={0.12} className="h-full flex items-center justify-center">
+            <div className="relative rounded-2xl overflow-hidden border border-white/10 group w-full aspect-[4/3] lg:aspect-[16/10] shadow-2xl max-h-[450px]">
+              <div className="absolute inset-0 bg-brand-gradient opacity-15 mix-blend-overlay group-hover:opacity-0 transition-opacity duration-500 z-10 pointer-events-none" />
+              <img 
+                src="/images/indobox-academy.png" 
+                alt="Indobox Academy Classroom Training" 
+                className="absolute inset-0 w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700"
+              />
             </div>
           </Reveal>
         </div>
       </div>
+    </section>
 
-      {/* 2. Mission / Vision / Values */}
-      <div className="py-16 border-t border-border">
-        <RevealGroup stagger={0.1} className="grid md:grid-cols-2 gap-12 lg:gap-16">
-          <div className="space-y-12">
-            <motion.div variants={staggerItem}>
-              <p className="text-xs font-bold text-saffron uppercase tracking-widest mb-3">{pick("Our Mission", "私たちの使命")}</p>
-              <h2 className="font-display text-3xl sm:text-4xl font-extrabold leading-tight text-gradient-brand">
-                {pick("Make India's diversity an essential element of business.", "インドの多様性をビジネスの不可欠な要素にする。")}
-              </h2>
-              <div className="section-divider mt-6" />
-            </motion.div>
-            <motion.div variants={staggerItem}>
-              <p className="text-xs font-bold text-crimson uppercase tracking-widest mb-3">{pick("Our Vision", "私たちのビジョン")}</p>
-              <h2 className="font-display text-3xl sm:text-4xl font-extrabold leading-tight text-saffron">
-                {pick("Through the fusion of Japan and India, turn what doesn't exist yet into what does. Energize both nations.", "日本とインドの融合により、まだ存在しないものを存在させる。両国を活性化する。")}
-              </h2>
-              <div className="section-divider mt-6" />
-            </motion.div>
-          </div>
-          
-          <motion.div variants={staggerItem} className="bg-muted/30 rounded-3xl p-8 sm:p-10 border border-border/50">
-            <h2 className="font-display text-xl sm:text-2xl font-extrabold mb-6 text-crimson">{pick("Our Core Values", "当社の基本理念")}</h2>
-            <div className="section-divider mt-4 mb-6" />
-            <ul className="space-y-5">
-              {[
-                pick("Be creators.", "クリエイターであれ。"),
-                pick("Pursue fusion.", "融合を追求する。"),
-                pick("Anticipate and act.", "先読みし、行動する。"),
-                pick("Embrace change.", "変化を受け入れる。"),
-                pick("Challenge & profit as driving force.", "挑戦と利益を原動力とする。"),
-                pick("Pioneers of diversity.", "多様性のパイオニア。")
-              ].map((value, i) => (
-                <li key={i} className="flex items-start gap-3">
-                  <CheckCircle2 className="h-[14px] w-[14px] text-saffron shrink-0 mt-1" />
-                  <span className="text-foreground/90 font-medium text-lg">{value}</span>
-                </li>
-              ))}
-            </ul>
-          </motion.div>
-        </RevealGroup>
-      </div>
-
-      {/* 3. Why Indian Talent / IIT Stats */}
-      <div className="py-16 border-t border-border">
-        <RevealGroup stagger={0.08} delayChildren={0.1} className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          <motion.div variants={staggerItem} className="space-y-6">
-            <h2 className="font-display text-3xl font-extrabold">{pick("Why Indian talent — right now?", "なぜ今、インドの人材なのか？")}</h2>
-            <div className="section-divider mt-4 mb-6" />
-            <p className="text-muted-foreground leading-relaxed">
-              {pick("India produces some of the world's top engineering and business talent. Indian-origin leaders currently serve as CEOs of Google, IBM, YouTube, Starbucks, and Chanel. Several are graduates of the Indian Institutes of Technology (IIT).", "インドは世界トップクラスのエンジニアリングおよびビジネスの人材を輩出しています。現在、Google、IBM、YouTube、Starbucks、ChanelのCEOはインド系リーダーが務めており、その多くがインド工科大学（IIT）の卒業生です。")}
+    {/* ══════════════════════════════════════════════════════
+        SECTION 6 — THREE HURDLES (problem → solution)
+        Honest acknowledgement + Indobox's answer.
+    ══════════════════════════════════════════════════════ */}
+    <section className="py-20 sm:py-24 bg-background">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <Reveal variants={fadeUp}>
+          <div className="text-center mb-12">
+            <span className="inline-flex items-center gap-2 rounded-full border border-saffron/25 bg-saffron/8 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-saffron mb-4">
+              <Shield className="h-3 w-3" />
+              Common Concerns
+            </span>
+            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+              Three hurdles — and how{" "}
+              <span className="text-gradient-brand">we solve them</span>
+            </h2>
+            <p className="mt-3 text-muted-foreground max-w-lg mx-auto text-[14.5px]">
+              International hiring is complex. We&apos;ve designed every part of our
+              process to address these challenges head-on.
             </p>
-            <p className="text-muted-foreground leading-relaxed">
-              {pick("In Japan too, Indian leaders are making an impact — including the CEO of Kameda Seika and the CTO of Fujitsu.", "日本でも、亀田製菓のCEOや富士通のCTOなど、インド人リーダーが影響を与えています。")}
-            </p>
-            <div className="pt-4">
-              <h3 className="font-display text-xl font-bold mb-3">{pick("Tier 2 Universities — Our Strength", "第2グループの大学 — 当校の強み")}</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                {pick("Beyond IITs and IIMs (Tier 1), India has a growing set of Tier 2 universities with excellent facilities, strong industry collaboration, and rising international recognition. Indobox has built a strong network with these universities — whose students have strong desire to work for Japanese companies, and are enthusiastic about Japanese language learning.", "IITやIIM（Tier 1）以外にも、インドには優れた施設、強力な産学連携、そして国際的な評価が高まっているTier 2の大学が増加しています。Indoboxはこれらの大学と強固なネットワークを築いており、そこの学生たちは日本企業で働くことに強い意欲を持ち、日本語学習にも熱心に取り組んでいます。")}
-              </p>
-            </div>
-          </motion.div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <motion.div variants={scaleIn} className="col-span-2">
-              <SpotlightCard spotlightColor="color-mix(in oklch, var(--saffron) 10%, transparent)">
-                <div className="card-premium p-8">
-                  <p className="text-sm font-semibold text-muted-foreground mb-4">{pick("Indian Institutes of Technology (IIT)", "インド工科大学（IIT）")}</p>
-                  <div className="font-display text-3xl font-extrabold text-gradient-brand mb-2">1–1.6%</div>
-                  <p className="font-medium text-foreground/90">{pick("Acceptance rate (world's most selective)", "合格率（世界で最も合格率が低い大学）")}</p>
-                  <p className="text-sm text-muted-foreground mt-2">{pick("Established in 1951, they are among the most competitive universities in the world.", "1951年に設立され、世界でも有数の競争力を持つ大学の一つである。")}</p>
-                </div>
-              </SpotlightCard>
-            </motion.div>
-            <motion.div variants={scaleIn}>
-              <SpotlightCard spotlightColor="color-mix(in oklch, var(--saffron) 10%, transparent)">
-                <div className="card-premium p-6 flex flex-col justify-center h-full">
-                  <div className="font-display text-3xl font-extrabold text-gradient-brand mb-2">~70</div>
-                  <p className="font-medium text-sm text-foreground/90 leading-tight">{pick("Indian unicorns with IIT co-founders", "IIT出身者が共同設立したインドのユニコーン企業")}</p>
-                </div>
-              </SpotlightCard>
-            </motion.div>
-            <motion.div variants={scaleIn}>
-              <SpotlightCard spotlightColor="color-mix(in oklch, var(--saffron) 10%, transparent)">
-                <div className="card-premium p-6 flex flex-col justify-center h-full">
-                  <div className="font-display text-3xl font-extrabold text-gradient-brand mb-2">{pick("Top 4", "トップ4")}</div>
-                  <p className="font-medium text-sm text-foreground/90 leading-tight">{pick("globally in unicorn-producing alumni", "ユニコーン企業を輩出した卒業生数において、世界的に見て")}</p>
-                </div>
-              </SpotlightCard>
-            </motion.div>
+            <div className="section-rule mt-4 max-w-xs mx-auto" />
           </div>
-        </RevealGroup>
-      </div>
-
-      {/* 4. Hiring Patterns */}
-      <div className="py-16 border-t border-border">
-        <Reveal>
-          <h2 className="font-display text-3xl font-extrabold text-center mb-4">{pick("Four hiring patterns", "4つの採用パターン")}</h2>
-          <div className="section-divider mt-4 mb-4 mx-auto" />
-          <p className="text-center text-muted-foreground max-w-2xl mx-auto mb-12">
-            {pick("We match the right hiring pattern to your business model and job requirements.", "貴社のビジネスモデルや採用要件に合わせた最適な採用パターンをご提案します。")}
-          </p>
         </Reveal>
-        <RevealGroup stagger={0.1} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+        <RevealGroup className="grid md:grid-cols-3 gap-5" stagger={0.1}>
           {[
-            { label: pick("Internship", "インターンシップ"), title: pick("Internship", "インターンシップ"), desc: pick("3rd–4th year university students, often leading directly to full-time offers.", "大学3・4年生、正社員のオファーに直結することが多い。") },
-            { label: pick("New Graduate", "新卒者"), title: pick("New Graduate", "新卒者"), desc: pick("Conditional offers given as early as 3rd year (e.g. requiring JLPT N4).", "3年生の早い段階で出される条件付きオファー（例：JLPT N4必須など）。") },
-            { label: pick("Experienced", "経験豊富な"), title: pick("Experienced Hire", "中途採用"), desc: pick("Mid-career professionals selected from our wide network.", "幅広いネットワークから選ばれた中途採用のプロフェッショナル。") },
-            { label: pick("Japan Resident", "日本在住者"), title: pick("Japan Resident", "日本在住者"), desc: pick("Indian nationals already in Japan — hireable in 1–2 months.", "すでに日本に滞在しているインド人 — 1〜2ヶ月で採用可能。") }
-          ].map((pattern, i) => (
-            <motion.div key={i} variants={staggerItem} className="h-full">
-              <div className="card-premium p-6 flex flex-col items-center text-center h-full">
-                <div className="mb-4">
-                  <span className="rounded-full px-2 py-0.5 text-xs font-semibold bg-saffron/10 text-saffron border border-saffron/20">
-                    {pattern.label}
-                  </span>
+            {
+              num: "01",
+              problem: "Language Barrier",
+              solution: "JLPT N5–N3 education online and at partner schools. Candidates arrive ready to communicate.",
+              problemIcon: "🚧",
+              solutionIcon: Languages,
+            },
+            {
+              num: "02",
+              problem: "Cultural Differences",
+              solution: "Japanese culture and business-etiquette training by certified professionals. Both sides learn.",
+              problemIcon: "🌐",
+              solutionIcon: Globe2,
+            },
+            {
+              num: "03",
+              problem: "Internal Readiness",
+              solution: "Working-with-Indians training using proven methods from companies already successfully doing it.",
+              problemIcon: "🏢",
+              solutionIcon: UserCheck,
+            },
+          ].map((h, i) => (
+            <motion.div key={i} variants={staggerItem}>
+              <div className="card-premium relative h-full overflow-hidden">
+                {/* Top: problem */}
+                <div className="p-5 border-b border-border/60 bg-destructive/[0.03]">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-xl">{h.problemIcon}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-destructive/70">
+                      Challenge {h.num}
+                    </span>
+                  </div>
+                  <p className="font-display font-bold text-[15px] text-foreground/90">{h.problem}</p>
                 </div>
-                <h3 className="font-display font-bold text-lg mb-2">{pattern.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{pattern.desc}</p>
+                {/* Bottom: solution */}
+                <div className="p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="grid place-items-center h-6 w-6 rounded-md bg-emerald-500/10 text-emerald-500">
+                      <h.solutionIcon className="h-3.5 w-3.5" />
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-500">
+                      Indobox Solution
+                    </span>
+                  </div>
+                  <p className="text-[13px] text-muted-foreground leading-relaxed">{h.solution}</p>
+                </div>
               </div>
             </motion.div>
           ))}
         </RevealGroup>
       </div>
+    </section>
 
-      {/* 5. Services & Hurdles */}
-      <div className="py-16 border-t border-border">
-        <div className="grid lg:grid-cols-2 gap-16">
-          {/* Services */}
-          <div>
-            <Reveal>
-              <h2 className="font-display text-3xl font-extrabold mb-8">{pick("End-to-end support", "エンドツーエンドのサポート")}</h2>
-              <div className="section-divider mt-4 mb-8" />
-            </Reveal>
-            <RevealGroup stagger={0.12} className="space-y-6">
-              {[
-                { icon: GraduationCap, colorClass: "text-saffron bg-saffron/10", iconColor: "text-saffron", title: pick("Indian Talent Utilization Seminar", "インド人材活用セミナー"), desc: pick("Deepen your understanding of India — from basic overview to business-customs differences.", "インドに関する理解を深める — 基本的な概要からビジネス慣習の違いまで。") },
-                { icon: Languages, colorClass: "text-crimson bg-crimson/10", iconColor: "text-crimson", title: pick("Japanese Language & Business Etiquette", "日本語とビジネスマナー"), desc: pick("Language classes at partner universities, plus professional business-etiquette training.", "提携大学での語学クラス、およびプロによるビジネスマナー研修。") },
-                { icon: Handshake, colorClass: "text-emerald-500 bg-emerald-500/10", iconColor: "text-emerald-500", title: pick("Working with Indians — Support Training", "インド人との協働 — サポート研修"), desc: pick("A companion-style program covering 4 phases: Conflict → Behavior Change → Culture Change → Talent Thriving. (18–24 months)", "4つのフェーズ（対立→行動変容→文化変容→才能の開花）をカバーする伴走型プログラム。（18〜24ヶ月）") }
-              ].map((svc, i) => (
-                <motion.div key={i} variants={staggerItem} className="flex gap-4">
-                  <div className={`rounded-lg p-2 shrink-0 h-9 w-9 flex items-center justify-center ${svc.colorClass}`}>
-                    <svc.icon className={`h-5 w-5 ${svc.iconColor}`} />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-lg mb-1">{svc.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{svc.desc}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </RevealGroup>
-          </div>
+    {/* ══════════════════════════════════════════════════════
+        SECTION 7 — FINAL CTA
+        Two paths: candidates + companies.
+    ══════════════════════════════════════════════════════ */}
+    <section className="py-20 sm:py-24 bg-card/40 border-t border-border">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <Reveal variants={scaleIn}>
+          <div className="relative rounded-3xl bg-sidebar text-sidebar-foreground overflow-hidden px-8 py-16 sm:px-16 sm:py-20">
+            {/* Backgrounds */}
+            <div aria-hidden className="absolute inset-0 bg-mesh opacity-50" />
+            <div aria-hidden className="pointer-events-none absolute inset-0">
+              <div className="absolute -top-12 left-1/3 h-40 w-40 rounded-full bg-saffron/25 blur-3xl animate-aurora" />
+              <div className="absolute -bottom-8 right-1/4 h-56 w-56 rounded-full bg-crimson/20 blur-3xl animate-aurora" style={{ animationDelay: "4s" }} />
+            </div>
+            <div aria-hidden className="absolute inset-0 opacity-[2_0.04]"
+              style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.7) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
 
-          {/* Hurdles */}
-          <div className="bg-muted/30 rounded-3xl p-8 sm:p-10 border border-border/50">
-            <Reveal>
-              <h2 className="font-display text-2xl font-extrabold mb-6">{pick("Three hurdles in international hiring", "海外採用における3つの課題")}</h2>
-              <div className="section-divider mt-4 mb-6" />
-            </Reveal>
-            <RevealGroup stagger={0.1} className="space-y-8">
-              {[
-                { hurdle: pick("Language barrier", "言語の壁"), solution: pick("JLPT N5–N3 education online & at partner schools.", "オンラインおよび提携校でのJLPT N5〜N3教育。") },
-                { hurdle: pick("Cultural differences", "文化の違い"), solution: pick("Culture & business-etiquette training by professionals.", "プロフェッショナルによる文化・ビジネスマナー研修。") },
-                { hurdle: pick("Internal readiness", "内部の準備状況"), solution: pick("Working-with-Indians support training using proven methods.", "実績のある手法を用いたインド人との協働サポート研修。") }
-              ].map((h, i) => (
-                <motion.div key={i} variants={staggerItem}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="h-[14px] w-[14px] text-crimson" />
-                    <h3 className="font-bold text-crimson">{h.hurdle}</h3>
+            <div className="relative text-center max-w-2xl mx-auto">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white/70 mb-6">
+                <Handshake className="h-3 w-3" />
+                Get Started
+              </span>
+              <h2 className="font-display text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
+                Ready to build the bridge?
+              </h2>
+              <p className="mt-4 text-white/65 text-[15px] leading-relaxed max-w-lg mx-auto">
+                Whether you&apos;re a candidate looking for your Japan career, or a company
+                ready to hire India&apos;s finest — IndiGate is your starting point.
+              </p>
+
+              {/* Two CTA cards */}
+              <div className="mt-10 grid sm:grid-cols-2 gap-4 max-w-xl mx-auto text-left">
+                {/* Candidate CTA */}
+                <button
+                  onClick={() => navigate("register")}
+                  className="group rounded-2xl border border-white/15 bg-white/8 hover:bg-saffron/15 hover:border-saffron/30 p-5 text-left transition-all"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="grid place-items-center h-10 w-10 rounded-xl bg-saffron/20 text-saffron">
+                      <Users className="h-5 w-5" />
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-saffron opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
                   </div>
-                  <div className="flex items-start gap-2 pl-5">
-                    <ArrowRight className="h-[14px] w-[14px] text-saffron shrink-0 mt-1" />
-                    <p className="text-sm text-foreground/80 leading-relaxed">{h.solution}</p>
+                  <p className="font-display font-bold text-[15px] text-white mb-1">I&apos;m a Candidate</p>
+                  <p className="text-[12.5px] text-white/55 leading-relaxed">
+                    Find visa-sponsored roles at Japan&apos;s top tech companies.
+                  </p>
+                </button>
+
+                {/* Company CTA */}
+                <button
+                  onClick={() => navigate("for-companies")}
+                  className="group rounded-2xl border border-white/15 bg-white/8 hover:bg-crimson/10 hover:border-crimson/25 p-5 text-left transition-all"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="grid place-items-center h-10 w-10 rounded-xl bg-crimson/20 text-crimson">
+                      <Building className="h-5 w-5" />
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-crimson opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
                   </div>
-                </motion.div>
-              ))}
-            </RevealGroup>
+                  <p className="font-display font-bold text-[15px] text-white mb-1">I&apos;m Hiring</p>
+                  <p className="text-[12.5px] text-white/55 leading-relaxed">
+                    Post roles and access pre-vetted Indian engineers — free.
+                  </p>
+                </button>
+              </div>
+
+              {/* Contact line */}
+              <p className="mt-8 text-[12px] text-white/40">
+                Questions?{" "}
+                <button
+                  onClick={() => navigate("contact")}
+                  className="text-saffron hover:underline font-medium"
+                >
+                  Talk to our team →
+                </button>
+              </p>
+            </div>
           </div>
-        </div>
+        </Reveal>
       </div>
+    </section>
 
-      {/* 6. Contact / CTA */}
-      <Reveal variants={fadeUp} delay={0.05} className="mt-8">
-        <div className="card-premium p-10 sm:p-16 relative overflow-hidden text-center bg-card">
-          <div className="relative z-10 max-w-2xl mx-auto">
-            <h2 className="font-display text-3xl sm:text-4xl font-extrabold mb-4 text-foreground">
-              <ShimmerText>{pick("Contact", "お問い合わせ")}</ShimmerText>
-            </h2>
-            <div className="section-divider mt-4 mb-4 mx-auto" />
-            <p className="text-muted-foreground text-lg mb-8">
-              {pick("Reach out for consultation on hiring Indian talent, or join the platform today.", "インド人材採用に関するご相談や、プラットフォームへの登録はこちらからお問い合わせください。")}
-            </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12">
-              <MagneticButton
-                onClick={() => navigate("register")}
-                className="bg-brand-gradient text-white hover:opacity-90 font-bold px-8 rounded-full h-12 inline-flex items-center justify-center shadow-glow-brand ring-brand"
-              >
-                {pick("Join IndiGate", "IndiGateに参加する")}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </MagneticButton>
-            </div>
-            
-            <div className="grid sm:grid-cols-2 gap-8 text-left border-t border-border/60 pt-8 mt-8">
-              <div>
-                <p className="font-bold text-lg mb-1 text-foreground">{pick("Japan", "日本")}</p>
-                <p className="text-muted-foreground text-sm leading-relaxed">{pick("1-2-32 Tsurumai, Showa-ku, Nagoya, Aichi 466-0064, Japan", "466-0064 愛知県名古屋市昭和区鶴舞1-2-32")}</p>
-              </div>
-              <div>
-                <p className="font-bold text-lg mb-1 text-foreground">{pick("India", "インド")}</p>
-                <p className="text-muted-foreground text-sm leading-relaxed">{pick("1/C, 83/1, Raidurg, Near HiTec City, Hyderabad 500081, Telangana", "1/C, 83/1, ライドゥルグ、ハイテク・シティ近く、ハイデラバード 500081、テランガーナ州")}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Reveal>
-
-    </main>
+    </div>
   );
 }
 

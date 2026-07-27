@@ -58,7 +58,13 @@ import {
   Send,
   FileText,
   Loader2,
+  Sparkles,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { EnglishResumePDF } from "@/lib/pdf-templates/english-resume-pdf";
 import { JapaneseResumePDF } from "@/lib/pdf-templates/japanese-resume-pdf";
@@ -87,6 +93,22 @@ export function Applicants() {
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [matchScores, setMatchScores] = useState<Record<string, { score: number; reasons: string[] }>>({});
+
+  useEffect(() => {
+    if (!jobId) return;
+    api<{ matches: Array<{ candidateId: string; matchScore: number; matchReasons: string[] }> }>(
+      `/api/companies/jobs/${jobId}/matches`
+    )
+      .then((res) => {
+        const map: Record<string, { score: number; reasons: string[] }> = {};
+        (res.matches || []).forEach((m) => {
+          map[m.candidateId] = { score: m.matchScore, reasons: m.matchReasons };
+        });
+        setMatchScores(map);
+      })
+      .catch(() => {});
+  }, [jobId]);
 
   const filtered = useMemo(() => {
     let list = apps ?? [];
@@ -221,6 +243,7 @@ export function Applicants() {
                   <TableHead className="pl-5 sm:pl-6">{pick("Candidate", "候補者")}</TableHead>
                   <TableHead className="hidden md:table-cell">{pick("JLPT", "JLPT")}</TableHead>
                   <TableHead className="hidden lg:table-cell">{pick("Skills", "スキル")}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{pick("AI Match", "AI マッチ")}</TableHead>
                   <TableHead className="hidden sm:table-cell">{pick("Applied", "応募日")}</TableHead>
                   <TableHead>{pick("Status", "ステータス")}</TableHead>
                   <TableHead className="text-right pr-5 sm:pr-6">{pick("Action", "アクション")}</TableHead>
@@ -462,27 +485,12 @@ function ApplicantDetail({
             {c.location ?? "—"}
           </p>
         </div>
-        {c.openToWork ? (
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => setShowMessage(true)}
-            className="bg-brand-gradient text-white hover:opacity-90 shadow-glow-brand shrink-0"
-          >
-            <MessageSquare className="h-4 w-4" />
-            <span className="hidden sm:inline">
-              {t("dash.messages.start")}
-            </span>
-          </Button>
-        ) : (
-          <Badge
-            variant="outline"
-            className="shrink-0 border-muted-foreground/30 text-muted-foreground"
-            title={t("dash.messages.no.contact")}
-          >
-            {t("dash.messages.no.contact")}
-          </Badge>
-        )}
+        <Badge
+          variant="outline"
+          className="shrink-0 border-saffron/40 text-saffron font-semibold bg-saffron/10 text-xs px-2.5 py-1"
+        >
+          Handled via Admin Support
+        </Badge>
       </div>
 
       {/* Status pill */}

@@ -99,10 +99,39 @@ export interface JobDTO {
   currency: string;
   skillsRequired: string[];
   isActive: boolean;
+  isFeatured: boolean;
   deadline: string | null;
   postedAt: string;
   updatedAt: string;
   applicationCount?: number;
+  matchScore?: number | null;
+  matchBadge?: string | null;
+  matchReasons?: string[];
+}
+
+export interface SupportMessageDTO {
+  id: string;
+  ticketId: string;
+  senderId: string;
+  senderRole: "CANDIDATE" | "ADMIN";
+  body: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface SupportTicketDTO {
+  id: string;
+  candidateId: string;
+  candidateName?: string;
+  candidateEmail?: string;
+  subject: string;
+  category: string;
+  status: string;
+  internalNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+  messages: SupportMessageDTO[];
+  unreadCount?: number;
 }
 
 export interface ApplicationDTO {
@@ -214,4 +243,20 @@ export interface MessageDTO {
   body: string;
   isRead: boolean;
   createdAt: string;
+}
+
+export interface JobMatchDTO {
+  jobId: string;
+  title: string;
+  company: string;
+  companyLogo: string | null;
+  location: string;
+  jobType: string;
+  jlptRequired: string;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  skillsRequired: string[];
+  postedAt: string;
+  matchScore: number;    // 0-100
+  matchReasons: string[]; // 3 short strings
 }

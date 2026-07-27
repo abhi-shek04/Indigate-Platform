@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { LayoutDashboard, Briefcase, Users, Building2, FileText, Quote, Mail, Download, ShieldCheck, ScrollText, BellRing } from "lucide-react";
+import { LayoutDashboard, Briefcase, Users, Building2, FileText, Quote, Mail, Download, ShieldCheck, ScrollText, BellRing, Headphones, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useT } from "@/lib/use-t";
@@ -11,10 +11,13 @@ import type { ApplicationStatus, CandidateProfileDTO, CompanyProfileDTO } from "
 /** Admin sidebar navigation config. */
 export const NAV: NavItem[] = [
   { key: "overview", label: "Overview", icon: LayoutDashboard },
+  { key: "ai-scores", label: "AI Scoring", icon: Sparkles },
   { key: "jobs", label: "Jobs", icon: Briefcase },
   { key: "candidates", label: "Candidates", icon: Users },
   { key: "companies", label: "Companies", icon: Building2 },
   { key: "applications", label: "Applications", icon: FileText },
+  { key: "support", label: "Support Tickets", icon: Headphones },
+  { key: "matching", label: "AI Matching", icon: Sparkles },
   { key: "testimonials", label: "Testimonials", icon: Quote },
   { key: "contacts", label: "Enquiries", icon: Mail },
   { key: "users", label: "Users & Roles", icon: ShieldCheck },

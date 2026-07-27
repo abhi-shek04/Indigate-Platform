@@ -25,15 +25,16 @@ export function err(message: string, status = 400) {
  * `requireRole` and maps them to the appropriate status codes.
  */
 export function handleError(e: unknown) {
-  if (e instanceof Error) {
-    if (e.message === "UNAUTHORIZED")
+  if (e && typeof e === "object" && "message" in e) {
+    const msg = String(e.message);
+    if (msg === "UNAUTHORIZED")
       return err("Unauthorized. Please log in.", 401);
-    if (e.message === "FORBIDDEN")
+    if (msg === "FORBIDDEN")
       return err("You don't have permission to do that.", 403);
-    if (e.message === "NOT_FOUND") return err("Not found.", 404);
-    return err(e.message, 400);
+    if (msg === "NOT_FOUND") return err("Not found.", 404);
+    return err(msg, 400);
   }
-  return err("Internal server error", 500);
+  return err(`Internal server error: ${String(e)}`, 500);
 }
 
 /**
@@ -152,6 +153,7 @@ export function toJobDTO(j: {
   currency: string;
   skillsRequired: string;
   isActive: boolean;
+  isFeatured: boolean;
   deadline: Date | null;
   postedAt: Date;
   updatedAt: Date;
@@ -174,6 +176,7 @@ export function toJobDTO(j: {
     currency: j.currency,
     skillsRequired: parseJson<string[]>(j.skillsRequired, []),
     isActive: j.isActive,
+    isFeatured: j.isFeatured,
     deadline: j.deadline?.toISOString() ?? null,
     postedAt: j.postedAt.toISOString(),
     updatedAt: j.updatedAt.toISOString(),

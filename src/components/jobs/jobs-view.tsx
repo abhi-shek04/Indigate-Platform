@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useT } from "@/lib/use-t";
 import { api } from "@/lib/api-client";
 import { JobCard } from "@/components/jobs/job-card";
 import { Button } from "@/components/ui/button";
-import { RevealGroup, staggerItem, motion, Reveal, fadeUp } from "@/lib/motion";
+import { RevealGroup, staggerItem, motion, Reveal } from "@/lib/motion";
 import {
   Select,
   SelectContent,
@@ -14,10 +14,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, SlidersHorizontal, X, Briefcase, LayoutGrid, LayoutList, ArrowRight, MapPin } from "lucide-react";
+import { Search, SlidersHorizontal, X, Briefcase, LayoutGrid, LayoutList, MapPin, Sparkles, Bot, Star, Filter, Clock, TrendingUp } from "lucide-react";
 import type { JobDTO } from "@/lib/types";
 import { JOB_TYPES, JLPT_LEVELS } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useApp } from "@/lib/store";
+import { matchJob } from "@/lib/ai-matcher";
 
 interface JobsResponse {
   jobs: JobDTO[];
@@ -36,6 +38,10 @@ const LOCATIONS = [
 
 export function JobsView() {
   const { t, pick } = useT();
+  const candidateProfile = useApp((s) => s.candidate);
+  const user = useApp((s) => s.user);
+  const navigate = useApp((s) => s.navigate);
+
   const [data, setData] = useState<JobsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -44,6 +50,8 @@ export function JobsView() {
   const [jobType, setJobType] = useState("all");
   const [jlptLevel, setJlptLevel] = useState("all");
   const [salaryMin, setSalaryMin] = useState("all");
+  const [featuredFilter, setFeaturedFilter] = useState("all");
+  const [matchFilter, setMatchFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
@@ -62,7 +70,7 @@ export function JobsView() {
       if (jobType !== "all") params.set("jobType", jobType);
       if (jlptLevel !== "all") params.set("jlptLevel", jlptLevel);
       if (salaryMin !== "all") params.set("salaryMin", salaryMin);
-      if (sortBy !== "newest") params.set("sort", sortBy);
+      if (sortBy !== "newest" && sortBy !== "match") params.set("sort", sortBy);
       const res = await api<JobsResponse>(`/api/jobs?${params.toString()}`);
       setData(res);
     } catch {
@@ -76,12 +84,100 @@ export function JobsView() {
     load();
   }, [load]);
 
+  const [precomputedScores, setPrecomputedScores] = useState<
+    Record<string, { score: number; reasons: string[] }>
+  >({});
+
+  useEffect(() => {
+    if (!user || user.role !== "CANDIDATE" || !data?.jobs) return;
+    api<{
+      matches: Array<{ jobId: string; matchScore: number; matchReasons: string[] }>;
+    }>("/api/candidates/me/matches")
+      .then((res) => {
+        const map: Record<string, { score: number; reasons: string[] }> = {};
+        (res.matches || []).forEach((m) => {
+          map[m.jobId] = { score: m.matchScore, reasons: m.matchReasons };
+        });
+        setPrecomputedScores(map);
+      })
+      .catch(() => {});
+  }, [user, data]);
+
+  const jobsWithMatch = useMemo(() => {
+    if (!data?.jobs) return [];
+    const profile = candidateProfile
+      ? {
+          skills:
+            typeof candidateProfile.skills === "string"
+              ? JSON.parse(candidateProfile.skills || "[]")
+              : candidateProfile.skills ?? [],
+          jlptLevel: candidateProfile.jlptLevel,
+          experienceYears: candidateProfile.experienceYears,
+          location: candidateProfile.location,
+        }
+      : null;
+    return data.jobs.map((job) => {
+      const fallback = matchJob(job, profile);
+      const pre = precomputedScores[job.id];
+      if (pre) {
+        let badge: string | null = null;
+        if (pre.score >= 85) badge = "⭐ Best Match";
+        else if (pre.score >= 70) badge = "🔥 Recommended";
+        else if (pre.score >= 50) badge = "👍 Good Match";
+        return {
+          ...job,
+          matchScore: pre.score,
+          matchBadge: badge,
+          matchReasons: pre.reasons,
+        };
+      }
+      return {
+        ...job,
+        ...fallback,
+      };
+    });
+  }, [data?.jobs, candidateProfile, precomputedScores]);
+
+  const sortedJobs = useMemo(() => {
+    let list = [...jobsWithMatch];
+
+    // Filter featured
+    if (featuredFilter === "featured") {
+      list = list.filter((j) => j.isFeatured);
+    } else if (featuredFilter === "standard") {
+      list = list.filter((j) => !j.isFeatured);
+    }
+
+    // Filter match level
+    if (matchFilter === "best") {
+      list = list.filter((j) => (j.matchScore ?? 0) >= 85);
+    } else if (matchFilter === "recommended") {
+      list = list.filter((j) => (j.matchScore ?? 0) >= 70);
+    } else if (matchFilter === "good") {
+      list = list.filter((j) => (j.matchScore ?? 0) >= 50);
+    }
+
+    // Sort
+    if (sortBy === "oldest") {
+      return list.sort((a, b) => new Date(a.postedAt).getTime() - new Date(b.postedAt).getTime());
+    }
+    if (sortBy === "title_asc") {
+      return list.sort((a, b) => a.title.localeCompare(b.title));
+    }
+    if (sortBy === "title_desc") {
+      return list.sort((a, b) => b.title.localeCompare(a.title));
+    }
+    return list; // "newest" = default order from API (isFeatured desc, postedAt desc)
+  }, [jobsWithMatch, sortBy, featuredFilter, matchFilter]);
+
   const hasFilters =
     !!debouncedSearch ||
     location !== "all" ||
     jobType !== "all" ||
     jlptLevel !== "all" ||
-    salaryMin !== "all";
+    salaryMin !== "all" ||
+    featuredFilter !== "all" ||
+    matchFilter !== "all";
 
   function clearFilters() {
     setSearch("");
@@ -89,6 +185,8 @@ export function JobsView() {
     setJobType("all");
     setJlptLevel("all");
     setSalaryMin("all");
+    setFeaturedFilter("all");
+    setMatchFilter("all");
   }
 
   return (
@@ -107,17 +205,22 @@ export function JobsView() {
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="floating-pill mb-6 mx-auto"
+            className="floating-pill mb-6 mx-auto flex items-center gap-2"
           >
-            <span className="relative flex h-2 w-2 ml-1">
+            <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full rounded-full bg-saffron opacity-80 animate-ping" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-saffron" />
             </span>
-            <span className="text-muted-foreground">
+            <span className="text-muted-foreground font-medium">
               {!loading && data
                 ? `${data.total} open ${data.total === 1 ? "role" : "roles"} in Japan`
                 : t("jobs.title")}
             </span>
+            {candidateProfile && (
+              <span className="ml-1 border-l border-border/60 pl-2 text-xs font-bold text-saffron inline-flex items-center gap-1">
+                <Bot className="h-3 w-3" /> AI Matcher Active
+              </span>
+            )}
           </motion.div>
 
           <Reveal>
@@ -164,8 +267,8 @@ export function JobsView() {
         </div>
       </section>
 
-      {/* SECTION 2 — CITY PILLS */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none -mx-1 px-1">
+      {/* SECTION 2 — CITY & QUICK FEATURED PILLS */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none -mx-1 px-1">
         {/* "All Japan" pill */}
         <button
           onClick={() => setLocation("all")}
@@ -178,6 +281,30 @@ export function JobsView() {
           )}>
           🗾 All Japan
         </button>
+
+        {/* AI Smart Match Quick Toggle Pill (For Logged-in Candidates) */}
+        {candidateProfile && (
+          <button
+            onClick={() => {
+              if (matchFilter === "best" && sortBy === "match") {
+                setMatchFilter("all");
+                setSortBy("newest");
+              } else {
+                setMatchFilter("best");
+                setSortBy("match");
+              }
+            }}
+            className={cn(
+              "shrink-0 rounded-full px-4 py-2 text-sm font-semibold",
+              "border transition-all duration-200 whitespace-nowrap inline-flex items-center gap-1.5",
+              matchFilter === "best" || sortBy === "match"
+                ? "bg-saffron text-white border-transparent shadow-glow-brand"
+                : "bg-saffron/10 border-saffron/30 text-saffron hover:bg-saffron/20"
+            )}>
+            <Sparkles className="h-3.5 w-3.5 fill-current" />
+            🤖 AI Smart Match (85%+)
+          </button>
+        )}
 
         {/* Divider */}
         <div className="h-9 w-px bg-border/60 shrink-0 self-center mx-1" />
@@ -201,34 +328,69 @@ export function JobsView() {
         ))}
       </div>
 
-      {/* SECTION 3 — FILTER BAR */}
-      <div className="mb-5 rounded-2xl border border-border bg-card/80 backdrop-blur-sm shadow-premium px-4 py-3">
+      {/* SECTION 3 — PROFESSIONAL FILTER BAR */}
+      <div className="mb-6 rounded-2xl border border-border bg-card/90 backdrop-blur-md shadow-premium px-4 py-3.5">
         {/* Main filter row */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* Label */}
           <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground pr-1">
-            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <Filter className="h-3.5 w-3.5 text-saffron" />
             <span className="hidden sm:inline">{pick("Filters", "フィルター")}</span>
           </div>
           <div className="hidden sm:block h-5 w-px bg-border mx-1" />
 
-          {/* Three selects — NO location select (city pills handle location) */}
+          {/* Featured Jobs Filter Select */}
           <FilterSelect
-            value={jobType} onChange={setJobType}
-            all={t("jobs.alltypes")}
-            options={JOB_TYPES.map((j) => ({ value: j, label: t(`jobtype.${j}`) }))}
-          />
-          <FilterSelect
-            value={jlptLevel} onChange={setJlptLevel}
-            all={t("jobs.alljlpt")}
-            options={JLPT_LEVELS.filter((l) => l !== "NONE").map((l) => ({
-              value: l, label: `JLPT ${l}`,
-            }))}
-          />
-          <FilterSelect
-            value={salaryMin} onChange={setSalaryMin}
-            all={t("jobs.allsalary")}
+            value={featuredFilter}
+            onChange={setFeaturedFilter}
             options={[
+              { value: "all", label: "⭐ Featured: All Jobs" },
+              { value: "featured", label: "⭐ Featured Only" },
+              { value: "standard", label: "Standard Jobs Only" },
+            ]}
+          />
+
+          {/* AI Match Filter Select */}
+          <FilterSelect
+            value={matchFilter}
+            onChange={setMatchFilter}
+            options={[
+              { value: "all", label: "🤖 AI Match: All Scores" },
+              { value: "best", label: "⭐ Best Match (85%+)" },
+              { value: "recommended", label: "🔥 Recommended (70%+)" },
+              { value: "good", label: "👍 Good Match (50%+)" },
+            ]}
+          />
+
+          {/* Job Type Select */}
+          <FilterSelect
+            value={jobType}
+            onChange={setJobType}
+            options={[
+              { value: "all", label: `💼 ${t("jobs.alltypes")}` },
+              ...JOB_TYPES.map((j) => ({ value: j, label: t(`jobtype.${j}`) })),
+            ]}
+          />
+
+          {/* JLPT Select */}
+          <FilterSelect
+            value={jlptLevel}
+            onChange={setJlptLevel}
+            options={[
+              { value: "all", label: `🎌 ${t("jobs.alljlpt")}` },
+              ...JLPT_LEVELS.filter((l) => l !== "NONE").map((l) => ({
+                value: l,
+                label: `JLPT ${l}`,
+              })),
+            ]}
+          />
+
+          {/* Salary Select */}
+          <FilterSelect
+            value={salaryMin}
+            onChange={setSalaryMin}
+            options={[
+              { value: "all", label: `💴 ${t("jobs.allsalary")}` },
               { value: "300000", label: pick("¥300k+ /mo", "月額30万円以上") },
               { value: "500000", label: pick("¥500k+ /mo", "月間50万以上") },
               { value: "700000", label: pick("¥700k+ /mo", "月額70万円以上") },
@@ -241,11 +403,13 @@ export function JobsView() {
               Sort:
             </span>
             <FilterSelect
-              value={sortBy} onChange={setSortBy}
-              all="Newest first"
+              value={sortBy}
+              onChange={setSortBy}
               options={[
-                { value: "salary",    label: pick("Highest salary", "最高給与") },
-                { value: "relevance", label: pick("Most relevant", "最も関連性の高いもの")  },
+                { value: "newest", label: "Newest first" },
+                { value: "oldest", label: "Oldest first" },
+                { value: "title_asc", label: "Title (A-Z)" },
+                { value: "title_desc", label: "Title (Z-A)" },
               ]}
             />
           </div>
@@ -253,7 +417,23 @@ export function JobsView() {
 
         {/* Active filter chips — only when filters are set */}
         {hasFilters && (
-          <div className="flex flex-wrap items-center gap-1.5 mt-2.5 pt-2.5 border-t border-border/60">
+          <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-3 border-t border-border/60">
+            {featuredFilter !== "all" && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-saffron/15 border border-saffron/30 text-saffron px-3 py-1 text-xs font-semibold">
+                ⭐ {featuredFilter === "featured" ? "Featured Only" : "Standard Only"}
+                <button onClick={() => setFeaturedFilter("all")} className="hover:opacity-70">
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            )}
+            {matchFilter !== "all" && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-saffron/15 border border-saffron/30 text-saffron px-3 py-1 text-xs font-semibold">
+                🤖 AI Match: {matchFilter.toUpperCase()}
+                <button onClick={() => setMatchFilter("all")} className="hover:opacity-70">
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            )}
             {debouncedSearch && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-saffron/10 border border-saffron/25 text-crimson px-3 py-1 text-xs font-semibold">
                 🔍 &quot;{debouncedSearch}&quot;
@@ -307,17 +487,10 @@ export function JobsView() {
           ) : data ? (
             <>
               <span className="font-display font-extrabold text-2xl text-gradient-brand leading-none">
-                {data.total}
+                {sortedJobs.length}
               </span>
               <span className="text-sm text-muted-foreground">
-                {data.total === 1 ? "role" : "roles"} found
-                {debouncedSearch && (
-                  <> for{" "}
-                    <span className="font-semibold text-foreground">
-                      &quot;{debouncedSearch}&quot;
-                    </span>
-                  </>
-                )}
+                {sortedJobs.length === 1 ? "role" : "roles"} shown
               </span>
             </>
           ) : null}
@@ -358,14 +531,14 @@ export function JobsView() {
             <Skeleton key={i} className={cn("rounded-2xl", viewMode === "grid" ? "h-48" : "h-20")} />
           ))}
         </div>
-      ) : data && data.jobs.length > 0 ? (
+      ) : sortedJobs.length > 0 ? (
         <RevealGroup
           className={cn(
             "gap-5 sm:gap-6",
             viewMode === "list" ? "flex flex-col" : "grid sm:grid-cols-2 lg:grid-cols-3"
           )}
           stagger={0.06}>
-          {data.jobs.map((job) => (
+          {sortedJobs.map((job) => (
             <motion.div key={job.id} variants={staggerItem}>
               <JobCard job={job} listMode={viewMode === "list"} />
             </motion.div>
@@ -390,12 +563,6 @@ export function JobsView() {
               Clear all filters
             </Button>
           )}
-          <p className="mt-6 text-xs text-muted-foreground">
-            Want to be notified when a match opens up?{" "}
-            <button className="text-saffron underline underline-offset-2 hover:text-saffron/80 transition-colors">
-              Set a job alert
-            </button>
-          </p>
         </div>
       )}
 
@@ -418,15 +585,17 @@ export function JobsView() {
 function FilterSelect({
   value,
   onChange,
-  all,
   options,
+  placeholder = "Select...",
 }: {
   value: string;
   onChange: (v: string) => void;
-  all: string;
-  options: (string | { value: string; label: string })[];
+  options: { value: string; label: string }[];
+  placeholder?: string;
 }) {
-  const isActive = value !== "all" && value !== "newest";
+  const safeValue = options.some((o) => o.value === value) ? value : options[0]?.value || "";
+  const isActive = safeValue !== "all" && safeValue !== "newest";
+
   const triggerCls = cn(
     "h-9 rounded-lg bg-card text-sm font-medium data-[size=default]:h-9 transition-colors",
     isActive
@@ -434,21 +603,16 @@ function FilterSelect({
       : "border-border hover:border-saffron/40 hover:bg-saffron/5",
   );
   return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className={cn(triggerCls, "min-w-[140px]")}>
-        <SelectValue />
+    <Select value={safeValue} onValueChange={onChange}>
+      <SelectTrigger className={cn(triggerCls, "min-w-[145px]")}>
+        <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="all">{all}</SelectItem>
-        {options.map((o) => {
-          const v = typeof o === "string" ? o : o.value;
-          const l = typeof o === "string" ? o : o.label;
-          return (
-            <SelectItem key={v} value={v}>
-              {l}
-            </SelectItem>
-          );
-        })}
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
       </SelectContent>
     </Select>
   );

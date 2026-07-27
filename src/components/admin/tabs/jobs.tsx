@@ -72,6 +72,7 @@ import {
   MapPin,
   Users,
   Sparkles,
+  Star,
 } from "lucide-react";
 import { useCompletion } from "@ai-sdk/react";
 import type { JobDTO, CompanyProfileDTO } from "@/lib/types";
@@ -130,6 +131,22 @@ export function JobsTab() {
         body: JSON.stringify({ isActive: !j.isActive }),
       });
       toast.success(j.isActive ? "Paused." : "Activated.");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function toggleFeatured(j: JobDTO) {
+    setBusyId(j.id);
+    try {
+      await api(`/api/admin/jobs/${j.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ isFeatured: !j.isFeatured }),
+      });
+      toast.success(j.isFeatured ? "Removed from featured." : "Marked as featured.");
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed.");
@@ -221,6 +238,10 @@ export function JobsTab() {
                   <TableHead className="hidden md:table-cell">JLPT</TableHead>
                   <TableHead className="text-center">Apps</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-center">
+                    <span className="sr-only">Featured</span>
+                    <Star className="h-3.5 w-3.5 text-muted-foreground mx-auto" />
+                  </TableHead>
                   <TableHead className="text-right pr-5 sm:pr-6">
                     <span className="sr-only">Actions</span>
                   </TableHead>
@@ -241,8 +262,11 @@ export function JobsTab() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
-                          <p className="font-semibold text-sm truncate max-w-[220px]">
+                          <p className="font-semibold text-sm truncate max-w-[220px] flex items-center gap-1.5">
                             {j.title}
+                            {j.isFeatured && (
+                              <Star className="h-3 w-3 fill-amber-500 text-amber-500 shrink-0" />
+                            )}
                             {j.titleJa && (
                               <span className="ml-1.5 text-muted-foreground font-normal">
                                 · {j.titleJa}
@@ -306,8 +330,29 @@ export function JobsTab() {
                         {j.isActive ? "Active" : "Paused"}
                       </span>
                     </TableCell>
+                    <TableCell className="text-center">
+                      <button
+                        onClick={() => toggleFeatured(j)}
+                        disabled={busyId === j.id}
+                        aria-label={j.isFeatured ? "Remove from featured" : "Mark as featured"}
+                        className={cn(
+                          "flex items-center justify-center h-8 w-8 rounded-lg mx-auto",
+                          "transition-all duration-200 disabled:opacity-40 cursor-pointer",
+                          j.isFeatured
+                            ? "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20"
+                            : "text-muted-foreground hover:text-amber-500 hover:bg-amber-500/8"
+                        )}
+                      >
+                        <Star
+                          className={cn(
+                            "h-4 w-4 transition-all",
+                            j.isFeatured && "fill-amber-500 text-amber-500"
+                          )}
+                        />
+                      </button>
+                    </TableCell>
                     <TableCell className="text-right pr-5 sm:pr-6">
-                      <div className="flex items-center justify-end gap-0.5">
+                      <div className="flex items-center justify-end gap-1">
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
@@ -426,6 +471,7 @@ interface JobFormState {
   skills: string[];
   deadline: string;
   isActive: boolean;
+  isFeatured: boolean;
 }
 
 const CURRENCIES = ["JPY", "USD", "INR", "EUR"] as const;
@@ -469,6 +515,7 @@ export function JobEditorSheet({
     skills: [],
     deadline: "",
     isActive: true,
+    isFeatured: false,
   });
   const [saving, setSaving] = useState(false);
   const [step, setStep] = useState(0);
@@ -490,7 +537,11 @@ export function JobEditorSheet({
 
   const { complete: completeDesc, isLoading: isGeneratingDesc } = useCompletion({
     api: "/api/ai/generate-job",
+    streamProtocol: "text",
     onFinish: handleFinish,
+    onError: (err) => {
+      toast.error(err.message || "AI failed to generate. Please try again.");
+    }
   });
 
   useEffect(() => {
@@ -514,6 +565,7 @@ export function JobEditorSheet({
           ? new Date(job.deadline).toISOString().slice(0, 10)
           : "",
         isActive: job.isActive,
+        isFeatured: job.isFeatured ?? false,
       });
     }
   }, [job]);
@@ -560,6 +612,12 @@ export function JobEditorSheet({
         return "Description must be at least 50 characters.";
     }
     if (s === 2) {
+      if (form.salaryMin && Number(form.salaryMin) > 2147483647) {
+        return "Salary minimum must be less than 2,000,000,000.";
+      }
+      if (form.salaryMax && Number(form.salaryMax) > 2147483647) {
+        return "Salary maximum must be less than 2,000,000,000.";
+      }
       if (form.salaryMin && form.salaryMax) {
         if (Number(form.salaryMin) > Number(form.salaryMax))
           return "Salary min cannot exceed salary max.";
@@ -599,12 +657,26 @@ export function JobEditorSheet({
         toast.error("Could not read the file.");
       }
     } else if (name.endsWith(".pdf") || name.endsWith(".docx") || name.endsWith(".doc")) {
-      toast.message("File attached — please paste JD text manually", {
-        description:
-          name.endsWith(".pdf")
-            ? "PDF text extraction isn't available client-side."
-            : "DOCX text extraction isn't available client-side.",
-      });
+      try {
+        toast.message(`Extracting text from ${file.name}...`);
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await api<{ text: string }>("/api/admin/jobs/parse-jd", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.text || res.text.trim().length < 10) {
+          toast.error("Extracted text is empty or too short.");
+          return;
+        }
+        update("description", res.text);
+        toast.success(`JD imported from ${file.name}`, {
+          description: `${res.text.length} characters extracted into description.`,
+        });
+      } catch (err: any) {
+        toast.error(err.message || "Failed to extract text from file.");
+      }
     } else {
       toast.error("Unsupported file type. Use .txt, .pdf, or .docx");
     }
@@ -640,6 +712,7 @@ export function JobEditorSheet({
         skillsRequired: form.skills,
         deadline: form.deadline || undefined,
         isActive: form.isActive,
+        isFeatured: form.isFeatured,
       };
       if (mode === "create") {
         payload.companyName = form.companyName.trim();
@@ -827,12 +900,15 @@ export function JobEditorSheet({
                                 body: {
                                   title: form.title,
                                   companyName: form.companyName,
+                                  description: form.description,
                                 },
                               });
                             }}
                           >
                             <Sparkles className="w-3 h-3 mr-1" />
-                            {isGeneratingDesc ? "Generating..." : "Auto-Generate"}
+                            {form.description.trim().length > 10
+                              ? (isGeneratingDesc ? "Polishing..." : "AI Polish")
+                              : (isGeneratingDesc ? "Generating..." : "Auto-Generate")}
                           </Button>
                         </div>
                       }
@@ -1067,6 +1143,36 @@ export function JobEditorSheet({
                           checked={form.isActive}
                           onCheckedChange={(v) => update("isActive", v)}
                           aria-label="Toggle active"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Featured toggle */}
+                    <div className="card-premium p-4 flex items-center justify-between gap-4 border-saffron/30 bg-saffron/5">
+                      <div>
+                        <p className="font-display font-bold text-sm flex items-center gap-1.5 text-foreground">
+                          <Star className="h-4 w-4 text-saffron fill-saffron" />
+                          Feature on Platform
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {form.isFeatured
+                            ? "Featured — pinned to top of search results with glowing highlight."
+                            : "Standard listing — displayed in normal chronological order."}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "text-xs font-semibold",
+                            form.isFeatured ? "text-saffron font-bold" : "text-muted-foreground",
+                          )}
+                        >
+                          {form.isFeatured ? "FEATURED" : "STANDARD"}
+                        </span>
+                        <Switch
+                          checked={form.isFeatured}
+                          onCheckedChange={(v) => update("isFeatured", v)}
+                          aria-label="Toggle featured"
                         />
                       </div>
                     </div>

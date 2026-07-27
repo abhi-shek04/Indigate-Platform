@@ -54,10 +54,12 @@ import { CandidateAvatar } from "@/components/brand/logo";
 import { ResumeBuilder } from "@/components/candidate/resume-builder";
 import { JobAlerts } from "@/components/candidate/tabs/alerts";
 import { AccountSettings } from "@/components/candidate/tabs/settings";
+import { CandidateSupportTab } from "@/components/candidate/candidate-support-tab";
 import { MessagesView } from "@/components/messages/messages-view";
 import { toast } from "sonner";
 import {
   LayoutDashboard,
+  Headphones,
   FileText,
   User,
   Upload,
@@ -107,6 +109,7 @@ const NAV: NavItem[] = [
   { key: "resume", label: "Upload Resume", icon: Upload },
   { key: "saved", label: "Saved Jobs", icon: Bookmark },
   { key: "alerts", label: "Job Alerts", icon: Bell },
+  { key: "support", label: "Admin Support", icon: Headphones },
   // `messages` entry is appended dynamically inside CandidateDashboard
   // so we can attach the live unread badge.
   { key: "settings", label: "Account Settings", icon: Settings },
@@ -122,22 +125,7 @@ export function CandidateDashboard() {
   const unread = useApp((s) => s.messageUnreadCount);
   const { t, pick } = useT();
 
-  // Inject the Messages nav entry between `alerts` and `settings` with the
-  // live unread badge so the sidebar pill stays in sync with the store.
-  const nav: NavItem[] = useMemo(() => {
-    const settings = NAV[NAV.length - 1];
-    const head = NAV.slice(0, -1);
-    return [
-      ...head,
-      {
-        key: "messages",
-        label: t("dash.messages"),
-        icon: MessageSquare,
-        badge: unread,
-      },
-      settings,
-    ];
-  }, [t, unread]);
+  const nav: NavItem[] = NAV;
 
   if (!user || user.role !== "CANDIDATE") {
     return <RoleGuard expected="CANDIDATE" />;
@@ -219,6 +207,7 @@ export function CandidateDashboard() {
       {tab === "resume" && <Resume />}
       {tab === "saved" && <Saved />}
       {tab === "alerts" && <JobAlerts />}
+      {tab === "support" && <CandidateSupportTab />}
       {tab === "messages" && <MessagesView />}
       {tab === "settings" && <AccountSettings />}
     </DashboardShell>

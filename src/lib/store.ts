@@ -38,7 +38,7 @@ export interface AppState {
   view: View;
   selectedJobId: string | null;
   // candidate dashboard tab
-  candidateTab: "overview" | "applications" | "profile" | "resume" | "saved" | "builder" | "alerts" | "messages" | "settings";
+  candidateTab: "overview" | "applications" | "profile" | "resume" | "saved" | "builder" | "alerts" | "messages" | "settings" | "support";
   // company dashboard tab
   companyTab:
     | "overview"
@@ -53,10 +53,13 @@ export interface AppState {
   // admin dashboard tab
   adminTab:
     | "overview"
+    | "ai-scores"
     | "jobs"
     | "candidates"
     | "companies"
     | "applications"
+    | "support"
+    | "matching"
     | "testimonials"
     | "contacts"
     | "users"

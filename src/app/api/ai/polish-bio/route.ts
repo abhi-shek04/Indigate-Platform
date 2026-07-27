@@ -12,8 +12,17 @@ export async function POST(req: NextRequest) {
 
     const { bio } = await req.json();
 
-    if (!bio) {
-      return new NextResponse('Missing bio text', { status: 400 });
+    if (!bio || bio.trim().length < 10) {
+      return new NextResponse('Content is too short to polish.', { status: 400 });
+    }
+
+    if (
+      !process.env.GOOGLE_GENERATIVE_AI_API_KEY &&
+      !process.env.GOOGLE_API_KEY &&
+      !process.env.GROQ_API_KEY &&
+      !process.env.OPENAI_API_KEY
+    ) {
+      return new NextResponse('No AI Provider API Keys configured in .env file', { status: 400 });
     }
 
     const result = streamText({

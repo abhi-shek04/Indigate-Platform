@@ -28,7 +28,6 @@ export const NAV: NavItem[] = [
   { key: "applicants", label: "Applicants", icon: Users },
   { key: "talent", label: "Find Talent", icon: Users2 },
   { key: "analytics", label: "Analytics", icon: BarChart2 },
-  { key: "messages", label: "Messages", icon: MessageSquare },
   { key: "profile", label: "Company Profile", icon: Building2 },
 ];
 

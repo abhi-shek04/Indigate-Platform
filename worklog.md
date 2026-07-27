@@ -1407,3 +1407,29 @@ Stage Summary:
 - Hero visual is now clean: "Career Journey" header, India/Japan flag pins, no floating job card, no "Live journey" badge.
 - All hero buttons are compact (px-5 h-11 text-sm) — no excessive empty space.
 - Files modified: `src/components/landing/landing-page.tsx`.
+
+---
+Task ID: AI-MATCH-SCORES-ENGINE
+Agent: Antigravity
+Task: IndiGate — AI Match Insights & Scoring Engine Overhaul
+
+Work Log:
+- Updated `MatchScore` model in `prisma/schema.prisma` with `breakdown Json @default("{}")` and `[score]`, `[computedAt]` indexes.
+- Ran `bun run db:push` to sync database schema.
+- Created `src/lib/match-score.ts`: pure scoring algorithm computing weighted match scores (skills 55%, JLPT 30%, experience 15%) with safe JSON parsing for candidate skills and job required skills.
+- Created 3 admin API routes:
+  - `src/app/api/admin/ai-scores/stats/route.ts`: returns total scores, average match %, scored candidates/jobs, lastComputedAt.
+  - `src/app/api/admin/ai-scores/route.ts`: returns top candidate-job match pairs with candidate details and company info.
+  - `src/app/api/admin/ai-scores/recompute/route.ts`: bulk computes and upserts match scores for all active candidates × jobs.
+- Registered `"ai-scores"` tab in `src/components/admin/shared.tsx`, `src/lib/store.ts`, and `src/components/admin/admin-dashboard.tsx`.
+- Created `src/components/admin/tabs/ai-scores.tsx`: premium 4-region UI featuring:
+  - Region 1: Dark atmospheric engine header banner with ambient glows, pulsing status indicator ("Active (On-Demand)"), live stats strip, and Recompute button.
+  - Region 2: 3 `MetricCard`s displaying total pre-computed scores, average match score %, and score coverage.
+  - Region 3: Top candidate-job pairs `SectionCard` with 5-row skeleton loader, empty state with `Sparkles` icon, candidate & company avatars, JLPT tags, and animated score progress bars.
+  - Region 4: Score breakdown legend explaining score calculation weights.
+  - Helper `toBreakdown(v: Prisma.JsonValue)` for type safety.
+- Type check: `bun x tsc --noEmit` exited with 0 errors.
+
+Stage Summary:
+- AI Match Insights & Scoring Engine fully implemented and integrated into the Admin Dashboard.
+

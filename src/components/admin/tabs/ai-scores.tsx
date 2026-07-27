@@ -324,109 +324,113 @@ export function AIScoresTab() {
           </div>
         ) : (
           /* Pairs list */
-          <ul className="divide-y divide-border/60">
-            {pairs.map((pair, idx) => {
-              return (
-                <motion.li
-                  key={pair.id}
-                  initial={{ opacity: 0, y: 6 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{
-                    duration: 0.3,
-                    delay: idx * 0.03,
-                    ease: easeOutExpo,
-                  }}
-                  className="flex items-center gap-3 sm:gap-4 px-5 py-3.5 group hover:bg-muted/40 transition-colors"
-                >
-                  {/* Rank */}
-                  <div className="text-[11px] font-bold text-muted-foreground/40 w-5 text-center shrink-0 tabular-nums">
-                    {idx + 1}
-                  </div>
-
-                  {/* Candidate */}
-                  <div className="flex items-center gap-2.5 min-w-0 w-[30%]">
-                    <CandidateAvatar
-                      name={pair.candidate.fullName ?? "?"}
-                      photoUrl={pair.candidate.photoUrl}
-                      size={34}
-                    />
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold truncate group-hover:text-saffron transition-colors">
-                        {pair.candidate.fullName || "Candidate"}
-                      </p>
-                      {pair.candidate.jlptLevel && (
-                        <span className="inline-flex items-center mt-0.5 text-[9px] font-bold rounded bg-crimson/10 border border-crimson/20 text-crimson px-1.5 py-0.2">
-                          JLPT {pair.candidate.jlptLevel}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Arrow */}
-                  <div className="shrink-0 text-muted-foreground/30">
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </div>
-
-                  {/* Job & Company */}
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <CompanyAvatar
-                      name={pair.job.company?.companyName ?? "?"}
-                      color={null}
-                      size={34}
-                    />
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold truncate">
-                        {pair.job.title}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground truncate">
-                        {pair.job.company?.companyName}
-                        {pair.job.locationJapan &&
-                          ` · ${pair.job.locationJapan}`}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Score bar & Value */}
-                  <div className="shrink-0 flex items-center gap-3 w-[130px]">
-                    <span
-                      className={cn(
-                        "text-sm font-extrabold font-display tabular-nums shrink-0 w-9 text-right",
-                        pair.score >= 80
-                          ? "text-saffron"
-                          : pair.score >= 60
-                            ? "text-amber-500"
-                            : "text-muted-foreground",
-                      )}
+          <div className="overflow-x-auto no-scrollbar scroll-touch">
+            <div className="min-w-[540px]">
+              <ul className="divide-y divide-border/60">
+                {pairs.map((pair, idx) => {
+                  return (
+                    <motion.li
+                      key={pair.id}
+                      initial={{ opacity: 0, y: 6 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{
+                        duration: 0.3,
+                        delay: idx * 0.03,
+                        ease: easeOutExpo,
+                      }}
+                      className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 group hover:bg-muted/40 transition-colors"
                     >
-                      {pair.score}%
-                    </span>
-                    {/* Progress Bar */}
-                    <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                      <motion.div
-                        className={cn(
-                          "h-full rounded-full",
-                          pair.score >= 80
-                            ? "bg-brand-gradient"
-                            : pair.score >= 60
-                              ? "bg-amber-400"
-                              : "bg-muted-foreground/40",
-                        )}
-                        initial={{ width: 0 }}
-                        whileInView={{ width: `${pair.score}%` }}
-                        viewport={{ once: true }}
-                        transition={{
-                          duration: 0.6,
-                          delay: idx * 0.04,
-                          ease: easeOutExpo,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </motion.li>
-              );
-            })}
-          </ul>
+                      {/* Rank */}
+                      <div className="text-[11px] font-bold text-muted-foreground/40 w-5 text-center shrink-0 tabular-nums">
+                        {idx + 1}
+                      </div>
+
+                      {/* Candidate */}
+                      <div className="flex items-center gap-2.5 min-w-0 w-[32%] shrink-0">
+                        <CandidateAvatar
+                          name={pair.candidate.fullName ?? "?"}
+                          photoUrl={pair.candidate.photoUrl}
+                          size={34}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold truncate group-hover:text-saffron transition-colors">
+                            {pair.candidate.fullName || "Candidate"}
+                          </p>
+                          {pair.candidate.jlptLevel && (
+                            <span className="inline-flex items-center mt-0.5 text-[9px] font-bold rounded bg-crimson/10 border border-crimson/20 text-crimson px-1.5 py-0.2">
+                              JLPT {pair.candidate.jlptLevel}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Arrow */}
+                      <div className="shrink-0 text-muted-foreground/30 px-1">
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </div>
+
+                      {/* Job & Company */}
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <CompanyAvatar
+                          name={pair.job.company?.companyName ?? "?"}
+                          color={null}
+                          size={34}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold truncate">
+                            {pair.job.title}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {pair.job.company?.companyName}
+                            {pair.job.locationJapan &&
+                              ` · ${pair.job.locationJapan}`}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Score bar & Value */}
+                      <div className="shrink-0 flex items-center gap-2.5 w-[120px] sm:w-[130px] ml-auto">
+                        <span
+                          className={cn(
+                            "text-sm font-extrabold font-display tabular-nums shrink-0 w-9 text-right",
+                            pair.score >= 80
+                              ? "text-saffron"
+                              : pair.score >= 60
+                                ? "text-amber-500"
+                                : "text-muted-foreground",
+                          )}
+                        >
+                          {pair.score}%
+                        </span>
+                        {/* Progress Bar */}
+                        <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                          <motion.div
+                            className={cn(
+                              "h-full rounded-full",
+                              pair.score >= 80
+                                ? "bg-brand-gradient"
+                                : pair.score >= 60
+                                  ? "bg-amber-400"
+                                  : "bg-muted-foreground/40",
+                            )}
+                            initial={{ width: 0 }}
+                            whileInView={{ width: `${pair.score}%` }}
+                            viewport={{ once: true }}
+                            transition={{
+                              duration: 0.6,
+                              delay: idx * 0.04,
+                              ease: easeOutExpo,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </motion.li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
         )}
       </SectionCard>
 

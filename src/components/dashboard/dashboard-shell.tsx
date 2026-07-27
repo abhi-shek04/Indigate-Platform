@@ -103,10 +103,10 @@ export function DashboardShell({
           initial={{ y: -15, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, ease: easeOutExpo }}
-          className="topbar"
+          className="topbar sticky top-0 z-40 min-h-[56px] h-auto sm:h-14 py-1.5 sm:py-0 bg-background/95 backdrop-blur-xl border-b border-border/60"
         >
-          <div className="flex items-center gap-3 px-4 sm:px-6 lg:px-8 h-14">
-            <div className="lg:hidden">
+          <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-6 lg:px-8 min-h-[44px] sm:h-14">
+            <div className="lg:hidden shrink-0">
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                 <SheetTrigger asChild>
                   <button
@@ -145,7 +145,7 @@ export function DashboardShell({
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
-                className="font-display font-extrabold text-lg sm:text-xl leading-tight truncate text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/70"
+                className="font-display font-extrabold text-base sm:text-xl leading-tight truncate text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/70"
               >
                 {welcome}
               </motion.h1>
@@ -154,7 +154,7 @@ export function DashboardShell({
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.4, delay: 0.2, ease: "easeOut" }}
-                  className="flex items-center mt-1"
+                  className="hidden sm:flex items-center mt-0.5"
                 >
                   <span className="inline-flex items-center rounded-full bg-saffron/15 px-2.5 py-0.5 text-[10px] font-bold text-saffron uppercase tracking-[0.1em] ring-1 ring-inset ring-saffron/20">
                     {subtitle}
@@ -162,7 +162,7 @@ export function DashboardShell({
                 </motion.div>
               )}
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
               {topbarActions}
               <div className="hidden sm:block h-6 w-px bg-border mx-1" />
               <NotificationsBell />

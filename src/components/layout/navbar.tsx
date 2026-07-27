@@ -60,7 +60,7 @@ export function Navbar() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 w-full transition-all duration-500",
+        "sticky top-0 z-50 w-full max-w-full overflow-x-hidden transition-all duration-500",
         scrolled
           ? "border-b border-border/50 bg-background/85 backdrop-blur-xl shadow-[0_1px_0_0_color-mix(in_oklch,var(--border)_60%,transparent)] shadow-premium"
           : "border-b border-transparent bg-background/20 backdrop-blur-sm",

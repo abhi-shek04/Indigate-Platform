@@ -69,9 +69,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="overflow-x-hidden w-full max-w-full">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${jakarta.variable} font-sans antialiased bg-background text-foreground`}
+        className={`${geistSans.variable} ${geistMono.variable} ${jakarta.variable} font-sans antialiased bg-background text-foreground overflow-x-hidden w-full max-w-full min-h-screen`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}

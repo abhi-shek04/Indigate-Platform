@@ -34,7 +34,7 @@ export default function Page() {
   const showChrome = !isAuthView && !isDashboard;
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background overflow-x-hidden w-full max-w-full">
       <ScrollProgress />
       {showChrome && <Navbar />}
 

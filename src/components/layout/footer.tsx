@@ -38,7 +38,7 @@ export function Footer() {
   const navigate = useApp((s) => s.navigate);
 
   return (
-    <footer className="mt-auto bg-sidebar text-sidebar-foreground border-t border-border relative overflow-hidden">
+    <footer className="mt-auto bg-sidebar text-sidebar-foreground border-t border-border relative overflow-x-hidden w-full max-w-full">
       {/* Brand gradient top line */}
       <div className="absolute inset-x-0 top-0 h-[2px] bg-brand-gradient opacity-60" />
 

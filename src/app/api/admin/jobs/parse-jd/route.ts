@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { getSession } from "@/lib/auth";
 import { ok, err, handleError } from "@/lib/api";
 
-const mammoth = require("mammoth");
+import * as mammoth from "mammoth";
 
 export async function POST(req: NextRequest) {
   try {

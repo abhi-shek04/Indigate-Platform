@@ -426,30 +426,30 @@ export function LandingPage() {
       {/* ===================== STATS GRID ===================== */}
       <section className="relative py-12 sm:py-16 bg-background">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <RevealGroup stagger={0.1} className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-            <motion.div variants={staggerItem} className="flex flex-col items-center text-center p-6 rounded-2xl border border-border/50 bg-card/40">
+          <RevealGroup stagger={0.1} className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
+            <motion.div variants={staggerItem} className="flex flex-col items-center text-center p-3.5 sm:p-6 rounded-2xl border border-border/50 bg-card/40">
               <span className="stat-hero">
                 {(stats?.candidateCount ?? 0) > 1900 ? stats?.candidateCount : "1,900"}+
               </span>
-              <span className="mt-2 text-sm font-semibold text-muted-foreground">{pick("Candidates", "候補者")}</span>
+              <span className="mt-1.5 text-xs sm:text-sm font-semibold text-muted-foreground">{pick("Candidates", "候補者")}</span>
             </motion.div>
-            <motion.div variants={staggerItem} className="flex flex-col items-center text-center p-6 rounded-2xl border border-border/50 bg-card/40">
+            <motion.div variants={staggerItem} className="flex flex-col items-center text-center p-3.5 sm:p-6 rounded-2xl border border-border/50 bg-card/40">
               <span className="stat-hero">
                 {(stats?.companyCount ?? 0) > 100 ? stats?.companyCount : "100"}+
               </span>
-              <span className="mt-2 text-sm font-semibold text-muted-foreground">{pick("Companies", "企業")}</span>
+              <span className="mt-1.5 text-xs sm:text-sm font-semibold text-muted-foreground">{pick("Companies", "企業")}</span>
             </motion.div>
-            <motion.div variants={staggerItem} className="flex flex-col items-center text-center p-6 rounded-2xl border border-border/50 bg-card/40">
+            <motion.div variants={staggerItem} className="flex flex-col items-center text-center p-3.5 sm:p-6 rounded-2xl border border-border/50 bg-card/40">
               <span className="stat-hero">
                 {(stats?.jobCount ?? 0) > 450 ? stats?.jobCount : "450"}+
               </span>
-              <span className="mt-2 text-sm font-semibold text-muted-foreground">{pick("Open Roles", "募集中の職種")}</span>
+              <span className="mt-1.5 text-xs sm:text-sm font-semibold text-muted-foreground">{pick("Open Roles", "募集中の職種")}</span>
             </motion.div>
-            <motion.div variants={staggerItem} className="flex flex-col items-center text-center p-6 rounded-2xl border border-border/50 bg-card/40">
+            <motion.div variants={staggerItem} className="flex flex-col items-center text-center p-3.5 sm:p-6 rounded-2xl border border-border/50 bg-card/40">
               <span className="stat-hero">
                 {(stats?.placementCount ?? 0) > 85 ? stats?.placementCount : "85"}%
               </span>
-              <span className="mt-2 text-sm font-semibold text-muted-foreground">{pick("Match Rate", "マッチング率")}</span>
+              <span className="mt-1.5 text-xs sm:text-sm font-semibold text-muted-foreground">{pick("Match Rate", "マッチング率")}</span>
             </motion.div>
           </RevealGroup>
           <Reveal variants={fadeUp} delay={0.4}>
@@ -489,9 +489,9 @@ export function LandingPage() {
              {/* Large card */}
              <motion.div variants={staggerItem} className="md:col-span-2 lg:col-span-2 lg:row-span-2">
                <TiltCard max={3} className="h-full">
-                 <SpotlightCard className="card-premium h-full p-8 flex flex-col justify-end min-h-[320px]">
-                   <div className="absolute top-8 right-8 text-saffron/20 group-hover:text-saffron/40 transition-colors pointer-events-none">
-                     <Users className="w-24 h-24" />
+                 <SpotlightCard className="card-premium h-full p-5 sm:p-8 flex flex-col justify-end min-h-[280px] sm:min-h-[320px]">
+                   <div className="absolute top-6 right-6 sm:top-8 sm:right-8 text-saffron/20 group-hover:text-saffron/40 transition-colors pointer-events-none">
+                     <Users className="w-16 h-16 sm:w-24 sm:h-24" />
                    </div>
                    <div className="relative z-10 mt-auto">
                      <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-brand-gradient text-white mb-4 shadow-glow-brand ring-brand">
@@ -632,7 +632,7 @@ export function LandingPage() {
                   variants={staggerItem}
                   className="relative"
                 >
-                  <SpotlightCard className="card-premium relative h-full p-7 overflow-hidden">
+                  <SpotlightCard className="card-premium relative h-full p-5 sm:p-7 overflow-hidden">
                     {/* Big step number watermark */}
                     <span className="absolute top-4 right-5 font-display text-6xl font-extrabold text-saffron/8 select-none">
                       {s.step}
@@ -777,7 +777,7 @@ export function LandingPage() {
 
             {/* Support callout */}
             <Reveal variants={fadeUp} delay={0.3}>
-              <div className="mt-8 rounded-2xl bg-brand-gradient p-6 sm:p-8 text-center shadow-glow-brand relative overflow-hidden">
+              <div className="mt-8 rounded-2xl bg-brand-gradient p-5 sm:p-8 text-center shadow-glow-brand relative overflow-hidden">
                 <div
                   aria-hidden
                   className="absolute inset-0 opacity-20 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]"
@@ -788,12 +788,12 @@ export function LandingPage() {
                   }}
                 />
                 <ShieldCheck className="h-8 w-8 text-white mx-auto mb-3 relative" />
-                <p className="text-white font-semibold text-lg leading-relaxed max-w-2xl mx-auto relative">
+                <p className="text-white font-semibold text-sm sm:text-lg leading-relaxed max-w-2xl mx-auto relative">
                   {t("visa.support")}
                 </p>
                 <MagneticButton
                   onClick={() => navigate("home")}
-                  className="mt-5 bg-white text-crimson hover:bg-white/90 font-bold h-11 px-6 rounded-xl inline-flex items-center gap-2 cursor-pointer relative"
+                  className="mt-5 bg-white text-crimson hover:bg-white/90 font-bold h-11 px-6 rounded-xl inline-flex items-center justify-center gap-2 cursor-pointer relative w-full sm:w-auto"
                 >
                   {t("visa.cta")}
                   <ArrowRight className="h-4 w-4" />
@@ -977,7 +977,7 @@ export function LandingPage() {
         
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <Reveal variants={fadeUp}>
-            <div className="relative overflow-hidden rounded-3xl bg-slate-900 dark:bg-black px-6 py-12 sm:px-12 sm:py-16 text-center shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/10 group">
+            <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-slate-900 dark:bg-black px-5 py-10 sm:px-12 sm:py-16 text-center shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/10 group">
               {/* Mesh overlay with saffron/crimson aurora */}
               <div
                 aria-hidden
@@ -1008,18 +1008,18 @@ export function LandingPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.1 }}
-                  className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md"
+                  className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md"
                 >
                   <Sparkles className="h-3.5 w-3.5 text-saffron" />
                   Your journey starts here
                 </motion.div>
 
-                <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
+                <h2 className="font-display text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
                   {user
                     ? pick("Welcome back!", "おかえりなさい！")
                     : t("cta.title")}
                 </h2>
-                <p className="mt-4 text-white/80 text-base sm:text-lg max-w-xl mx-auto leading-relaxed font-medium">
+                <p className="mt-3 text-white/80 text-sm sm:text-lg max-w-xl mx-auto leading-relaxed font-medium">
                   {user
                     ? pick(
                         "Continue your Japan journey from where you left off.",
@@ -1039,7 +1039,7 @@ export function LandingPage() {
                         : "register",
                     )
                   }
-                  className="mt-8 bg-white text-slate-900 hover:bg-slate-100 hover:scale-105 transition-all duration-300 font-bold text-sm sm:text-base h-12 px-8 rounded-full inline-flex items-center gap-2 shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:shadow-[0_0_40px_rgba(255,255,255,0.4)]"
+                  className="mt-6 sm:mt-8 bg-white text-slate-900 hover:bg-slate-100 hover:scale-105 transition-all duration-300 font-bold text-sm sm:text-base h-11 sm:h-12 px-6 sm:px-8 rounded-full inline-flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:shadow-[0_0_40px_rgba(255,255,255,0.4)] w-full sm:w-auto"
                 >
                   {user
                     ? pick("Go to Dashboard", "ダッシュボードへ")

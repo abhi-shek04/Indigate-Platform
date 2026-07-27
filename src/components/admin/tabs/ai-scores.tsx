@@ -159,12 +159,12 @@ export function AIScoresTab() {
                 <h2 className="font-display font-bold text-base sm:text-lg text-sidebar-foreground tracking-tight">
                   AI Match Insights & Scoring Engine
                 </h2>
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                <div className="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-emerald-500/80">
                   <span className="relative flex h-1.5 w-1.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-50" />
                     <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   </span>
-                  Active (On-Demand)
+                  Score-on-Write
                 </div>
               </div>
               <p className="text-xs text-sidebar-foreground/60 mt-0.5 leading-normal">
